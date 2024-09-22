@@ -29,7 +29,17 @@ const plugin: JupyterFrontEndPlugin<void> = {
         });
     }
 
-    requestAPI<any>('get-example')
+    requestAPI<any>('chat', {method: 'POST', body: '{}'})
+      .then(data => {
+        console.log(data);
+      })
+      .catch(reason => {
+        console.error(
+          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+        );
+      });
+
+    requestAPI<any>('inline-completions', {method: 'POST', body: '{}'})
       .then(data => {
         console.log(data);
       })
