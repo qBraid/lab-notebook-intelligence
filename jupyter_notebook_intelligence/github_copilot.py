@@ -13,17 +13,19 @@ github_auth = {
     "token": None
 }
 
-def get_auth_status():
+get_token_thread = None
+
+def get_login_status():
     global github_auth
-    authenticated = github_auth["access_token"] is not None
-    resp = {
-        "authenticated": authenticated
+    logged_in = github_auth["access_token"] is not None and github_auth["token"] is not None
+    return {
+        "logged_in": logged_in
     }
-    if not authenticated:
-        resp.update(get_device_verification_info())
-        wait_for_tokens()
-    
-    return resp
+
+def login():
+    login_info = get_device_verification_info()
+    wait_for_tokens()
+    return login_info
 
 def get_device_verification_info():
     global github_auth
@@ -43,8 +45,6 @@ def get_device_verification_info():
         data=json.dumps(data)
     )
 
-
-    # Parse the response json, isolating the device_code, user_code, and verification_uri
     resp_json = resp.json()
     github_auth["verification_uri"] = resp_json.get('verification_uri')
     github_auth["user_code"] = resp_json.get('user_code')
@@ -56,10 +56,13 @@ def get_device_verification_info():
         "user_code": github_auth["user_code"]
     }
 
-def wait_for_user_access_token_thread():
+def wait_for_user_access_token_thread_func():
     global github_auth
+
     while True:
-        time.sleep(5)
+        if github_auth["access_token"] is not None:
+            break
+        time.sleep(15)
         data = {
             "client_id": CLIENT_ID,
             "device_code": github_auth["device_code"],
@@ -77,19 +80,19 @@ def wait_for_user_access_token_thread():
             data=json.dumps(data)
         )
 
-        # Parse the response json, isolating the access_token
         resp_json = resp.json()
-        print(f"ACCESS TOKEN RESPONSE {resp_json}")
         access_token = resp_json.get('access_token')
 
         if access_token:
             github_auth["access_token"] = access_token
-            print(f"ACCESS TOKEN RECEIVED {access_token}")
-            break
+            get_token()
 
 def get_token():
     global github_auth
     access_token = github_auth["access_token"]
+
+    if access_token is None:
+        return
 
     resp = requests.get('https://api.github.com/copilot_internal/v2/token', headers={
         'authorization': f'token {access_token}',
@@ -102,11 +105,55 @@ def get_token():
     token = resp_json.get('token')
     github_auth["token"] = token
 
-def get_token_thread():
+def get_token_thread_func():
     while True:
         get_token()
         time.sleep(25 * 60)
 
 def wait_for_tokens():
-    threading.Thread(target=get_token_thread).start()
-    threading.Thread(target=wait_for_user_access_token_thread).start()
+    global get_token_thread
+    if github_auth["access_token"] is None:
+        threading.Thread(target=wait_for_user_access_token_thread_func).start()
+
+    if get_token_thread is None:
+        get_token_thread = threading.Thread(target=get_token_thread_func)
+        get_token_thread.start()
+
+def inline_completions(prefix, suffix, language):
+    global github_auth
+    token = github_auth['token']
+
+    try:
+        resp = requests.post('https://copilot-proxy.githubusercontent.com/v1/engines/copilot-codex/completions',
+            headers={'authorization': f'Bearer {token}'},
+                json={
+                'prompt': prefix,
+                'suffix': suffix,
+                'max_tokens': 1000,
+                'temperature': 0,
+                'top_p': 1,
+                'n': 1,
+                'stop': ['\n'],
+                'nwo': 'github/copilot.vim',
+                'stream': True,
+                'extra': {
+                    'language': language
+                }
+            }
+        )
+    except requests.exceptions.ConnectionError:
+        return ''
+
+    result = ''
+
+    resp_text = resp.text.split('\n')
+    for line in resp_text:
+        if line.startswith('data: {'):
+            json_completion = json.loads(line[6:])
+            completion = json_completion.get('choices')[0].get('text')
+            if completion:
+                result += completion
+            else:
+                result += '\n'
+    
+    return result

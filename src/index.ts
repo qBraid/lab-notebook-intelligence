@@ -29,31 +29,28 @@ const plugin: JupyterFrontEndPlugin<void> = {
         });
     }
 
-    requestAPI<any>('chat', {method: 'POST', body: '{}'})
+    let ghLoginRequested = false;
+    let ghAuthenticated = false;
+
+    const loginToGitHub = () => {
+      requestAPI<any>('gh-login', {method: 'POST'})
       .then(data => {
-        console.log(data);
+        console.log(`Login to GitHub Copilot using ${data.verification_uri} and device code ${data.user_code}`);
       })
       .catch(reason => {
         console.error(
           `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
         );
       });
+    };
 
-    requestAPI<any>('inline-completions', {method: 'POST', body: '{}'})
+    const getGitHubLoginStatus = () => {
+      requestAPI<any>('gh-login-status')
       .then(data => {
-        console.log(data);
-      })
-      .catch(reason => {
-        console.error(
-          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-        );
-      });
-
-    const getGitHubAuthStatus = () => {
-      requestAPI<any>('gh-auth-status')
-      .then(data => {
-        if (!data.authenticated) {
-          console.log(`Login to GitHub Copilot using ${data.verification_uri} and device code ${data.user_code}`);
+        ghAuthenticated = data.logged_in;
+        if (!ghAuthenticated && !ghLoginRequested) {
+          loginToGitHub();
+          ghLoginRequested = true;
         }
       })
       .catch(reason => {
@@ -64,10 +61,49 @@ const plugin: JupyterFrontEndPlugin<void> = {
     };
 
     setInterval(() => {
-      getGitHubAuthStatus();
-    }, 30000);
+      getGitHubLoginStatus();
+    }, 5000);
 
-    getGitHubAuthStatus();
+    getGitHubLoginStatus();
+
+    // const testChat = () => {
+    //   requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({})})
+    //   .then(data => {
+    //     console.log(`CHAT RESPONSE\n${data}`);
+    //   })
+    //   .catch(reason => {
+    //     console.error(
+    //       `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+    //     );
+    //   });
+    // };
+
+    const testInlineCompletions = () => {
+      requestAPI<any>('inline-completions', {
+        method: 'POST',
+        body: JSON.stringify({
+          prefix: 'def print_hello_world():\n',
+          suffix: '',
+          language: 'python'
+        })}
+      )
+      .then(data => {
+        console.log(`INLINE COMPLETIONS RESPONSE\n${data}`);
+      })
+      .catch(reason => {
+        console.error(
+          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+        );
+      });
+    };
+
+
+    setInterval(() => {
+      if (ghAuthenticated) {
+        // testChat();
+        testInlineCompletions();
+      }
+    }, 10000);
   }
 };
 
