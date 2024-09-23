@@ -48,6 +48,26 @@ const plugin: JupyterFrontEndPlugin<void> = {
           `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
         );
       });
+
+    const getGitHubAuthStatus = () => {
+      requestAPI<any>('gh-auth-status')
+      .then(data => {
+        if (!data.authenticated) {
+          console.log(`Login to GitHub Copilot using ${data.verification_uri} and device code ${data.user_code}`);
+        }
+      })
+      .catch(reason => {
+        console.error(
+          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+        );
+      });
+    };
+
+    setInterval(() => {
+      getGitHubAuthStatus();
+    }, 30000);
+
+    getGitHubAuthStatus();
   }
 };
 
