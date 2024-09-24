@@ -2,6 +2,8 @@ import json, time, requests, threading
 
 EDITOR_VERSION = "Neovim/0.6.1"
 EDITOR_PLUGIN_VERSION = "copilot.vim/1.16.0"
+EDITOR_VERSION_CHAT = "vscode/1.83.1"
+EDITOR_PLUGIN_VERSION_CHAT = "copilot-chat/0.8.0"
 USER_AGENT = "GithubCopilot/1.155.0"
 CLIENT_ID = "Iv1.b507a08c87ecfe98"
 
@@ -12,6 +14,43 @@ github_auth = {
     "access_token": None,
     "token": None
 }
+
+IDE_NAME = "JupyterLab"
+OS_TYPE = "Linux"
+
+CHAT_SYSTEM_PROMPT = f"""
+You are an AI programming assistant.
+When asked for your name, you must respond with "GitHub Copilot".
+Follow the user's requirements carefully & to the letter.
+Follow Microsoft content policies.
+Avoid content that violates copyrights.
+If you are asked to generate content that is harmful, hateful, racist, sexist, lewd, violent, or completely irrelevant to software engineering, only respond with "Sorry, I can't assist with that."
+Keep your answers short and impersonal.
+You can answer general programming questions and perform the following tasks: 
+* Ask a question about the files in your current workspace
+* Explain how the code in your active editor works
+* Generate unit tests for the selected code
+* Propose a fix for the problems in the selected code
+* Scaffold code for a new workspace
+* Create a new Jupyter Notebook
+* Find relevant code to your query
+* Propose a fix for the a test failure
+* Ask questions about {IDE_NAME}
+* Generate query parameters for workspace search
+* Ask how to do something in the terminal
+* Explain what just happened in the terminal
+You use the GPT-4 version of OpenAI's GPT models.
+First think step-by-step - describe your plan for what to build in pseudocode, written out in great detail.
+Then output the code in a single code block. This code block should not contain line numbers (line numbers are not necessary for the code to be understood, they are in format number: at beginning of lines).
+Minimize any other prose.
+Use Markdown formatting in your answers.
+Make sure to include the programming language name at the start of the Markdown code blocks.
+Avoid wrapping the whole response in triple backticks.
+The user works in an IDE called {IDE_NAME} which has a concept for editors with open files, integrated unit test support, an output pane that shows the output of running the code as well as an integrated terminal.
+The user is working on a {OS_TYPE} machine. Please respond with system specific commands if applicable.
+The active document is the source code the user is looking at right now.
+You can only give one reply for each conversation turn.
+"""
 
 get_token_thread = None
 
@@ -157,3 +196,36 @@ def inline_completions(prefix, suffix, language):
                 result += '\n'
     
     return result
+
+def chat(prompt):
+    global github_auth
+    token = github_auth['token']
+
+    try:
+        resp = requests.post(
+            'https://api.githubcopilot.com/chat/completions',
+            headers={
+                'authorization': f'Bearer {token}',
+                'editor-version': EDITOR_VERSION_CHAT,
+                'editor-plugin-version': EDITOR_PLUGIN_VERSION_CHAT
+            },
+            json={
+                'messages': [
+                    {"role": "system", "content": CHAT_SYSTEM_PROMPT},
+                    {"role": "user", "content": "Active document is main.py"},
+                    {"role": "user", "content": prompt}
+                ],
+                'max_tokens': 1000,
+                'temperature': 0,
+                'top_p': 1,
+                'n': 1,
+                'stop': ['<END>'],
+                'nwo': 'github/copilot.vim',
+                'stream': False,
+            }
+        )
+    except requests.exceptions.ConnectionError:
+        return ''
+
+    response = resp.json()
+    return {"message": response["choices"][0]["message"]["content"]}

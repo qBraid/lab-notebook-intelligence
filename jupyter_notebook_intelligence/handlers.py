@@ -29,8 +29,11 @@ class PostChatHandler(APIHandler):
     # Jupyter server
     @tornado.web.authenticated
     async def post(self):
+        data = self.get_json_body()
+        prompt = data['prompt']
+        response = github_copilot.chat(prompt)
         self.finish(json.dumps({
-            "data": "This is /notebook-intelligence/chat endpoint!"
+            "data": response
         }))
 
 class PostInlineCompletionsHandler(APIHandler):

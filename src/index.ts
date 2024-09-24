@@ -66,17 +66,17 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     getGitHubLoginStatus();
 
-    // const testChat = () => {
-    //   requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({})})
-    //   .then(data => {
-    //     console.log(`CHAT RESPONSE\n${data}`);
-    //   })
-    //   .catch(reason => {
-    //     console.error(
-    //       `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-    //     );
-    //   });
-    // };
+    const testChat = () => {
+      requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({"prompt": "How can convert json to dictionary?"})})
+      .then(data => {
+        console.log(`CHAT RESPONSE`, data);
+      })
+      .catch(reason => {
+        console.error(
+          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+        );
+      });
+    };
 
     const testInlineCompletions = () => {
       requestAPI<any>('inline-completions', {
@@ -100,7 +100,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     setInterval(() => {
       if (ghAuthenticated) {
-        // testChat();
+        testChat();
         testInlineCompletions();
       }
     }, 10000);
