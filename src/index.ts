@@ -5,7 +5,10 @@ import {
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
+import { Panel } from '@lumino/widgets';
+
 import { requestAPI } from './handler';
+import { ChatSidebar } from './chat-sidebar';
 
 /**
  * Initialization data for the @mbektas/jupyter-notebook-intelligence extension.
@@ -66,44 +69,50 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     getGitHubLoginStatus();
 
-    const testChat = () => {
-      requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({"prompt": "How can convert json to dictionary?"})})
-      .then(data => {
-        console.log(`CHAT RESPONSE`, data);
-      })
-      .catch(reason => {
-        console.error(
-          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-        );
-      });
-    };
+    // const testChat = () => {
+    //   requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({"prompt": "How can convert json to dictionary?"})})
+    //   .then(data => {
+    //     console.log(`CHAT RESPONSE`, data);
+    //   })
+    //   .catch(reason => {
+    //     console.error(
+    //       `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+    //     );
+    //   });
+    // };
 
-    const testInlineCompletions = () => {
-      requestAPI<any>('inline-completions', {
-        method: 'POST',
-        body: JSON.stringify({
-          prefix: 'def print_hello_world():\n',
-          suffix: '',
-          language: 'python'
-        })}
-      )
-      .then(data => {
-        console.log(`INLINE COMPLETIONS RESPONSE\n${data}`);
-      })
-      .catch(reason => {
-        console.error(
-          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-        );
-      });
-    };
+    // const testInlineCompletions = () => {
+    //   requestAPI<any>('inline-completions', {
+    //     method: 'POST',
+    //     body: JSON.stringify({
+    //       prefix: 'def print_hello_world():\n',
+    //       suffix: '',
+    //       language: 'python'
+    //     })}
+    //   )
+    //   .then(data => {
+    //     console.log(`INLINE COMPLETIONS RESPONSE\n${data}`);
+    //   })
+    //   .catch(reason => {
+    //     console.error(
+    //       `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+    //     );
+    //   });
+    // };
 
 
-    setInterval(() => {
-      if (ghAuthenticated) {
-        testChat();
-        testInlineCompletions();
-      }
-    }, 10000);
+    // setTimeout(() => {
+    //   if (ghAuthenticated) {
+    //     testChat();
+    //     testInlineCompletions();
+    //   }
+    // }, 30000);
+
+    const panel = new Panel();
+    panel.id = 'notebook-intelligence-tab';
+    panel.addWidget(new ChatSidebar());
+    app.shell.add(panel, 'left', { rank: 100 });
+    app.shell.activateById(panel.id);
   }
 };
 
