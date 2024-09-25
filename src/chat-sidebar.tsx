@@ -1,5 +1,6 @@
 import React, { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { ReactWidget } from '@jupyterlab/apputils';
+import Markdown from 'react-markdown';
 
 import { requestAPI } from './handler';
 
@@ -21,7 +22,9 @@ interface IChatResponse {
 
 function ChatResponse(props: any) {
     return (
-        <div className="chat-response">{props.message}</div>
+        <div className="chat-response">
+            <Markdown>{props.message}</Markdown>
+        </div>
     );
 }
 

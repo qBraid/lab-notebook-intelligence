@@ -5,10 +5,63 @@ import {
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
+import {
+  CompletionHandler,
+  ICompletionProviderManager,
+  IInlineCompletionContext,
+  IInlineCompletionItem,
+  IInlineCompletionList,
+  IInlineCompletionProvider
+} from '@jupyterlab/completer';
+
 import { Panel } from '@lumino/widgets';
 
 import { requestAPI } from './handler';
 import { ChatSidebar } from './chat-sidebar';
+
+class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlineCompletionItem> {
+  fetch(
+    request: CompletionHandler.IRequest,
+    context: IInlineCompletionContext
+  ): Promise<IInlineCompletionList<IInlineCompletionItem>> {
+    const preCursor = request.text.substring(0, request.offset);
+    const postCursor = request.text.substring(request.offset);
+
+    return new Promise((resolve, reject) => {
+      const items: IInlineCompletionItem[] = [];
+
+      requestAPI<any>('inline-completions', {
+        method: 'POST',
+        body: JSON.stringify({
+          prefix: preCursor,
+          suffix: postCursor,
+          language: 'python'
+        })}
+      )
+      .then(data => {
+        console.log(`INLINE COMPLETIONS RESPONSE\n${data}`);
+        items.push({
+          insertText: data.data
+        });
+
+        resolve({items});
+      })
+      .catch(reason => {
+        console.error(
+          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+        );
+      });
+    });
+  }
+
+  get name(): string {
+    return 'Notebook Intelligence';
+  }
+
+  get identifier(): string {
+    return '@mbektas/jupyter-notebook-intelligence';
+  }
+}
 
 /**
  * Initialization data for the @mbektas/jupyter-notebook-intelligence extension.
@@ -17,9 +70,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: '@mbektas/jupyter-notebook-intelligence:plugin',
   description: 'Jupyter Notebook Intelligence extension',
   autoStart: true,
+  requires: [ICompletionProviderManager],
   optional: [ISettingRegistry],
-  activate: (app: JupyterFrontEnd, settingRegistry: ISettingRegistry | null) => {
+  activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, settingRegistry: ISettingRegistry | null) => {
     console.log('JupyterLab extension @mbektas/jupyter-notebook-intelligence is activated!');
+
+    completionManager.registerInlineProvider(new GitHubInlineCompletionProvider());
 
     if (settingRegistry) {
       settingRegistry

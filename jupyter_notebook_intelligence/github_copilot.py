@@ -162,21 +162,26 @@ def inline_completions(prefix, suffix, language):
     global github_auth
     token = github_auth['token']
 
+    prompt = f"# Path: main.py\n{prefix}"
+
     try:
         resp = requests.post('https://copilot-proxy.githubusercontent.com/v1/engines/copilot-codex/completions',
             headers={'authorization': f'Bearer {token}'},
                 json={
-                'prompt': prefix,
+                'prompt': prompt,
                 'suffix': suffix,
-                'max_tokens': 1000,
+                'min_tokens': 500,
+                'max_tokens': 2000,
                 'temperature': 0,
                 'top_p': 1,
                 'n': 1,
-                'stop': ['\n'],
+                'stop': ['<END>'],
                 'nwo': 'github/copilot.vim',
                 'stream': True,
                 'extra': {
-                    'language': language
+                    'language': language,
+                    'next_indent': 0,
+                    'trim_by_indentation': True
                 }
             }
         )
@@ -192,8 +197,8 @@ def inline_completions(prefix, suffix, language):
             completion = json_completion.get('choices')[0].get('text')
             if completion:
                 result += completion
-            else:
-                result += '\n'
+            # else:
+            #     result += '\n'
     
     return result
 
