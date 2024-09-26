@@ -14,6 +14,8 @@ import {
   IInlineCompletionProvider
 } from '@jupyterlab/completer';
 
+import { NotebookPanel } from '@jupyterlab/notebook';
+
 import { Panel } from '@lumino/widgets';
 
 import { requestAPI } from './handler';
@@ -24,8 +26,30 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
     request: CompletionHandler.IRequest,
     context: IInlineCompletionContext
   ): Promise<IInlineCompletionList<IInlineCompletionItem>> {
+    let preContent = '';
+    let postContent = '';
     const preCursor = request.text.substring(0, request.offset);
     const postCursor = request.text.substring(request.offset);
+
+    if (context.widget instanceof NotebookPanel) {     
+      const activeCell = context.widget.content.activeCell;
+      let activeCellReached = false;
+
+      for (const cell of context.widget.content.widgets) {
+        const cellModel = cell.model.sharedModel;
+        if (cell === activeCell) {
+          activeCellReached = true;
+        } else if (!activeCellReached) {
+          if (cellModel.cell_type === 'code') {
+            preContent += cellModel.source + '\n';
+          }
+        } else {
+          if (cellModel.cell_type === 'code') {
+            postContent += cellModel.source + '\n';
+          }
+        }
+      }
+    }
 
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
@@ -33,8 +57,8 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
       requestAPI<any>('inline-completions', {
         method: 'POST',
         body: JSON.stringify({
-          prefix: preCursor,
-          suffix: postCursor,
+          prefix: preContent + preCursor,
+          suffix: postCursor + postContent,
           language: 'python'
         })}
       )
