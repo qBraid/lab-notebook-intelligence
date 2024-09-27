@@ -3,7 +3,7 @@ import { ReactWidget } from '@jupyterlab/apputils';
 import { Signal } from '@lumino/signaling';
 import Markdown from 'react-markdown';
 
-import { requestAPI } from './handler';
+import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 
 export class ChatSidebar extends ReactWidget {
     constructor() {
@@ -36,7 +36,7 @@ function ChatResponse(props: any) {
 }
 
 async function submitChatRequest(prompt: string): Promise<any> {
-    const data = await requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({"prompt": prompt})});
+    const data = await GitHubCopilot.chatRequest(prompt);
     return data;
 }
 
@@ -44,6 +44,22 @@ function SidebarComponent(props: any) {
     const [chatResponses, setChatResponses] = useState<IChatResponse[]>([]);
     const [prompt, setPrompt] = useState<string>('');
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
+    const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
+    const [loginClickCount, setLoginClickCount] = useState(0);
+    const [deviceActivationURL, setDeviceActivationURL] = useState('');
+    const [deviceActivationCode, setDeviceActivationCode] = useState('');
+
+    useEffect(() => {
+        const fetchData = () => {
+            setGHLoginStatus(GitHubCopilot.getLoginStatus());
+        };
+
+        fetchData();
+
+        const intervalId = setInterval(fetchData, 3000);
+
+        return () => clearInterval(intervalId);
+    }, [loginClickCount]);
 
     const promptRequestHandler = (_sender: any, prompt:string) => {
         submitChatRequest(prompt).then((response) => {
@@ -69,6 +85,18 @@ function SidebarComponent(props: any) {
     const scrollMessagesToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     };
+
+    const handleLoginClick = async () => {
+        const response = await GitHubCopilot.loginToGitHub();
+        setDeviceActivationURL((response as any).verificationURI);
+        setDeviceActivationCode((response as any).userCode);
+        setLoginClickCount(loginClickCount + 1);
+    };
+
+    const handleLogoutClick = () => {
+        // GitHubCopilot.logoutFromGitHub();
+        setLoginClickCount(loginClickCount + 1);
+    };
     
     useEffect(() => {
         scrollMessagesToBottom();
@@ -83,8 +111,21 @@ function SidebarComponent(props: any) {
     return (
         <div className="sidebar">
             <div className="sidebar-header">
-            Copilot
+                <div className='sidebar-title'>Copilot</div>
+                <div>
+                    {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn ? 
+                        (<button onClick={handleLoginClick}>Login</button>) :
+                    ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ? 
+                    (<div>Activating device...</div>) :
+                        ghLoginStatus === GitHubCopilotLoginStatus.LoggingIn ? 
+                        (<div>Logging in...</div>) :(<button onClick={handleLogoutClick}>Logout</button>)
+                    }
+                </div>
             </div>
+            {
+            ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && 
+            (<div>Please visit <a href="{deviceActivationURL}" target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access from this device.</div>)
+            }
             <div className="sidebar-messages">
                 {chatResponses.map((chatResponse, index) => (
                     <ChatResponse key={`key-${index}`} message={chatResponse.message} />

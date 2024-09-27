@@ -20,8 +20,8 @@ import { NotebookPanel } from '@jupyterlab/notebook';
 
 import { Panel } from '@lumino/widgets';
 
-import { requestAPI } from './handler';
 import { ChatSidebar } from './chat-sidebar';
+import { GitHubCopilot } from './github-copilot';
 
 namespace CommandIDs {
   export const explainInput = 'notebook-intelligence:explain-input';
@@ -61,18 +61,14 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
 
-      requestAPI<any>('inline-completions', {
-        method: 'POST',
-        body: JSON.stringify({
-          prefix: preContent + preCursor,
-          suffix: postCursor + postContent,
-          language: 'python'
-        })}
-      )
-      .then(data => {
-        console.log(`INLINE COMPLETIONS RESPONSE\n${data}`);
+      GitHubCopilot.inlineCompletionsRequest(
+        preContent + preCursor,
+        postCursor + postContent,
+        'python'
+      ).then(response => {
+        console.log(`INLINE COMPLETIONS RESPONSE\n${response}`);
         items.push({
-          insertText: data.data
+          insertText: response.data
         });
 
         resolve({items});
@@ -119,82 +115,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         });
     }
 
-    let ghLoginRequested = false;
-    let ghAuthenticated = false;
-
-    const loginToGitHub = () => {
-      requestAPI<any>('gh-login', {method: 'POST'})
-      .then(data => {
-        console.log(`Login to GitHub Copilot using ${data.verification_uri} and device code ${data.user_code}`);
-      })
-      .catch(reason => {
-        console.error(
-          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-        );
-      });
-    };
-
-    const getGitHubLoginStatus = () => {
-      requestAPI<any>('gh-login-status')
-      .then(data => {
-        ghAuthenticated = data.logged_in;
-        if (!ghAuthenticated && !ghLoginRequested) {
-          loginToGitHub();
-          ghLoginRequested = true;
-        }
-      })
-      .catch(reason => {
-        console.error(
-          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-        );
-      });
-    };
-
-    setInterval(() => {
-      getGitHubLoginStatus();
-    }, 5000);
-
-    getGitHubLoginStatus();
-
-    // const testChat = () => {
-    //   requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({"prompt": "How can convert json to dictionary?"})})
-    //   .then(data => {
-    //     console.log(`CHAT RESPONSE`, data);
-    //   })
-    //   .catch(reason => {
-    //     console.error(
-    //       `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-    //     );
-    //   });
-    // };
-
-    // const testInlineCompletions = () => {
-    //   requestAPI<any>('inline-completions', {
-    //     method: 'POST',
-    //     body: JSON.stringify({
-    //       prefix: 'def print_hello_world():\n',
-    //       suffix: '',
-    //       language: 'python'
-    //     })}
-    //   )
-    //   .then(data => {
-    //     console.log(`INLINE COMPLETIONS RESPONSE\n${data}`);
-    //   })
-    //   .catch(reason => {
-    //     console.error(
-    //       `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-    //     );
-    //   });
-    // };
-
-
-    // setTimeout(() => {
-    //   if (ghAuthenticated) {
-    //     testChat();
-    //     testInlineCompletions();
-    //   }
-    // }, 30000);
-
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
     const sidebar = new ChatSidebar();
@@ -235,6 +155,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         sidebar.runPrompt(`Active file is a Jupyter notebook named main.ipynb. Can you explain this code cell output:\n${output}`);
       }
     });
+
+    GitHubCopilot.initialize();
   }
 };
 

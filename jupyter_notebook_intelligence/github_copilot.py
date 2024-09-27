@@ -1,3 +1,4 @@
+from enum import Enum
 import json, time, requests, threading
 
 EDITOR_VERSION = "Neovim/0.6.1"
@@ -7,11 +8,14 @@ EDITOR_PLUGIN_VERSION_CHAT = "copilot-chat/0.8.0"
 USER_AGENT = "GithubCopilot/1.155.0"
 CLIENT_ID = "Iv1.b507a08c87ecfe98"
 
+LoginStatus = Enum('LoginStatus', ['NOT_LOGGED_IN', 'ACTIVATING_DEVICE', 'LOGGING_IN', 'LOGGED_IN'])
+
 github_auth = {
     "verification_uri": None,
     "user_code": None,
     "device_code": None,
     "access_token": None,
+    "status" : LoginStatus.NOT_LOGGED_IN,
     "token": None
 }
 
@@ -56,9 +60,9 @@ get_token_thread = None
 
 def get_login_status():
     global github_auth
-    logged_in = github_auth["access_token"] is not None and github_auth["token"] is not None
+
     return {
-        "logged_in": logged_in
+        "status": github_auth["status"].name
     }
 
 def login():
@@ -88,6 +92,8 @@ def get_device_verification_info():
     github_auth["verification_uri"] = resp_json.get('verification_uri')
     github_auth["user_code"] = resp_json.get('user_code')
     github_auth["device_code"] = resp_json.get('device_code')
+
+    github_auth["status"] = LoginStatus.ACTIVATING_DEVICE
 
     # user needs to visit the verification_uri and enter the user_code
     return {
@@ -133,6 +139,8 @@ def get_token():
     if access_token is None:
         return
 
+    github_auth["status"] = LoginStatus.LOGGING_IN
+
     resp = requests.get('https://api.github.com/copilot_internal/v2/token', headers={
         'authorization': f'token {access_token}',
         'editor-version': EDITOR_VERSION,
@@ -143,6 +151,7 @@ def get_token():
     resp_json = resp.json()
     token = resp_json.get('token')
     github_auth["token"] = token
+    github_auth["status"] = LoginStatus.LOGGED_IN
 
 def get_token_thread_func():
     while True:
@@ -175,7 +184,7 @@ def inline_completions(prefix, suffix, language):
                 'temperature': 0,
                 'top_p': 1,
                 'n': 1,
-                'stop': ['<END>'],
+                'stop': ['<END>', '```'],
                 'nwo': 'github/copilot.vim',
                 'stream': True,
                 'extra': {
