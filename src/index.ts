@@ -3,6 +3,8 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 
+import { CodeCell } from '@jupyterlab/cells';
+
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
 import {
@@ -21,6 +23,11 @@ import { Panel } from '@lumino/widgets';
 import { requestAPI } from './handler';
 import { ChatSidebar } from './chat-sidebar';
 
+namespace CommandIDs {
+  export const explainInput = 'notebook-intelligence:explain-input';
+  export const explainOutput = 'notebook-intelligence:explain-output';
+}
+
 class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlineCompletionItem> {
   fetch(
     request: CompletionHandler.IRequest,
@@ -31,7 +38,7 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
     const preCursor = request.text.substring(0, request.offset);
     const postCursor = request.text.substring(request.offset);
 
-    if (context.widget instanceof NotebookPanel) {     
+    if (context.widget instanceof NotebookPanel) {
       const activeCell = context.widget.content.activeCell;
       let activeCellReached = false;
 
@@ -190,9 +197,44 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
-    panel.addWidget(new ChatSidebar());
+    const sidebar = new ChatSidebar();
+    panel.addWidget(sidebar);
     app.shell.add(panel, 'left', { rank: 100 });
     app.shell.activateById(panel.id);
+
+    app.commands.addCommand(CommandIDs.explainInput, {
+      execute: (args) => {
+        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
+          return;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        const content = activeCell?.model.sharedModel.source;
+        sidebar.runPrompt(`Active file is main.py. Can you explain this code:\n${content}`);
+
+        app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.explainOutput, {
+      execute: (args) => {
+        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
+          return;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell as CodeCell;
+        const outputModel = activeCell.outputArea.model;
+        const length = outputModel.length;
+        let output = '';
+        for (let i = 0; i < length; ++i) {
+          output += JSON.stringify(outputModel.get(i).data);
+        }
+
+        sidebar.runPrompt(`Active file is a Jupyter notebook named main.ipynb. Can you explain this code cell output:\n${output}`);
+      }
+    });
   }
 };
 

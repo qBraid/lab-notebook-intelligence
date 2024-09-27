@@ -36,3 +36,9 @@
     padding: 5px;
     margin-bottom: 5px;
 }
+
+.chat-response pre {
+    background-color: #eaeaea;
+    padding: 3px;
+    border-radius: 3px;
+}
