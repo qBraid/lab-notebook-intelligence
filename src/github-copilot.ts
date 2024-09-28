@@ -1,3 +1,5 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
 import { requestAPI } from "./handler";
 
 const LOGIN_STATUS_UPDATE_INTERVAL = 3000;

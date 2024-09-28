@@ -1,3 +1,5 @@
+# Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
 import json
 
 from jupyter_server.base.handlers import APIHandler

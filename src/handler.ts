@@ -1,3 +1,5 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
 import { URLExt } from '@jupyterlab/coreutils';
 
 import { ServerConnection } from '@jupyterlab/services';

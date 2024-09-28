@@ -1,3 +1,5 @@
+# Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+ 
 try:
     from ._version import __version__
 except ImportError:

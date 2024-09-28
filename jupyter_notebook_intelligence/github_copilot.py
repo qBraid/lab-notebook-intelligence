@@ -1,3 +1,5 @@
+# Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
 from enum import Enum
 import json, time, requests, threading
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts

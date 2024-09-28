@@ -1,3 +1,5 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
 import React, { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { Signal } from '@lumino/signaling';
