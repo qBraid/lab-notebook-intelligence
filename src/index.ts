@@ -20,12 +20,12 @@ import { NotebookPanel } from '@jupyterlab/notebook';
 
 import { Panel } from '@lumino/widgets';
 
-import { ChatSidebar } from './chat-sidebar';
+import { ChatSidebar, RunChatCompletionType } from './chat-sidebar';
 import { GitHubCopilot } from './github-copilot';
 
 namespace CommandIDs {
-  export const explainInput = 'notebook-intelligence:explain-input';
-  export const explainOutput = 'notebook-intelligence:explain-output';
+  export const explainThis = 'notebook-intelligence:explain-this';
+  export const fixThis = 'notebook-intelligence:fix-this';
 }
 
 class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlineCompletionItem> {
@@ -122,7 +122,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     app.shell.add(panel, 'left', { rank: 100 });
     app.shell.activateById(panel.id);
 
-    app.commands.addCommand(CommandIDs.explainInput, {
+    app.commands.addCommand(CommandIDs.explainThis, {
       execute: (args) => {
         if (!(app.shell.currentWidget instanceof NotebookPanel)) {
           return;
@@ -131,13 +131,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const np = app.shell.currentWidget as NotebookPanel;
         const activeCell = np.content.activeCell;
         const content = activeCell?.model.sharedModel.source;
-        sidebar.runPrompt(`Active file is main.py. Can you explain this code:\n${content}`);
+        sidebar.runPrompt({
+          type: RunChatCompletionType.ExplainThis,
+          content: `Active file is main.py. Can you explain this code:\n${content}`
+        });
 
         app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
       }
     });
 
-    app.commands.addCommand(CommandIDs.explainOutput, {
+    app.commands.addCommand(CommandIDs.fixThis, {
       execute: (args) => {
         if (!(app.shell.currentWidget instanceof NotebookPanel)) {
           return;
@@ -145,14 +148,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         const np = app.shell.currentWidget as NotebookPanel;
         const activeCell = np.content.activeCell as CodeCell;
-        const outputModel = activeCell.outputArea.model;
-        const length = outputModel.length;
-        let output = '';
-        for (let i = 0; i < length; ++i) {
-          output += JSON.stringify(outputModel.get(i).data);
-        }
+        const content = activeCell?.model.sharedModel.source;
 
-        sidebar.runPrompt(`Active file is a Jupyter notebook named main.ipynb. Can you explain this code cell output:\n${output}`);
+        sidebar.runPrompt({
+          type: RunChatCompletionType.FixThis,
+          content: `Active file is a Jupyter notebook named main.ipynb. Can you fix this code:\n${content}`
+        });
       }
     });
 

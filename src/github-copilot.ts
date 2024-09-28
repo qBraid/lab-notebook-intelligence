@@ -70,4 +70,11 @@ export class GitHubCopilot {
           );
     }
 
+    static async explainThisRequest(code: string) {
+        return requestAPI<any>('explain-this', { method: 'POST', body: JSON.stringify({"selection": code})});
+    }
+
+    static async fixThisRequest(code: string) {
+        return requestAPI<any>('fix-this', { method: 'POST', body: JSON.stringify({"selection": code})});
+    }
 }

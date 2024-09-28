@@ -5,6 +5,17 @@ import Markdown from 'react-markdown';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 
+export enum RunChatCompletionType {
+    Chat,
+    ExplainThis,
+    FixThis,
+}
+
+export interface IRunChatCompletionRequest {
+    type: RunChatCompletionType,
+    content: string
+}
+
 export class ChatSidebar extends ReactWidget {
     constructor() {
         super();
@@ -16,11 +27,11 @@ export class ChatSidebar extends ReactWidget {
         return <SidebarComponent promptRequested={this._promptRequested} />;
     }
 
-    runPrompt(prompt: string) {
-        this._promptRequested.emit(prompt);
+    runPrompt(request: IRunChatCompletionRequest) {
+        this._promptRequested.emit(request);
     }
 
-    private _promptRequested = new Signal<this, string>(this);
+    private _promptRequested = new Signal<this, IRunChatCompletionRequest>(this);
 }
 
 interface IChatResponse {
@@ -35,9 +46,15 @@ function ChatResponse(props: any) {
     );
 }
 
-async function submitChatRequest(prompt: string): Promise<any> {
-    const data = await GitHubCopilot.chatRequest(prompt);
-    return data;
+async function submitCompletionRequest(request: IRunChatCompletionRequest): Promise<any> {
+    switch (request.type) {
+        case RunChatCompletionType.Chat:
+            return GitHubCopilot.chatRequest(request.content);
+        case RunChatCompletionType.ExplainThis:
+            return GitHubCopilot.explainThisRequest(request.content);
+        case RunChatCompletionType.FixThis:
+            return GitHubCopilot.fixThisRequest(request.content);
+    }
 }
 
 function SidebarComponent(props: any) {
@@ -61,8 +78,8 @@ function SidebarComponent(props: any) {
         return () => clearInterval(intervalId);
     }, [loginClickCount]);
 
-    const promptRequestHandler = (_sender: any, prompt:string) => {
-        submitChatRequest(prompt).then((response) => {
+    const promptRequestHandler = (_sender: any, prompt: IRunChatCompletionRequest) => {
+        submitCompletionRequest(prompt).then((response) => {
             setChatResponses([...chatResponses, {message: response.data.message}]);
         });
     };
@@ -73,7 +90,7 @@ function SidebarComponent(props: any) {
 
     const onPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.shiftKey && event.key == 'Enter') {
-            submitChatRequest(prompt).then((response) => {
+            submitCompletionRequest({type: RunChatCompletionType.Chat, content: prompt}).then((response) => {
                 setChatResponses([...chatResponses, {message: response.data.message}]);
             });
             setPrompt('');
@@ -124,7 +141,7 @@ function SidebarComponent(props: any) {
             </div>
             {
             ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && 
-            (<div>Please visit <a href="{deviceActivationURL}" target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access from this device.</div>)
+            (<div>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access from this device.</div>)
             }
             <div className="sidebar-messages">
                 {chatResponses.map((chatResponse, index) => (

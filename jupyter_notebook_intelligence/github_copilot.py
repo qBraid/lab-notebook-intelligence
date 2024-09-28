@@ -1,5 +1,6 @@
 from enum import Enum
 import json, time, requests, threading
+from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 EDITOR_VERSION = "Neovim/0.6.1"
 EDITOR_PLUGIN_VERSION = "copilot.vim/1.16.0"
@@ -19,43 +20,6 @@ github_auth = {
     "token": None
 }
 
-IDE_NAME = "JupyterLab"
-OS_TYPE = "Linux"
-
-CHAT_SYSTEM_PROMPT = f"""
-You are an AI programming assistant.
-When asked for your name, you must respond with "GitHub Copilot".
-Follow the user's requirements carefully & to the letter.
-Follow Microsoft content policies.
-Avoid content that violates copyrights.
-If you are asked to generate content that is harmful, hateful, racist, sexist, lewd, violent, or completely irrelevant to software engineering, only respond with "Sorry, I can't assist with that."
-Keep your answers short and impersonal.
-You can answer general programming questions and perform the following tasks: 
-* Ask a question about the files in your current workspace
-* Explain how the code in your active editor works
-* Generate unit tests for the selected code
-* Propose a fix for the problems in the selected code
-* Scaffold code for a new workspace
-* Create a new Jupyter Notebook
-* Find relevant code to your query
-* Propose a fix for the a test failure
-* Ask questions about {IDE_NAME}
-* Generate query parameters for workspace search
-* Ask how to do something in the terminal
-* Explain what just happened in the terminal
-You use the GPT-4 version of OpenAI's GPT models.
-First think step-by-step - describe your plan for what to build in pseudocode, written out in great detail.
-Then output the code in a single code block. This code block should not contain line numbers (line numbers are not necessary for the code to be understood, they are in format number: at beginning of lines).
-Minimize any other prose.
-Use Markdown formatting in your answers.
-Make sure to include the programming language name at the start of the Markdown code blocks.
-Avoid wrapping the whole response in triple backticks.
-The user works in an IDE called {IDE_NAME} which has a concept for editors with open files, integrated unit test support, an output pane that shows the output of running the code as well as an integrated terminal.
-The user is working on a {OS_TYPE} machine. Please respond with system specific commands if applicable.
-The active document is the source code the user is looking at right now.
-You can only give one reply for each conversation turn.
-"""
-
 get_token_thread = None
 
 def get_login_status():
@@ -74,7 +38,7 @@ def get_device_verification_info():
     global github_auth
     data = {
         "client_id": CLIENT_ID,
-        "scope":"read:user"
+        "scope": "read:user"
     }
     resp = requests.post('https://github.com/login/device/code',
         headers={
@@ -127,6 +91,7 @@ def wait_for_user_access_token_thread_func():
 
         resp_json = resp.json()
         access_token = resp_json.get('access_token')
+        # print(f"ACCESS TOKEN {access_token}")
 
         if access_token:
             github_auth["access_token"] = access_token
@@ -154,9 +119,12 @@ def get_token():
     github_auth["status"] = LoginStatus.LOGGED_IN
 
 def get_token_thread_func():
+    global github_auth
     while True:
         get_token()
-        time.sleep(25 * 60)
+        token = github_auth["token"]
+        wait_time = 15 if token is None else 25 * 60 
+        time.sleep(wait_time)
 
 def wait_for_tokens():
     global get_token_thread
@@ -211,7 +179,7 @@ def inline_completions(prefix, suffix, language):
     
     return result
 
-def chat(prompt):
+def completions(messages):
     global github_auth
     token = github_auth['token']
 
@@ -224,11 +192,7 @@ def chat(prompt):
                 'editor-plugin-version': EDITOR_PLUGIN_VERSION_CHAT
             },
             json={
-                'messages': [
-                    {"role": "system", "content": CHAT_SYSTEM_PROMPT},
-                    {"role": "user", "content": "Active document is main.py"},
-                    {"role": "user", "content": prompt}
-                ],
+                'messages': messages,
                 'max_tokens': 1000,
                 'temperature': 0,
                 'top_p': 1,
@@ -243,3 +207,27 @@ def chat(prompt):
 
     response = resp.json()
     return {"message": response["choices"][0]["message"]["content"]}
+
+def chat(prompt):
+    messages = [
+        {"role": "system", "content": CopilotPrompts.chat_prompt()},
+        {"role": "user", "content": "Active document is main.py"},
+        {"role": "user", "content": prompt}
+    ]
+    return completions(messages)
+
+def explain_this(selection):
+    messages = [
+        {"role": "system", "content": CopilotPrompts.explain_this_prompt()},
+        {"role": "user", "content": "Active document is main.py\nActive selection is"},
+        {"role": "user", "content": selection}
+    ]
+    return completions(messages)
+
+def fix_this(selection):
+    messages = [
+        {"role": "system", "content": CopilotPrompts.fix_this_prompt()},
+        {"role": "user", "content": "Active document is main.py\nActive selection is"},
+        {"role": "user", "content": selection}
+    ]
+    return completions(messages)
