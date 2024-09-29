@@ -11,20 +11,36 @@ export enum GitHubCopilotLoginStatus {
     LoggedIn = 'LOGGED_IN'
 }
 
+export interface IDeviceVerificationInfo {
+    verificationURI: string;
+    userCode: string;
+}
+
 export class GitHubCopilot {
     static _loginStatus = GitHubCopilotLoginStatus.NotLoggedIn;
+    static _deviceVerificationInfo: IDeviceVerificationInfo = {
+        verificationURI: '',
+        userCode: ''
+    };
 
     static initialize() {
+        this.updateGitHubLoginStatus();
+
         setInterval(() => {
             this.updateGitHubLoginStatus();
-          }, LOGIN_STATUS_UPDATE_INTERVAL);
+        }, LOGIN_STATUS_UPDATE_INTERVAL);
     }
 
     static getLoginStatus(): GitHubCopilotLoginStatus {
         return this._loginStatus;
     }
 
+    static getDeviceVerificationInfo(): IDeviceVerificationInfo {
+        return this._deviceVerificationInfo;
+    }
+
     static async loginToGitHub() {
+        this._loginStatus = GitHubCopilotLoginStatus.ActivatingDevice;
         return new Promise((resolve, reject) => {
             requestAPI<any>('gh-login', {method: 'POST'})
             .then(data => {
@@ -49,6 +65,8 @@ export class GitHubCopilot {
         requestAPI<any>('gh-login-status')
         .then(response => {
             this._loginStatus = response.status;
+            this._deviceVerificationInfo.verificationURI = response.verification_uri || '';
+            this._deviceVerificationInfo.userCode = response.user_code || '';
         })
         .catch(reason => {
           console.error(

@@ -85,6 +85,11 @@ function SidebarComponent(props: any) {
     useEffect(() => {
         const fetchData = () => {
             setGHLoginStatus(GitHubCopilot.getLoginStatus());
+            const info = GitHubCopilot.getDeviceVerificationInfo();
+            if (info.verificationURI && info.userCode) {
+                setDeviceActivationURL(info.verificationURI);
+                setDeviceActivationCode(info.userCode);
+            }
         };
 
         fetchData();
@@ -194,7 +199,7 @@ function SidebarComponent(props: any) {
         <div className="sidebar">
             <div className="sidebar-header">
                 <div className='sidebar-title'>Copilot</div>
-                <div>
+                <div className='sidebar-copilot-status'>
                     {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn ? 
                         (<button onClick={handleLoginClick}>Login</button>) :
                     ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ? 
@@ -205,21 +210,26 @@ function SidebarComponent(props: any) {
                 </div>
             </div>
             {
-            ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && 
-            (<div>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access from this device.</div>)
+            (ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && deviceActivationURL && deviceActivationCode) &&
+            (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access from this device.</div>)
             }
-            <div className="sidebar-messages">
-                {chatMessages.map((msg, index) => (
-                    <ChatResponse key={`key-${index}`} message={msg} />
-                ))}
-                <div className='copilot-progress-row' style={{display: `${copilotRequestInProgress ? 'flex' : 'none'}`}}>
-                    <div className='copilot-progress'></div>
+            {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
+                <div className="sidebar-messages">
+                    {chatMessages.map((msg, index) => (
+                        <ChatResponse key={`key-${index}`} message={msg} />
+                    ))}
+                    <div className='copilot-progress-row' style={{display: `${copilotRequestInProgress ? 'flex' : 'none'}`}}>
+                        <div className='copilot-progress'></div>
+                    </div>
+                    <div ref={messagesEndRef} />
                 </div>
-                <div ref={messagesEndRef} />
-            </div>
-            <div className="sidebar-footer">
-                <textarea rows={2} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' value={prompt} />
-            </div>
+            )}
+            {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
+                <div className="sidebar-footer">
+                    <textarea rows={2} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' value={prompt} />
+                </div>
+            )}
+            
         </div>
       );
 }

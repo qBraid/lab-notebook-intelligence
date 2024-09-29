@@ -27,9 +27,16 @@ get_token_thread = None
 def get_login_status():
     global github_auth
 
-    return {
+    response = {
         "status": github_auth["status"].name
     }
+    if github_auth["status"] is LoginStatus.ACTIVATING_DEVICE:
+        response.update({
+            "verification_uri": github_auth["verification_uri"],
+            "user_code": github_auth["user_code"]
+        })
+
+    return response
 
 def login():
     login_info = get_device_verification_info()
@@ -118,6 +125,8 @@ def get_token():
     resp_json = resp.json()
     token = resp_json.get('token')
     github_auth["token"] = token
+    github_auth["verification_uri"] = None
+    github_auth["user_code"] = None
     github_auth["status"] = LoginStatus.LOGGED_IN
 
 def get_token_thread_func():

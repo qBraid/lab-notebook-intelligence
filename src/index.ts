@@ -121,7 +121,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     panel.id = 'notebook-intelligence-tab';
     const sidebar = new ChatSidebar();
     panel.addWidget(sidebar);
-    app.shell.add(panel, 'left', { rank: 100 });
+    app.shell.add(panel, 'left', { rank: 1000 });
     app.shell.activateById(panel.id);
 
     app.commands.addCommand(CommandIDs.explainThis, {
