@@ -132,11 +132,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         const np = app.shell.currentWidget as NotebookPanel;
         const activeCell = np.content.activeCell;
-        const content = activeCell?.model.sharedModel.source;
-        sidebar.runPrompt({
-          type: RunChatCompletionType.ExplainThis,
-          content: `Active file is main.py. Can you explain this code:\n${content}`
-        });
+        const content = activeCell?.model.sharedModel.source || '';
+        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
+          detail: {
+            type: RunChatCompletionType.ExplainThis,
+            content
+          }
+        }));
 
         app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
       }
@@ -150,12 +152,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         const np = app.shell.currentWidget as NotebookPanel;
         const activeCell = np.content.activeCell as CodeCell;
-        const content = activeCell?.model.sharedModel.source;
+        const content = activeCell?.model.sharedModel.source || "";
 
-        sidebar.runPrompt({
-          type: RunChatCompletionType.FixThis,
-          content: `Active file is a Jupyter notebook named main.ipynb. Can you fix this code:\n${content}`
-        });
+        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
+          detail: {
+            type: RunChatCompletionType.FixThis,
+            content
+          }
+        }));
       }
     });
 

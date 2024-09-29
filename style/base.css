@@ -37,13 +37,62 @@
     width: 100%;
 }
 
-.chat-response {
+.chat-message {
     padding: 5px;
     margin-bottom: 5px;
+    display: flex;
+    flex-direction: column;
 }
 
-.chat-response pre {
+.chat-message pre {
     background-color: #eaeaea;
     padding: 3px;
     border-radius: 3px;
+}
+
+.chat-message-header {
+    display: flex;
+}
+
+.chat-message-from {
+    font-weight: bold;
+    flex-grow: 1;
+}
+
+.chat-message-timestamp {
+    padding-left: 10px;
+    font-size: 11px;
+}
+
+.chat-message-content p {
+    margin-block-start: 5px;
+    margin-block-end: 5px;
+}
+
+.chat-message-user {
+    background-color: #f9f9f9;
+}
+
+.copilot-progress-row {
+    width: 100%;
+    height: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.copilot-progress {
+    color: #000;
+    width: 4px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    box-shadow: 19px 0 0 7px, 38px 0 0 3px, 57px 0 0 0;
+    transform: translateX(-38px) translateY(8px);
+    animation: copilot_progress_animation .5s infinite alternate linear;
+    scale: 0.5;
+}
+  
+@keyframes copilot_progress_animation {
+    50%  {box-shadow: 19px 0 0 3px, 38px 0 0 7px, 57px 0 0 3px}
+    100% {box-shadow: 19px 0 0 0  , 38px 0 0 3px, 57px 0 0 7px}
 }

@@ -1,9 +1,9 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import React, { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
+import React, { ChangeEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { ReactWidget } from '@jupyterlab/apputils';
-import { Signal } from '@lumino/signaling';
 import Markdown from 'react-markdown';
+import { UUID } from '@lumino/coreutils';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 
@@ -26,24 +26,31 @@ export class ChatSidebar extends ReactWidget {
     }
 
     render(): JSX.Element {
-        return <SidebarComponent promptRequested={this._promptRequested} />;
+        return <SidebarComponent />;
     }
-
-    runPrompt(request: IRunChatCompletionRequest) {
-        this._promptRequested.emit(request);
-    }
-
-    private _promptRequested = new Signal<this, IRunChatCompletionRequest>(this);
 }
 
-interface IChatResponse {
+interface IChatMessage {
+    id: string;
+    parentId?: string;
+    date: Date;
+    from: string; // 'user' | 'copilot';
     message: string;
 }
 
 function ChatResponse(props: any) {
+    const msg: IChatMessage = props.message;
+    const timestamp = `${msg.date.getHours()}:${msg.date.getMinutes()}:${msg.date.getSeconds()}`;
+
     return (
-        <div className="chat-response">
-            <Markdown>{props.message}</Markdown>
+        <div className={`chat-message chat-message-${msg.from}`} >
+            <div className="chat-message-header">
+                <div className="chat-message-from">{msg.from === 'user' ? 'User' : 'Copilot'}</div>
+                <div className="chat-message-timestamp">{timestamp}</div>
+            </div>
+            <div className="chat-message-content">
+                <Markdown>{msg.message}</Markdown>
+            </div>
         </div>
     );
 }
@@ -53,20 +60,27 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest): Prom
         case RunChatCompletionType.Chat:
             return GitHubCopilot.chatRequest(request.content);
         case RunChatCompletionType.ExplainThis:
-            return GitHubCopilot.explainThisRequest(request.content);
+            {
+                const content = `Active file is main.py. Can you explain this code:\n${request.content}`;
+                return GitHubCopilot.explainThisRequest(content);
+            }
         case RunChatCompletionType.FixThis:
-            return GitHubCopilot.fixThisRequest(request.content);
+            {
+                const content = `Active file is a Jupyter notebook named main.ipynb. Can you fix this code:\n${request.content}`;
+                return GitHubCopilot.fixThisRequest(content);
+            }
     }
 }
 
 function SidebarComponent(props: any) {
-    const [chatResponses, setChatResponses] = useState<IChatResponse[]>([]);
+    const [chatMessages, setChatMessages] = useState<IChatMessage[]>([]);
     const [prompt, setPrompt] = useState<string>('');
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
     const [loginClickCount, setLoginClickCount] = useState(0);
     const [deviceActivationURL, setDeviceActivationURL] = useState('');
     const [deviceActivationCode, setDeviceActivationCode] = useState('');
+    const [copilotRequestInProgress, setCopilotRequestInProgress] = useState(false);
 
     useEffect(() => {
         const fetchData = () => {
@@ -80,20 +94,35 @@ function SidebarComponent(props: any) {
         return () => clearInterval(intervalId);
     }, [loginClickCount]);
 
-    const promptRequestHandler = (_sender: any, prompt: IRunChatCompletionRequest) => {
-        submitCompletionRequest(prompt).then((response) => {
-            setChatResponses([...chatResponses, {message: response.data.message}]);
-        });
-    };
-
     const onPromptChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
         setPrompt(event.target.value);
     };
 
     const onPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.shiftKey && event.key == 'Enter') {
+            const newList = [
+                ...chatMessages,
+                {
+                    id: UUID.uuid4(),
+                    date: new Date(),
+                    from: "user",
+                    message: prompt
+                }
+            ];
+            setChatMessages(newList);
+
+            setCopilotRequestInProgress(true);
             submitCompletionRequest({type: RunChatCompletionType.Chat, content: prompt}).then((response) => {
-                setChatResponses([...chatResponses, {message: response.data.message}]);
+                setChatMessages([
+                    ...newList,
+                    {
+                        id: UUID.uuid4(),
+                        date: new Date(),
+                        from: 'copilot',
+                        message: response.data.message
+                    }
+                ]);
+                setCopilotRequestInProgress(false);
             });
             setPrompt('');
             event.stopPropagation();
@@ -112,19 +141,53 @@ function SidebarComponent(props: any) {
         setLoginClickCount(loginClickCount + 1);
     };
 
-    const handleLogoutClick = () => {
-        // GitHubCopilot.logoutFromGitHub();
-        setLoginClickCount(loginClickCount + 1);
-    };
+    // const handleLogoutClick = () => {
+    //     // GitHubCopilot.logoutFromGitHub();
+    //     setLoginClickCount(loginClickCount + 1);
+    // };
     
     useEffect(() => {
         scrollMessagesToBottom();
-    }, [chatResponses]);
+    }, [copilotRequestInProgress]);
+
+    const promptRequestHandler = useCallback((eventData: any) => {
+        const request: IRunChatCompletionRequest = eventData.detail;
+        const message = request.type === RunChatCompletionType.ExplainThis ?
+            `Explain this code:\n\`\`\`\n${request.content}\`\`\`\n` :
+            `Fix this code:\n\`\`\`\n${request.content}\`\`\`\n`;
+        const newList = [
+            ...chatMessages,
+            {
+                id: UUID.uuid4(),
+                date: new Date(),
+                from: 'user',
+                message
+            }
+        ];
+        setChatMessages(newList);
+
+        setCopilotRequestInProgress(true);
+        submitCompletionRequest(request).then((response) => {
+            setChatMessages([
+                ...newList,
+                {
+                    id: UUID.uuid4(),
+                    date: new Date(),
+                    from: 'copilot',
+                    message: response.data.message
+                }
+            ]);
+            setCopilotRequestInProgress(false);
+        });
+    }, [chatMessages]);
 
     useEffect(() => {
-        props.promptRequested.disconnect(promptRequestHandler);
-        props.promptRequested.connect(promptRequestHandler);
-    }, []);
+        document.addEventListener("copilotSidebar:runPrompt", promptRequestHandler);
+    
+        return () => {
+            document.removeEventListener("copilotSidebar:runPrompt", promptRequestHandler);
+        }
+    }, [chatMessages]);
 
 
     return (
@@ -137,7 +200,7 @@ function SidebarComponent(props: any) {
                     ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ? 
                     (<div>Activating device...</div>) :
                         ghLoginStatus === GitHubCopilotLoginStatus.LoggingIn ? 
-                        (<div>Logging in...</div>) :(<button onClick={handleLogoutClick}>Logout</button>)
+                        (<div>Logging in...</div>) : null
                     }
                 </div>
             </div>
@@ -146,9 +209,12 @@ function SidebarComponent(props: any) {
             (<div>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access from this device.</div>)
             }
             <div className="sidebar-messages">
-                {chatResponses.map((chatResponse, index) => (
-                    <ChatResponse key={`key-${index}`} message={chatResponse.message} />
+                {chatMessages.map((msg, index) => (
+                    <ChatResponse key={`key-${index}`} message={msg} />
                 ))}
+                <div className='copilot-progress-row' style={{display: `${copilotRequestInProgress ? 'flex' : 'none'}`}}>
+                    <div className='copilot-progress'></div>
+                </div>
                 <div ref={messagesEndRef} />
             </div>
             <div className="sidebar-footer">
