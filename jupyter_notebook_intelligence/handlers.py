@@ -29,8 +29,9 @@ class PostInlineCompletionsHandler(APIHandler):
         prefix = data['prefix']
         suffix = data['suffix']
         language = data['language']
+        filename = data['filename']
 
-        completions = github_copilot.inline_completions(prefix, suffix, language)
+        completions = github_copilot.inline_completions(prefix, suffix, language, filename)
         self.finish(json.dumps({
             "data": completions
         }))
@@ -51,7 +52,9 @@ class PostChatHandler(APIHandler):
     async def post(self):
         data = self.get_json_body()
         prompt = data['prompt']
-        response = github_copilot.chat(prompt)
+        language = data['language']
+        filename = data['filename']
+        response = github_copilot.chat(prompt, language, filename)
         self.finish(json.dumps({
             "data": response
         }))
@@ -61,7 +64,9 @@ class PostExplainThisHandler(APIHandler):
     async def post(self):
         data = self.get_json_body()
         selection = data['selection']
-        response = github_copilot.explain_this(selection)
+        language = data['language']
+        filename = data['filename']
+        response = github_copilot.explain_this(selection, language, filename)
         self.finish(json.dumps({
             "data": response
         }))
@@ -71,10 +76,23 @@ class PostFixThisHandler(APIHandler):
     async def post(self):
         data = self.get_json_body()
         selection = data['selection']
-        response = github_copilot.fix_this(selection)
+        language = data['language']
+        filename = data['filename']
+        response = github_copilot.fix_this(selection, language, filename)
         self.finish(json.dumps({
             "data": response
         }))
+
+class PostNewNotebookHandler(APIHandler):
+    @tornado.web.authenticated
+    async def post(self):
+        data = self.get_json_body()
+        prompt = data['prompt']
+        current_path = data['current-path']
+        # response = github_copilot.fix_this(selection)
+        # self.finish(json.dumps({
+        #     "data": response
+        # }))
 
 def setup_handlers(web_app):
     host_pattern = ".*$"
@@ -87,6 +105,7 @@ def setup_handlers(web_app):
     route_pattern_chat = url_path_join(base_url, "notebook-intelligence", "chat")
     route_pattern_explain_this = url_path_join(base_url, "notebook-intelligence", "explain-this")
     route_pattern_fix_this = url_path_join(base_url, "notebook-intelligence", "fix-this")
+    route_pattern_new_notebook = url_path_join(base_url, "notebook-intelligence", "new-notebook")
     handlers = [
         (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
         (route_pattern_github_login, PostGitHubLoginHandler),
@@ -95,5 +114,6 @@ def setup_handlers(web_app):
         (route_pattern_chat, PostChatHandler),
         (route_pattern_explain_this, PostExplainThisHandler),
         (route_pattern_fix_this, PostFixThisHandler),
+        (route_pattern_new_notebook, PostNewNotebookHandler),
     ]
     web_app.add_handlers(host_pattern, handlers)

@@ -146,11 +146,11 @@ def wait_for_tokens():
         get_token_thread = threading.Thread(target=get_token_thread_func)
         get_token_thread.start()
 
-def inline_completions(prefix, suffix, language):
+def inline_completions(prefix, suffix, language, filename):
     global github_auth
     token = github_auth['token']
 
-    prompt = f"# Path: main.py\n{prefix}"
+    prompt = f"# Path: {filename}\n{prefix}"
 
     try:
         resp = requests.post('https://copilot-proxy.githubusercontent.com/v1/engines/copilot-codex/completions',
@@ -200,7 +200,8 @@ def completions(messages):
             headers={
                 'authorization': f'Bearer {token}',
                 'editor-version': EDITOR_VERSION_CHAT,
-                'editor-plugin-version': EDITOR_PLUGIN_VERSION_CHAT
+                'editor-plugin-version': EDITOR_PLUGIN_VERSION_CHAT,
+                'user-agent': USER_AGENT,
             },
             json={
                 'messages': messages,
@@ -219,26 +220,26 @@ def completions(messages):
     response = resp.json()
     return {"message": response["choices"][0]["message"]["content"]}
 
-def chat(prompt):
+def chat(prompt, language, filename):
     messages = [
         {"role": "system", "content": CopilotPrompts.chat_prompt()},
-        {"role": "user", "content": "Active document is main.py"},
+        {"role": "user", "content": f"Active document is {filename}, written in {language}"},
         {"role": "user", "content": prompt}
     ]
     return completions(messages)
 
-def explain_this(selection):
+def explain_this(selection, language, filename):
     messages = [
         {"role": "system", "content": CopilotPrompts.explain_this_prompt()},
-        {"role": "user", "content": "Active document is main.py\nActive selection is"},
-        {"role": "user", "content": selection}
+        {"role": "user", "content": f"Active document is {filename}, written in {language}.\nActive selection is \n{selection}\n"},
+        {"role": "user", "content": "Can you explain this code?"}
     ]
     return completions(messages)
 
-def fix_this(selection):
+def fix_this(selection, language, filename):
     messages = [
         {"role": "system", "content": CopilotPrompts.fix_this_prompt()},
-        {"role": "user", "content": "Active document is main.py\nActive selection is"},
-        {"role": "user", "content": selection}
+        {"role": "user", "content": f"Active document is {filename}, written in {language}.\nActive selection is: \n{selection}\n"},
+        {"role": "user", "content": "Can you fix this code?"}
     ]
     return completions(messages)

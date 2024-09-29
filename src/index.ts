@@ -24,11 +24,17 @@ import { Panel } from '@lumino/widgets';
 
 import { ChatSidebar, RunChatCompletionType } from './chat-sidebar';
 import { GitHubCopilot } from './github-copilot';
+import { IActiveDocumentInfo } from './tokens';
 
 namespace CommandIDs {
   export const explainThis = 'notebook-intelligence:explain-this';
   export const fixThis = 'notebook-intelligence:fix-this';
 }
+
+const activeDocumentInfo: IActiveDocumentInfo = {
+  language: 'python',
+  filename: 'Untitled.ipynb'
+};
 
 class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlineCompletionItem> {
   fetch(
@@ -66,7 +72,8 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
       GitHubCopilot.inlineCompletionsRequest(
         preContent + preCursor,
         postCursor + postContent,
-        'python'
+        activeDocumentInfo.language,
+        activeDocumentInfo.filename
       ).then(response => {
         console.log(`INLINE COMPLETIONS RESPONSE\n${response}`);
         items.push({
@@ -119,7 +126,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
-    const sidebar = new ChatSidebar();
+    const sidebar = new ChatSidebar({
+      getActiveDocumentInfo: () : IActiveDocumentInfo => {
+        return activeDocumentInfo;
+      }
+    });
     panel.addWidget(sidebar);
     app.shell.add(panel, 'left', { rank: 1000 });
     app.shell.activateById(panel.id);
@@ -136,7 +147,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
         document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
           detail: {
             type: RunChatCompletionType.ExplainThis,
-            content
+            content,
+            language: activeDocumentInfo.language,
+            filename: activeDocumentInfo.filename,
           }
         }));
 
@@ -157,9 +170,20 @@ const plugin: JupyterFrontEndPlugin<void> = {
         document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
           detail: {
             type: RunChatCompletionType.FixThis,
-            content
+            content,
+            language: activeDocumentInfo.language,
+            filename: activeDocumentInfo.filename,
           }
         }));
+      }
+    });
+
+    app.shell.currentChanged?.connect((_sender, args) => {
+      if (args.newValue instanceof NotebookPanel) {
+        const np = args.newValue as NotebookPanel;
+        // (app as JupyterLab).paths.directories.serverRoot;
+        activeDocumentInfo.filename = np.sessionContext.name;
+        activeDocumentInfo.language = np.model?.sharedModel?.metadata?.kernelspec?.language as string || 'python';
       }
     });
 

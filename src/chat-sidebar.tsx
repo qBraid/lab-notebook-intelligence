@@ -6,6 +6,7 @@ import Markdown from 'react-markdown';
 import { UUID } from '@lumino/coreutils';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
+import { IActiveDocumentInfo } from './tokens';
 
 export enum RunChatCompletionType {
     Chat,
@@ -15,19 +16,28 @@ export enum RunChatCompletionType {
 
 export interface IRunChatCompletionRequest {
     type: RunChatCompletionType,
-    content: string
+    content: string,
+    language?: string,
+    filename?: string,
+}
+
+export interface IChatSidebarOptions {
+    getActiveDocumentInfo: () => IActiveDocumentInfo;
 }
 
 export class ChatSidebar extends ReactWidget {
-    constructor() {
+    constructor(options: IChatSidebarOptions) {
         super();
 
         this.node.style.height = '100%';
+        this._getActiveDocumentInfo = options.getActiveDocumentInfo;
     }
 
     render(): JSX.Element {
-        return <SidebarComponent />;
+        return <SidebarComponent getActiveDocumentInfo={this._getActiveDocumentInfo} />;
     }
+
+    private _getActiveDocumentInfo: () => IActiveDocumentInfo;
 }
 
 interface IChatMessage {
@@ -58,16 +68,28 @@ function ChatResponse(props: any) {
 async function submitCompletionRequest(request: IRunChatCompletionRequest): Promise<any> {
     switch (request.type) {
         case RunChatCompletionType.Chat:
-            return GitHubCopilot.chatRequest(request.content);
+            return GitHubCopilot.chatRequest(
+                request.content,
+                request.language || 'python',
+                request.filename || 'Untitled.ipynb'
+            );
         case RunChatCompletionType.ExplainThis:
             {
-                const content = `Active file is main.py. Can you explain this code:\n${request.content}`;
-                return GitHubCopilot.explainThisRequest(content);
+                const filename = request.filename || 'Untitled.ipynb';
+                return GitHubCopilot.explainThisRequest(
+                    request.content,
+                    request.language || 'python',
+                    filename
+                );
             }
         case RunChatCompletionType.FixThis:
             {
-                const content = `Active file is a Jupyter notebook named main.ipynb. Can you fix this code:\n${request.content}`;
-                return GitHubCopilot.fixThisRequest(content);
+                const filename = request.filename || 'Untitled.ipynb';
+                return GitHubCopilot.fixThisRequest(
+                    request.content,
+                    request.language || 'python',
+                    filename
+                );
             }
     }
 }
@@ -117,7 +139,13 @@ function SidebarComponent(props: any) {
             setChatMessages(newList);
 
             setCopilotRequestInProgress(true);
-            submitCompletionRequest({type: RunChatCompletionType.Chat, content: prompt}).then((response) => {
+            const activeDocInfo: IActiveDocumentInfo = props.getActiveDocumentInfo();
+            submitCompletionRequest({
+                type: RunChatCompletionType.Chat,
+                content: prompt,
+                language: activeDocInfo.language,
+                filename: activeDocInfo.filename
+            }).then((response) => {
                 setChatMessages([
                     ...newList,
                     {

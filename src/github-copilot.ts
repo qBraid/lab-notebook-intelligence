@@ -75,26 +75,46 @@ export class GitHubCopilot {
         });
     }
 
-    static async chatRequest(prompt: string) {
-        return requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({"prompt": prompt})});
+    static async chatRequest(prompt: string, language: string, filename: string) {
+        return requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({
+            prompt,
+            language,
+            filename,
+        })});
     }
 
-    static async inlineCompletionsRequest(prefix: string, suffix: string, language: string) {
+    static async inlineCompletionsRequest(prefix: string, suffix: string, language: string, filename: string) {
         return requestAPI<any>('inline-completions', {
             method: 'POST',
             body: JSON.stringify({
               prefix,
               suffix,
-              language
+              language,
+              filename
             })}
-          );
+        );
     }
 
-    static async explainThisRequest(code: string) {
-        return requestAPI<any>('explain-this', { method: 'POST', body: JSON.stringify({"selection": code})});
+    static async explainThisRequest(code: string, language: string, filename: string) {
+        return requestAPI<any>('explain-this', { method: 'POST', body: JSON.stringify({
+            "selection": code,
+            language,
+            filename
+        })});
     }
 
-    static async fixThisRequest(code: string) {
-        return requestAPI<any>('fix-this', { method: 'POST', body: JSON.stringify({"selection": code})});
+    static async fixThisRequest(code: string, language: string, filename: string) {
+        return requestAPI<any>('fix-this', { method: 'POST', body: JSON.stringify({
+            "selection": code,
+            language,
+            filename
+        })});
+    }
+
+    static async newNotebookRequest(prompt: string, currentPath: string) {
+        return requestAPI<any>('new-notebook', { method: 'POST', body: JSON.stringify({
+            "prompt": prompt,
+            "current-path": currentPath
+        })});
     }
 }
