@@ -80,7 +80,6 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
         activeDocumentInfo.language,
         activeDocumentInfo.filename
       ).then(response => {
-        console.log(`INLINE COMPLETIONS RESPONSE\n${response}`);
         items.push({
           insertText: response.data
         });

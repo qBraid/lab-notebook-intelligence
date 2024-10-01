@@ -159,6 +159,14 @@ function SidebarComponent(props: any) {
             ];
             setChatMessages(newList);
 
+            if (prompt.startsWith('/clear')) {
+                setChatMessages([]);
+                setPrompt('');
+                event.stopPropagation();
+                event.preventDefault();
+                return;
+            }
+
             setCopilotRequestInProgress(true);
             
             const activeDocInfo: IActiveDocumentInfo = props.getActiveDocumentInfo();
@@ -284,7 +292,7 @@ function SidebarComponent(props: any) {
             </div>
             {
             (ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && deviceActivationURL && deviceActivationCode) &&
-            (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access from this device.</div>)
+            (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access to GitHub Copilot from this app.</div>)
             }
             {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
                 <div className="sidebar-messages">
