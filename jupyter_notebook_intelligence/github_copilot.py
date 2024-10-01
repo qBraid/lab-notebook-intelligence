@@ -4,14 +4,15 @@ from enum import Enum
 import os, json, time, requests, threading
 import nbformat as nbf
 from pathlib import Path
+import uuid
+import secrets
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
-EDITOR_VERSION = "Neovim/0.6.1"
-EDITOR_PLUGIN_VERSION = "copilot.vim/1.16.0"
-EDITOR_VERSION_CHAT = "vscode/1.83.1"
-EDITOR_PLUGIN_VERSION_CHAT = "copilot-chat/0.8.0"
-USER_AGENT = "GithubCopilot/1.155.0"
+EDITOR_VERSION = "NotebookIntelligence/4.2.5"
+EDITOR_PLUGIN_VERSION = "NotebookIntelligence/4.2.5"
+USER_AGENT = "NotebookIntelligence/4.2.5"
 CLIENT_ID = "Iv1.b507a08c87ecfe98"
+MACHINE_ID = secrets.token_hex(33)[0:65]
 
 LoginStatus = Enum('LoginStatus', ['NOT_LOGGED_IN', 'ACTIVATING_DEVICE', 'LOGGING_IN', 'LOGGED_IN'])
 
@@ -148,6 +149,24 @@ def wait_for_tokens():
         get_token_thread = threading.Thread(target=get_token_thread_func)
         get_token_thread.start()
 
+def _generate_copilot_headers():
+    global github_auth
+    token = github_auth['token']
+
+    return {
+        'authorization': f'Bearer {token}',
+        'editor-version': EDITOR_VERSION,
+        'editor-plugin-version': EDITOR_PLUGIN_VERSION,
+        'user-agent': USER_AGENT,
+        'content-type': 'application/json',
+        'openai-intent': 'conversation-panel',
+        'openai-organization': 'github-copilot',
+        'copilot-integration-id': 'vscode-chat',
+        'x-request-id': str(uuid.uuid4()),
+        'vscode-sessionid': str(uuid.uuid4()),
+        'vscode-machineid': MACHINE_ID,
+    }
+
 def inline_completions(prefix, suffix, language, filename):
     global github_auth
     token = github_auth['token']
@@ -166,7 +185,7 @@ def inline_completions(prefix, suffix, language, filename):
                 'top_p': 1,
                 'n': 1,
                 'stop': ['<END>', '```'],
-                'nwo': 'github/copilot.vim',
+                'nwo': 'NotebookIntelligence',
                 'stream': True,
                 'extra': {
                     'language': language,
@@ -199,20 +218,15 @@ def completions(messages):
     try:
         resp = requests.post(
             'https://api.githubcopilot.com/chat/completions',
-            headers={
-                'authorization': f'Bearer {token}',
-                'editor-version': EDITOR_VERSION_CHAT,
-                'editor-plugin-version': EDITOR_PLUGIN_VERSION_CHAT,
-                'user-agent': USER_AGENT,
-            },
-            json={
+            headers = _generate_copilot_headers(),
+            json = {
                 'messages': messages,
                 'max_tokens': 1000,
                 'temperature': 0,
                 'top_p': 1,
                 'n': 1,
                 'stop': ['<END>'],
-                'nwo': 'github/copilot.vim',
+                'nwo': 'NotebookIntelligence',
                 'stream': False,
             }
         )
