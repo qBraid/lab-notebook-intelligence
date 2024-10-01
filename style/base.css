@@ -102,3 +102,8 @@
     50%  {box-shadow: 19px 0 0 3px, 38px 0 0 7px, 57px 0 0 3px}
     100% {box-shadow: 19px 0 0 0  , 38px 0 0 3px, 57px 0 0 7px}
 }
+
+.copilot-generated-notebook-link {
+    text-decoration: underline;
+    cursor: pointer;
+}

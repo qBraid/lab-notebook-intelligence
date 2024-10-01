@@ -12,6 +12,7 @@ export enum RunChatCompletionType {
     Chat,
     ExplainThis,
     FixThis,
+    NewNotebook,
 }
 
 export interface IRunChatCompletionRequest {
@@ -19,10 +20,12 @@ export interface IRunChatCompletionRequest {
     content: string,
     language?: string,
     filename?: string,
+    parentDirectory?: string,
 }
 
 export interface IChatSidebarOptions {
     getActiveDocumentInfo: () => IActiveDocumentInfo;
+    openFile: (path: string) => void;
 }
 
 export class ChatSidebar extends ReactWidget {
@@ -31,13 +34,15 @@ export class ChatSidebar extends ReactWidget {
 
         this.node.style.height = '100%';
         this._getActiveDocumentInfo = options.getActiveDocumentInfo;
+        this._openFile = options.openFile;
     }
 
     render(): JSX.Element {
-        return <SidebarComponent getActiveDocumentInfo={this._getActiveDocumentInfo} />;
+        return <SidebarComponent getActiveDocumentInfo={this._getActiveDocumentInfo} openFile={this._openFile} />;
     }
 
     private _getActiveDocumentInfo: () => IActiveDocumentInfo;
+    private _openFile: (path: string) => void;
 }
 
 interface IChatMessage {
@@ -46,11 +51,17 @@ interface IChatMessage {
     date: Date;
     from: string; // 'user' | 'copilot';
     message: string;
+    notebookLink?: string;
 }
 
 function ChatResponse(props: any) {
     const msg: IChatMessage = props.message;
     const timestamp = `${msg.date.getHours()}:${msg.date.getMinutes()}:${msg.date.getSeconds()}`;
+
+    const openNotebook = (event: any) => {
+        const notebookPath = event.target.dataset['ref'];
+        props.openFile(notebookPath);
+    };
 
     return (
         <div className={`chat-message chat-message-${msg.from}`} >
@@ -60,6 +71,9 @@ function ChatResponse(props: any) {
             </div>
             <div className="chat-message-content">
                 <Markdown>{msg.message}</Markdown>
+                {msg.notebookLink && (
+                    <a className="copilot-generated-notebook-link" data-ref={msg.notebookLink} onClick={openNotebook}>open notebook</a>
+                )}
             </div>
         </div>
     );
@@ -89,6 +103,13 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest): Prom
                     request.content,
                     request.language || 'python',
                     filename
+                );
+            }
+        case RunChatCompletionType.NewNotebook:
+            {
+                return GitHubCopilot.newNotebookRequest(
+                    request.content,
+                    request.parentDirectory!
                 );
             }
     }
@@ -139,20 +160,44 @@ function SidebarComponent(props: any) {
             setChatMessages(newList);
 
             setCopilotRequestInProgress(true);
+            
             const activeDocInfo: IActiveDocumentInfo = props.getActiveDocumentInfo();
+            const newNotebookPrefix = '/newNotebook ';
+            const isNewNotebook = prompt.startsWith(newNotebookPrefix);
+            const extractedPrompt = isNewNotebook ? prompt.substring(newNotebookPrefix.length) : prompt;
+            const serverRoot = activeDocInfo.serverRoot!;
+            const parentDirectory = activeDocInfo.parentDirectory!;
+
             submitCompletionRequest({
-                type: RunChatCompletionType.Chat,
-                content: prompt,
+                type: isNewNotebook ? RunChatCompletionType.NewNotebook : RunChatCompletionType.Chat,
+                content: extractedPrompt,
                 language: activeDocInfo.language,
-                filename: activeDocInfo.filename
+                filename: activeDocInfo.filename,
+                parentDirectory
             }).then((response) => {
+                let responseMessage = '';
+                let notebookPath = undefined;
+                if (isNewNotebook) {
+                    if (response.data.notebook_path) {
+                        notebookPath = response.data.notebook_path;
+                        if (notebookPath.startsWith(serverRoot)) {
+                            notebookPath = notebookPath.substring(serverRoot.length + 1);
+                        }
+                        responseMessage = `Notebook saved to **${notebookPath}**`;
+                    } else {
+                        responseMessage = `Failed to generate notebook. Please try again.`;
+                    }
+                } else {
+                    responseMessage = response.data.message;
+                }
                 setChatMessages([
                     ...newList,
                     {
                         id: UUID.uuid4(),
                         date: new Date(),
                         from: 'copilot',
-                        message: response.data.message
+                        message: responseMessage,
+                        notebookLink: notebookPath
                     }
                 ]);
                 setCopilotRequestInProgress(false);
@@ -244,7 +289,7 @@ function SidebarComponent(props: any) {
             {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
                 <div className="sidebar-messages">
                     {chatMessages.map((msg, index) => (
-                        <ChatResponse key={`key-${index}`} message={msg} />
+                        <ChatResponse key={`key-${index}`} message={msg} openFile={props.openFile} />
                     ))}
                     <div className='copilot-progress-row' style={{display: `${copilotRequestInProgress ? 'flex' : 'none'}`}}>
                         <div className='copilot-progress'></div>

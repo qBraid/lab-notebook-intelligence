@@ -88,11 +88,11 @@ class PostNewNotebookHandler(APIHandler):
     async def post(self):
         data = self.get_json_body()
         prompt = data['prompt']
-        current_path = data['current-path']
-        # response = github_copilot.fix_this(selection)
-        # self.finish(json.dumps({
-        #     "data": response
-        # }))
+        parent_path = data['parent-path']
+        response = github_copilot.new_notebook(prompt, parent_path)
+        self.finish(json.dumps({
+            "data": response
+        }))
 
 def setup_handlers(web_app):
     host_pattern = ".*$"

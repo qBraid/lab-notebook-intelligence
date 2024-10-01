@@ -2,8 +2,13 @@
 
 import {
   JupyterFrontEnd,
-  JupyterFrontEndPlugin
+  JupyterFrontEndPlugin,
+  JupyterLab
 } from '@jupyterlab/application';
+
+import {
+  IDocumentManager
+} from '@jupyterlab/docmanager';
 
 import { CodeCell } from '@jupyterlab/cells';
 
@@ -106,9 +111,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: '@mbektas/jupyter-notebook-intelligence:plugin',
   description: 'Jupyter Notebook Intelligence extension',
   autoStart: true,
-  requires: [ICompletionProviderManager],
+  requires: [ICompletionProviderManager, IDocumentManager],
   optional: [ISettingRegistry],
-  activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, settingRegistry: ISettingRegistry | null) => {
+  activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, docManager: IDocumentManager, settingRegistry: ISettingRegistry | null) => {
     console.log('JupyterLab extension @mbektas/jupyter-notebook-intelligence is activated!');
 
     completionManager.registerInlineProvider(new GitHubInlineCompletionProvider());
@@ -129,6 +134,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const sidebar = new ChatSidebar({
       getActiveDocumentInfo: () : IActiveDocumentInfo => {
         return activeDocumentInfo;
+      },
+      openFile: (path: string) => {
+        docManager.openOrReveal(path);
       }
     });
     panel.addWidget(sidebar);
@@ -178,12 +186,18 @@ const plugin: JupyterFrontEndPlugin<void> = {
       }
     });
 
+    const jlabApp = (app as JupyterLab);
+    activeDocumentInfo.serverRoot = jlabApp.paths.directories.serverRoot;
+    activeDocumentInfo.parentDirectory = activeDocumentInfo.serverRoot + '/';
+
     app.shell.currentChanged?.connect((_sender, args) => {
       if (args.newValue instanceof NotebookPanel) {
         const np = args.newValue as NotebookPanel;
-        // (app as JupyterLab).paths.directories.serverRoot;
         activeDocumentInfo.filename = np.sessionContext.name;
         activeDocumentInfo.language = np.model?.sharedModel?.metadata?.kernelspec?.language as string || 'python';
+        const lastSlashIndex = np.sessionContext.path.lastIndexOf('/');
+        const nbFolder = lastSlashIndex === -1 ? '' : np.sessionContext.path.substring(0, lastSlashIndex);
+        activeDocumentInfo.parentDirectory = activeDocumentInfo.serverRoot + '/' + nbFolder;
       }
     });
 

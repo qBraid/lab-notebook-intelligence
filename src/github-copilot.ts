@@ -111,10 +111,10 @@ export class GitHubCopilot {
         })});
     }
 
-    static async newNotebookRequest(prompt: string, currentPath: string) {
+    static async newNotebookRequest(prompt: string, parentDirectory: string) {
         return requestAPI<any>('new-notebook', { method: 'POST', body: JSON.stringify({
             "prompt": prompt,
-            "current-path": currentPath
+            "parent-path": parentDirectory
         })});
     }
 }

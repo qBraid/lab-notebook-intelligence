@@ -1,7 +1,9 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 from enum import Enum
-import json, time, requests, threading
+import os, json, time, requests, threading
+import nbformat as nbf
+from pathlib import Path
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 EDITOR_VERSION = "Neovim/0.6.1"
@@ -243,3 +245,67 @@ def fix_this(selection, language, filename):
         {"role": "user", "content": "Can you fix this code?"}
     ]
     return completions(messages)
+
+def _get_unique_notebook_name(parent_path, name):
+    if parent_path.startswith("~"):
+        parent_path = os.path.expanduser(parent_path)
+
+    tried = 0
+
+    while True:
+        suffix = "" if tried == 0 else f"{tried + 1}"
+        notebook_name = f"{name}{suffix}.ipynb"
+        file_path = Path(os.path.join(parent_path, notebook_name))
+        if not file_path.exists():
+            return notebook_name
+        tried += 1
+
+def new_notebook(prompt, parent_path):
+    messages = [
+        {"role": "system", "content": CopilotPrompts.new_notebook_prompt()},
+        {"role": "user", "content": "Can you create a notebook based on this information:"},
+        {"role": "user", "content": prompt}
+    ]
+    copilot_response = completions(messages)
+
+    if "message" in copilot_response:
+        notebook_content = copilot_response["message"]
+        response_lines = notebook_content.split("\n")
+        content_lines = []
+        section_start_found = False
+        for line in response_lines:
+            if line.startswith("```"):
+                if not section_start_found:
+                    section_start_found = True
+                    continue
+                else:
+                    break
+            if section_start_found:
+                content_lines.append(line)
+
+        if len(content_lines) == 0:
+            return None
+        
+        notebook_name = _get_unique_notebook_name(parent_path, "copilot_generated")
+
+        output_path = os.path.join(parent_path, notebook_name)
+        save_path = output_path
+        if output_path.startswith("~"):
+            save_path = os.path.expanduser(output_path)
+
+        content = "\n".join(content_lines)
+        nb = nbf.v4.new_notebook()
+        nb['metadata'] = {
+            "kernelspec": {
+                "display_name": "Python 3 (ipykernel)",
+                "language": "python",
+                "name": "python3"
+            }
+        }
+        nb['cells'] = []
+        nb['cells'].append(nbf.v4.new_code_cell(content))
+        nbf.write(nb, save_path)
+
+        return {
+            "notebook_path": os.path.join(parent_path, notebook_name)
+        }
