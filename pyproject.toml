@@ -35,7 +35,7 @@ fields = ["description", "authors", "urls", "keywords"]
 
 [tool.hatch.build.targets.sdist]
 artifacts = ["jupyter_notebook_intelligence/labextension"]
-exclude = [".github", "binder"]
+exclude = [".github", "binder", "src", "style"]
 
 [tool.hatch.build.targets.wheel.shared-data]
 "jupyter_notebook_intelligence/labextension" = "share/jupyter/labextensions/@mbektas/jupyter-notebook-intelligence"
