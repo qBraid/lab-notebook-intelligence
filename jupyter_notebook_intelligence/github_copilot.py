@@ -46,6 +46,20 @@ def login():
     wait_for_tokens()
     return login_info
 
+def logout():
+    global github_auth
+    github_auth.update({
+        "verification_uri": None,
+        "user_code": None,
+        "device_code": None,
+        "access_token": None,
+        "status" : LoginStatus.NOT_LOGGED_IN,
+        "token": None
+    })
+    return {
+        "status": github_auth["status"].name
+    }
+
 def get_device_verification_info():
     global github_auth
     data = {

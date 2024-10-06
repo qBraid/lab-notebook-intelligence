@@ -22,6 +22,12 @@ class PostGitHubLoginHandler(APIHandler):
     def post(self):
         self.finish(json.dumps(github_copilot.login()))
 
+class GetGitHubLogoutHandler(APIHandler):
+    @tornado.web.authenticated
+    def get(self):
+        self.finish(json.dumps(github_copilot.logout()))
+
+
 class PostInlineCompletionsHandler(APIHandler):
     @tornado.web.authenticated
     async def post(self):
@@ -100,6 +106,7 @@ def setup_handlers(web_app):
     base_url = web_app.settings["base_url"]
     route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
     route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
+    route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
     route_pattern_inline_completions = url_path_join(base_url, "notebook-intelligence", "inline-completions")
     route_pattern_completions = url_path_join(base_url, "notebook-intelligence", "completions")
     route_pattern_chat = url_path_join(base_url, "notebook-intelligence", "chat")
@@ -109,6 +116,7 @@ def setup_handlers(web_app):
     handlers = [
         (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
         (route_pattern_github_login, PostGitHubLoginHandler),
+        (route_pattern_github_logout, GetGitHubLogoutHandler),
         (route_pattern_inline_completions, PostInlineCompletionsHandler),
         (route_pattern_completions, PostCompletionsHandler),
         (route_pattern_chat, PostChatHandler),
