@@ -23,6 +23,7 @@
 }
 .copilot-activation-message {
     padding: 5px;
+    line-height: 20px;
 }
 .copilot-activation-message a {
     text-decoration: underline;
@@ -34,13 +35,17 @@
 }
 
 .sidebar-footer {
-    height: 40px;
+    height: 60px;
     padding: 5px;
     padding-right: 15px;
 }
 
 .sidebar-footer textarea {
     width: 100%;
+    font-family: var(--jp-ui-font-family);
+    background-color: var(--jp-toolbar-active-background);
+    color: var(--jp-ui-font-color1);
+    outline: none;
 }
 
 .chat-message {
@@ -51,7 +56,7 @@
 }
 
 .chat-message pre {
-    background-color: #eaeaea;
+    background-color: var(--jp-layout-color2);
     padding: 3px;
     border-radius: 3px;
 }
@@ -76,7 +81,7 @@
 }
 
 .chat-message-user {
-    background-color: #f9f9f9;
+    background-color: var(--jp-toolbar-active-background);
 }
 
 .copilot-progress-row {
@@ -88,7 +93,7 @@
 }
 
 .copilot-progress {
-    color: #000;
+    color: var(--jp-ui-font-color1);
     width: 4px;
     aspect-ratio: 1;
     border-radius: 50%;
@@ -106,4 +111,30 @@
 .copilot-generated-notebook-link {
     text-decoration: underline;
     cursor: pointer;
+}
+
+.sidebar-login-info {
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    line-height: 20px;
+}
+
+.sidebar-greeting {
+    padding: 5px;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.user-code-span {
+    cursor: pointer;
+}
+.user-code-span:hover {
+    text-shadow: 1px 1px var(--jp-border-color1);
+}
+
+.user-code-span:active {
+    color: var(--jp-ui-font-color2);
 }

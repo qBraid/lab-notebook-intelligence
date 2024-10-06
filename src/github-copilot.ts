@@ -58,20 +58,41 @@ export class GitHubCopilot {
                 reject(reason);
             });
         });
-      
     }
 
-    static updateGitHubLoginStatus() {
-        requestAPI<any>('gh-login-status')
-        .then(response => {
-            this._loginStatus = response.status;
-            this._deviceVerificationInfo.verificationURI = response.verification_uri || '';
-            this._deviceVerificationInfo.userCode = response.user_code || '';
-        })
-        .catch(reason => {
-          console.error(
-            `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
-          );
+    static async logoutFromGitHub() {
+        this._loginStatus = GitHubCopilotLoginStatus.ActivatingDevice;
+        return new Promise((resolve, reject) => {
+            requestAPI<any>('gh-logout', {method: 'GET'})
+            .then(data => {
+                this.updateGitHubLoginStatus().then(() => {
+                    resolve(data);
+                });
+            })
+            .catch(reason => {
+                console.error(
+                `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+                );
+                reject(reason);
+            });
+        });
+    }
+
+    static async updateGitHubLoginStatus() {
+        return new Promise<void>((resolve, reject) => {
+            requestAPI<any>('gh-login-status')
+            .then(response => {
+                this._loginStatus = response.status;
+                this._deviceVerificationInfo.verificationURI = response.verification_uri || '';
+                this._deviceVerificationInfo.userCode = response.user_code || '';
+                resolve();
+            })
+            .catch(reason => {
+                console.error(
+                    `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+                );
+                reject(reason);
+            });
         });
     }
 

@@ -146,7 +146,7 @@ function SidebarComponent(props: any) {
         setPrompt(event.target.value);
     };
 
-    const onPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.shiftKey && event.key == 'Enter') {
             const newList = [
                 ...chatMessages,
@@ -164,6 +164,14 @@ function SidebarComponent(props: any) {
                 setPrompt('');
                 event.stopPropagation();
                 event.preventDefault();
+                return;
+            } else if (prompt.startsWith('/logout')) {
+                setChatMessages([]);
+                setPrompt('');
+                event.stopPropagation();
+                event.preventDefault();
+                await GitHubCopilot.logoutFromGitHub();
+                setLoginClickCount(loginClickCount + 1);
                 return;
             }
 
@@ -281,20 +289,31 @@ function SidebarComponent(props: any) {
             <div className="sidebar-header">
                 <div className='sidebar-title'>Copilot</div>
                 <div className='sidebar-copilot-status'>
-                    {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn ? 
-                        (<button onClick={handleLoginClick}>Login</button>) :
-                    ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ? 
+                    {ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ? 
                     (<div>Activating device...</div>) :
                         ghLoginStatus === GitHubCopilotLoginStatus.LoggingIn ? 
                         (<div>Logging in...</div>) : null
                     }
                 </div>
             </div>
+            {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn &&  (
+                <div className='sidebar-login-info'>
+                    <div>Activate this app for access to GitHub Copilot service</div>
+                    <div><button onClick={handleLoginClick}>Activate using GitHub account</button></div>
+                </div>
+            )}
             {
             (ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && deviceActivationURL && deviceActivationCode) &&
-            (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <b>{deviceActivationCode}</b> to allow access to GitHub Copilot from this app.</div>)
+            (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <span className="user-code-span" onClick={() => {navigator.clipboard.writeText(deviceActivationCode); return true;}}><b>{deviceActivationCode}&#x1F4CB;</b></span> to allow access to GitHub Copilot from this app.</div>)
             }
-            {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
+            {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn && chatMessages.length == 0 ?
+                (
+                <div className="sidebar-messages">
+                    <div className="sidebar-greeting">
+                    Welcome! How can I assist you today?
+                    </div>
+                </div>
+                ) : (
                 <div className="sidebar-messages">
                     {chatMessages.map((msg, index) => (
                         <ChatResponse key={`key-${index}`} message={msg} openFile={props.openFile} />
@@ -307,7 +326,7 @@ function SidebarComponent(props: any) {
             )}
             {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
                 <div className="sidebar-footer">
-                    <textarea rows={2} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' value={prompt} />
+                    <textarea rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' value={prompt} />
                 </div>
             )}
             
