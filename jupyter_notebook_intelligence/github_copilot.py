@@ -6,6 +6,7 @@ import nbformat as nbf
 from pathlib import Path
 import uuid
 import secrets
+from jupyter_notebook_intelligence.config import ContextResponse
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 EDITOR_VERSION = "NotebookIntelligence/4.2.5"
@@ -181,11 +182,18 @@ def _generate_copilot_headers():
         'vscode-machineid': MACHINE_ID,
     }
 
-def inline_completions(prefix, suffix, language, filename):
+def inline_completions(prefix, suffix, language, filename, context: ContextResponse):
     global github_auth
     token = github_auth['token']
 
-    prompt = f"# Path: {filename}\n{prefix}"
+    prompt = f"# Path: {filename}"
+
+    if context is not None:
+        for item in context.items:
+            context_file = f"Compare this snippet from {item.file_path}:\n{item.content}\n"
+            prompt += "\n# " + "\n# ".join(context_file.split('\n'))
+
+    prompt += f"\n{prefix}"
 
     try:
         resp = requests.post('https://copilot-proxy.githubusercontent.com/v1/engines/copilot-codex/completions',
@@ -250,12 +258,21 @@ def completions(messages):
     response = resp.json()
     return {"message": response["choices"][0]["message"]["content"]}
 
-def chat(prompt, language, filename):
+def chat(prompt, language, filename, context: ContextResponse):
     messages = [
         {"role": "system", "content": CopilotPrompts.chat_prompt()},
-        {"role": "user", "content": f"Active document is {filename}, written in {language}"},
-        {"role": "user", "content": prompt}
+        {"role": "user", "content": f"Active document is {filename}, written in {language}"}
     ]
+
+    if context is not None:
+        context_lines = [item.content for item in context.items]
+        messages += [{
+            "role": "user",
+            "content": f"Here is some additional context to help answer this question: \n{"\n".join(context_lines)}"
+        }]
+
+    messages += [{"role": "user", "content": prompt}]
+
     return completions(messages)
 
 def explain_this(selection, language, filename):
@@ -288,9 +305,16 @@ def _get_unique_notebook_name(parent_path, name):
             return notebook_name
         tried += 1
 
-def new_notebook(prompt, parent_path):
-    messages = [
-        {"role": "system", "content": CopilotPrompts.new_notebook_prompt()},
+def new_notebook(prompt, parent_path, context: ContextResponse):
+    messages = [{"role": "system", "content": CopilotPrompts.new_notebook_prompt()}]
+    if context is not None:
+        context_lines = [item.content for item in context.items]
+        messages += [{
+            "role": "user",
+            "content": f"Here is some additional context to help answer this question: \n{"\n".join(context_lines)}"
+        }]
+
+    messages += [
         {"role": "user", "content": "Can you create a notebook based on this information:"},
         {"role": "user", "content": prompt}
     ]

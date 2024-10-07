@@ -4,8 +4,8 @@ import json
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
-import requests
 import tornado
+from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
 import jupyter_notebook_intelligence.github_copilot as github_copilot
 
 
@@ -31,13 +31,25 @@ class GetGitHubLogoutHandler(APIHandler):
 class PostInlineCompletionsHandler(APIHandler):
     @tornado.web.authenticated
     async def post(self):
+        cfg = NotebookIntelligenceConfig(config=self.config)
         data = self.get_json_body()
         prefix = data['prefix']
         suffix = data['suffix']
         language = data['language']
         filename = data['filename']
 
-        completions = github_copilot.inline_completions(prefix, suffix, language, filename)
+        if cfg.has_context_provider:
+            context = cfg.context_provider.get_context(ContextRequest(
+                type=ContextType.InlineCompletion,
+                file_info=ContextInputFileInfo(
+                    file_name=filename       
+                ),
+                language=language,
+                prefix=prefix,
+                suffix=suffix
+            ))
+
+        completions = github_copilot.inline_completions(prefix, suffix, language, filename, context)
         self.finish(json.dumps({
             "data": completions
         }))
@@ -56,11 +68,21 @@ class PostCompletionsHandler(APIHandler):
 class PostChatHandler(APIHandler):
     @tornado.web.authenticated
     async def post(self):
+        cfg = NotebookIntelligenceConfig(config=self.config)
         data = self.get_json_body()
         prompt = data['prompt']
         language = data['language']
         filename = data['filename']
-        response = github_copilot.chat(prompt, language, filename)
+
+        if cfg.has_context_provider:
+            context = cfg.context_provider.get_context(ContextRequest(
+                type=ContextType.Chat,
+                file_info=ContextInputFileInfo(file_name=filename),
+                language=language,
+                prefix=prompt
+            ))
+
+        response = github_copilot.chat(prompt, language, filename, context)
         self.finish(json.dumps({
             "data": response
         }))
@@ -92,10 +114,18 @@ class PostFixThisHandler(APIHandler):
 class PostNewNotebookHandler(APIHandler):
     @tornado.web.authenticated
     async def post(self):
+        cfg = NotebookIntelligenceConfig(config=self.config)
         data = self.get_json_body()
         prompt = data['prompt']
         parent_path = data['parent-path']
-        response = github_copilot.new_notebook(prompt, parent_path)
+
+        if cfg.has_context_provider:
+            context = cfg.context_provider.get_context(ContextRequest(
+                type=ContextType.NewNotebook,
+                prefix=prompt
+            ))
+
+        response = github_copilot.new_notebook(prompt, parent_path, context)
         self.finish(json.dumps({
             "data": response
         }))
