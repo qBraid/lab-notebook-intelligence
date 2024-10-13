@@ -15,6 +15,10 @@ USER_AGENT = "NotebookIntelligence/4.2.5"
 CLIENT_ID = "Iv1.b507a08c87ecfe98"
 MACHINE_ID = secrets.token_hex(33)[0:65]
 
+API_ENDPOINT = "https://api.githubcopilot.com"
+PROXY_ENDPOINT = "https://copilot-proxy.githubusercontent.com"
+TOKEN_REFRESH_INTERVAL = 1500
+
 LoginStatus = Enum('LoginStatus', ['NOT_LOGGED_IN', 'ACTIVATING_DEVICE', 'LOGGING_IN', 'LOGGED_IN'])
 
 github_auth = {
@@ -98,7 +102,7 @@ def wait_for_user_access_token_thread_func():
     while True:
         if github_auth["access_token"] is not None:
             break
-        time.sleep(15)
+        time.sleep(5)
         data = {
             "client_id": CLIENT_ID,
             "device_code": github_auth["device_code"],
@@ -125,7 +129,7 @@ def wait_for_user_access_token_thread_func():
             get_token()
 
 def get_token():
-    global github_auth
+    global github_auth, API_ENDPOINT, PROXY_ENDPOINT, TOKEN_REFRESH_INTERVAL
     access_token = github_auth["access_token"]
 
     if access_token is None:
@@ -147,12 +151,17 @@ def get_token():
     github_auth["user_code"] = None
     github_auth["status"] = LoginStatus.LOGGED_IN
 
+    endpoints = resp_json.get('endpoints', {})
+    API_ENDPOINT = endpoints.get('api', API_ENDPOINT)
+    PROXY_ENDPOINT = endpoints.get('proxy', PROXY_ENDPOINT)
+    TOKEN_REFRESH_INTERVAL = resp_json.get('refresh_in', TOKEN_REFRESH_INTERVAL)
+
 def get_token_thread_func():
     global github_auth
     while True:
         get_token()
         token = github_auth["token"]
-        wait_time = 15 if token is None else 25 * 60 
+        wait_time = 15 if token is None else TOKEN_REFRESH_INTERVAL
         time.sleep(wait_time)
 
 def wait_for_tokens():
@@ -196,7 +205,7 @@ def inline_completions(prefix, suffix, language, filename, context: ContextRespo
     prompt += f"\n{prefix}"
 
     try:
-        resp = requests.post('https://copilot-proxy.githubusercontent.com/v1/engines/copilot-codex/completions',
+        resp = requests.post(f"{PROXY_ENDPOINT}/v1/engines/copilot-codex/completions",
             headers={'authorization': f'Bearer {token}'},
                 json={
                 'prompt': prompt,
@@ -239,7 +248,7 @@ def completions(messages):
 
     try:
         resp = requests.post(
-            'https://api.githubcopilot.com/chat/completions',
+            f"{API_ENDPOINT}/chat/completions",
             headers = _generate_copilot_headers(),
             json = {
                 'messages': messages,
