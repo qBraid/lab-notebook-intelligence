@@ -247,8 +247,8 @@ function SidebarComponent(props: any) {
     const promptRequestHandler = useCallback((eventData: any) => {
         const request: IRunChatCompletionRequest = eventData.detail;
         const message = request.type === RunChatCompletionType.ExplainThis ?
-            `Explain this code:\n\`\`\`\n${request.content}\`\`\`\n` :
-            `Fix this code:\n\`\`\`\n${request.content}\`\`\`\n`;
+            `Explain this code:\n\`\`\`\n${request.content}\n\`\`\`\n` :
+            `Fix this code:\n\`\`\`\n${request.content}\n\`\`\`\n`;
         const newList = [
             ...chatMessages,
             {
