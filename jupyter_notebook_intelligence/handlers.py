@@ -38,6 +38,7 @@ class PostInlineCompletionsHandler(APIHandler):
         language = data['language']
         filename = data['filename']
 
+        context = None
         if cfg.has_context_provider:
             context = cfg.context_provider.get_context(ContextRequest(
                 type=ContextType.InlineCompletion,
@@ -74,6 +75,7 @@ class PostChatHandler(APIHandler):
         language = data['language']
         filename = data['filename']
 
+        context = None
         if cfg.has_context_provider:
             context = cfg.context_provider.get_context(ContextRequest(
                 type=ContextType.Chat,
@@ -119,6 +121,7 @@ class PostNewNotebookHandler(APIHandler):
         prompt = data['prompt']
         parent_path = data['parent-path']
 
+        context = None
         if cfg.has_context_provider:
             context = cfg.context_provider.get_context(ContextRequest(
                 type=ContextType.NewNotebook,
