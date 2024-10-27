@@ -122,6 +122,10 @@
     line-height: 20px;
 }
 
+.sidebar-login-info a {
+    text-decoration: underline;
+}
+
 .sidebar-greeting {
     padding: 5px;
     font-size: 14px;

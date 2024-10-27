@@ -287,7 +287,7 @@ function SidebarComponent(props: any) {
     return (
         <div className="sidebar">
             <div className="sidebar-header">
-                <div className='sidebar-title'>Copilot</div>
+                <div className='sidebar-title'>Copilot Chat</div>
                 <div className='sidebar-copilot-status'>
                     {ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ? 
                     (<div>Activating device...</div>) :
@@ -298,6 +298,14 @@ function SidebarComponent(props: any) {
             </div>
             {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn &&  (
                 <div className='sidebar-login-info'>
+                    <div>
+                    Your GitHub tokens, code and data is directly transferred to GitHub Copilot as needed without storing any copies other than keeping in the process memory.</div>
+                    <div>GitHub Copilot requires a subscription and it is free for some users.
+                    GitHub Copilot is subject to the <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features" target="_blank">GitHub Terms for Additional Products and Features</a>.</div>
+                    <div>
+                        <h3>Privacy and terms</h3>
+
+By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide" target='_blank'>GitHub Copilot chat terms</a>. Review the terms to understand about usage, limitations and ways to improve Copilot Chat. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank">Privacy Statement</a> to ensure that your code snippets will not be used as suggested code for other users of GitHub Copilot.</div>
                     <div>Activate this app for access to GitHub Copilot service</div>
                     <div><button onClick={handleLoginClick}>Activate using GitHub account</button></div>
                 </div>

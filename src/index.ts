@@ -130,7 +130,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
-    panel.title.caption = 'Copilot';
+    panel.title.caption = 'Copilot Chat';
     const sidebar = new ChatSidebar({
       getActiveDocumentInfo: () : IActiveDocumentInfo => {
         return activeDocumentInfo;
