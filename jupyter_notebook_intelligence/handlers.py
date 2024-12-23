@@ -1,13 +1,19 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import json
+from os import path
+import os
+import sys
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
+import traitlets
+from jupyter_notebook_intelligence.agents import AgentManager, ChatRequest, NotebookIntelligenceChatAgent, NotebookIntelligenceExtension
 from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
 import jupyter_notebook_intelligence.github_copilot as github_copilot
 
+agent_manager: AgentManager = None
 
 class GetGitHubLoginStatusHandler(APIHandler):
     # The following decorator should be present on all verb methods (head, get, post,
@@ -61,10 +67,8 @@ class PostCompletionsHandler(APIHandler):
         data = self.get_json_body()
         messages = data['messages']
 
-        completions = github_copilot.completions(messages)
-        self.finish(json.dumps({
-            "data": completions
-        }))
+        response = github_copilot.completions(messages)
+        self.finish(json.dumps(response))
 
 class PostChatHandler(APIHandler):
     @tornado.web.authenticated
@@ -75,19 +79,24 @@ class PostChatHandler(APIHandler):
         language = data['language']
         filename = data['filename']
 
-        context = None
-        if cfg.has_context_provider:
-            context = cfg.context_provider.get_context(ContextRequest(
-                type=ContextType.Chat,
-                file_info=ContextInputFileInfo(file_name=filename),
-                language=language,
-                prefix=prompt
-            ))
+        response = agent_manager.handle_chat_request(ChatRequest(prompt))
+        # data = {"message": response["choices"][0]["message"]["content"]}
+    
+        self.finish(json.dumps(response))
 
-        response = github_copilot.chat(prompt, language, filename, context)
-        self.finish(json.dumps({
-            "data": response
-        }))
+        # context = None
+        # if cfg.has_context_provider:
+        #     context = cfg.context_provider.get_context(ContextRequest(
+        #         type=ContextType.Chat,
+        #         file_info=ContextInputFileInfo(file_name=filename),
+        #         language=language,
+        #         prefix=prompt
+        #     ))
+
+        # response = github_copilot.chat(prompt, language, filename, context)
+        # self.finish(json.dumps({
+        #     "data": response
+        # }))
 
 class PostExplainThisHandler(APIHandler):
     @tornado.web.authenticated
@@ -97,9 +106,7 @@ class PostExplainThisHandler(APIHandler):
         language = data['language']
         filename = data['filename']
         response = github_copilot.explain_this(selection, language, filename)
-        self.finish(json.dumps({
-            "data": response
-        }))
+        self.finish(json.dumps(response))
 
 class PostFixThisHandler(APIHandler):
     @tornado.web.authenticated
@@ -109,9 +116,7 @@ class PostFixThisHandler(APIHandler):
         language = data['language']
         filename = data['filename']
         response = github_copilot.fix_this(selection, language, filename)
-        self.finish(json.dumps({
-            "data": response
-        }))
+        self.finish(json.dumps(response))
 
 class PostNewNotebookHandler(APIHandler):
     @tornado.web.authenticated
@@ -129,9 +134,39 @@ class PostNewNotebookHandler(APIHandler):
             ))
 
         response = github_copilot.new_notebook(prompt, parent_path, context)
-        self.finish(json.dumps({
-            "data": response
-        }))
+        self.finish(json.dumps(response))
+
+def load_extension(extension_class: str) -> NotebookIntelligenceExtension:
+    import importlib
+    try:
+        parts = extension_class.split(".")
+        module_name = ".".join(parts[0:-1])
+        class_name = parts[-1]
+        ExtensionClass = getattr(importlib.import_module(module_name), class_name)
+        if ExtensionClass is not None and issubclass(ExtensionClass, NotebookIntelligenceExtension):
+            instance = ExtensionClass()
+            return instance
+    except:
+        pass
+
+    return None
+
+def initialize_extensions():
+    global agent_manager
+    default_chat_agent = github_copilot.GithubCopilotChatAgent()
+    agent_manager = AgentManager(default_chat_agent)
+    extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbiextensions")
+    subfolders = [f.path for f in os.scandir(extensions_dir) if f.is_dir()]
+    for extension_dir in list(subfolders):
+        metadata_path = path.join(extension_dir, "extension.json")
+        if path.exists(metadata_path) and path.isfile(metadata_path):
+            with open(metadata_path, 'r') as file:
+                data = json.load(file)
+                class_name = data['class']
+                extension = load_extension(class_name)
+                if extension:
+                    for chat_agent in extension.chat_agents:
+                        agent_manager.register_chat_agent(chat_agent)
 
 def setup_handlers(web_app):
     host_pattern = ".*$"

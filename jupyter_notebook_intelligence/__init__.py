@@ -9,8 +9,8 @@ except ImportError:
     import warnings
     warnings.warn("Importing 'jupyter_notebook_intelligence' outside a proper installation.")
     __version__ = "dev"
-from .handlers import setup_handlers
-from .config import NotebookIntelligenceConfig, ContextProvider, ContextType, Context, ContextRequest, ContextResponse
+from .handlers import initialize_extensions, setup_handlers
+from .agents import NotebookIntelligenceExtension, NotebookIntelligenceChatAgent, ChatRequest, AgentManager
 
 
 def _jupyter_labextension_paths():
@@ -34,6 +34,7 @@ def _load_jupyter_server_extension(server_app):
     server_app: jupyterlab.labapp.LabApp
         JupyterLab application instance
     """
+    initialize_extensions()
     setup_handlers(server_app.web_app)
     name = "jupyter_notebook_intelligence"
     server_app.log.info(f"Registered {name} server extension")

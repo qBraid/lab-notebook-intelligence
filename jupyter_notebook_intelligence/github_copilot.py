@@ -6,6 +6,7 @@ import nbformat as nbf
 from pathlib import Path
 import uuid
 import secrets
+from jupyter_notebook_intelligence.agents import AgentManager, ChatRequest, NotebookIntelligenceChatAgent, NotebookIntelligenceExtension
 from jupyter_notebook_intelligence.config import ContextResponse
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
@@ -242,7 +243,7 @@ def inline_completions(prefix, suffix, language, filename, context: ContextRespo
     
     return result
 
-def completions(messages):
+def completions(messages, tools = None):
     global github_auth
     token = github_auth['token']
 
@@ -252,6 +253,7 @@ def completions(messages):
             headers = _generate_copilot_headers(),
             json = {
                 'messages': messages,
+                'tools': tools,
                 'max_tokens': 1000,
                 'temperature': 0,
                 'top_p': 1,
@@ -265,7 +267,8 @@ def completions(messages):
         return ''
 
     response = resp.json()
-    return {"message": response["choices"][0]["message"]["content"]}
+    # return {"message": response["choices"][0]["message"]["content"]}
+    return response
 
 def chat(prompt, language, filename, context: ContextResponse):
     messages = [
@@ -370,3 +373,19 @@ def new_notebook(prompt, parent_path, context: ContextResponse):
         return {
             "notebook_path": os.path.join(parent_path, notebook_name)
         }
+
+class GithubCopilotChatAgent(NotebookIntelligenceChatAgent):
+    @property
+    def id(self) -> str:
+        return "default"
+
+    def handle_request(self, request: ChatRequest, agent_manager: AgentManager) -> None:
+        messages = [
+            {"role": "system", "content": CopilotPrompts.chat_prompt()},
+        ]
+
+        print("FROM GITHUB COPILOT CHAT AGENT")
+
+        messages += [{"role": "user", "content": request.prompt}]
+
+        return completions(messages)

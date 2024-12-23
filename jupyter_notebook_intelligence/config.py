@@ -6,6 +6,9 @@ from enum import Enum
 import traitlets
 from traitlets.config import Configurable
 
+# from jupyter_notebook_intelligence.agents import AgentManager
+# from jupyter_notebook_intelligence.github_copilot import GithubCopilotChatAgent
+
 
 class ContextType(Enum):
     InlineCompletion = 'inline-completion'
@@ -52,6 +55,9 @@ class NotebookIntelligenceConfig(Configurable):
 
     def __init__(self, config=None):
         super(NotebookIntelligenceConfig, self).__init__(config=config)
+
+        # default_chat_agent = GithubCopilotChatAgent()
+        # self.agent_manager = AgentManager(default_chat_agent)
 
         self._context_provider = None
         if self.context_provider_class is not None and issubclass(self.context_provider_class, ContextProvider):

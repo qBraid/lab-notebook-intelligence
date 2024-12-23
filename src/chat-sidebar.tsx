@@ -204,7 +204,7 @@ function SidebarComponent(props: any) {
                         responseMessage = `Failed to generate notebook. Please try again.`;
                     }
                 } else {
-                    responseMessage = response.data.message;
+                    responseMessage = response["choices"][0]["message"]["content"];
                 }
                 setChatMessages([
                     ...newList,
