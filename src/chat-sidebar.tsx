@@ -6,7 +6,7 @@ import Markdown from 'react-markdown';
 import { UUID } from '@lumino/coreutils';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
-import { IActiveDocumentInfo } from './tokens';
+import { IActiveDocumentInfo, IChatCompletionResponseEmitter } from './tokens';
 
 export enum RunChatCompletionType {
     Chat,
@@ -79,13 +79,14 @@ function ChatResponse(props: any) {
     );
 }
 
-async function submitCompletionRequest(request: IRunChatCompletionRequest): Promise<any> {
+async function submitCompletionRequest(request: IRunChatCompletionRequest, responseEmitter: IChatCompletionResponseEmitter): Promise<any> {
     switch (request.type) {
         case RunChatCompletionType.Chat:
             return GitHubCopilot.chatRequest(
                 request.content,
                 request.language || 'python',
-                request.filename || 'Untitled.ipynb'
+                request.filename || 'Untitled.ipynb',
+                responseEmitter
             );
         case RunChatCompletionType.ExplainThis:
             {
@@ -183,6 +184,7 @@ function SidebarComponent(props: any) {
             const extractedPrompt = isNewNotebook ? prompt.substring(newNotebookPrefix.length) : prompt;
             const serverRoot = activeDocInfo.serverRoot!;
             const parentDirectory = activeDocInfo.parentDirectory!;
+            let responseMessageAll = '';
 
             submitCompletionRequest({
                 type: isNewNotebook ? RunChatCompletionType.NewNotebook : RunChatCompletionType.Chat,
@@ -190,33 +192,42 @@ function SidebarComponent(props: any) {
                 language: activeDocInfo.language,
                 filename: activeDocInfo.filename,
                 parentDirectory
-            }).then((response) => {
-                let responseMessage = '';
-                let notebookPath = undefined;
-                if (isNewNotebook) {
-                    if (response.data.notebook_path) {
-                        notebookPath = response.data.notebook_path;
-                        if (notebookPath.startsWith(serverRoot)) {
-                            notebookPath = notebookPath.substring(serverRoot.length + 1);
+            }, {
+                emit:(response) => {
+                    let responseMessage = '';
+                    let notebookPath = undefined;
+                    if (isNewNotebook) {
+                        if (response.data.notebook_path) {
+                            notebookPath = response.data.notebook_path;
+                            if (notebookPath.startsWith(serverRoot)) {
+                                notebookPath = notebookPath.substring(serverRoot.length + 1);
+                            }
+                            responseMessage = `Notebook saved to **${notebookPath}**`;
+                        } else {
+                            responseMessage = `Failed to generate notebook. Please try again.`;
                         }
-                        responseMessage = `Notebook saved to **${notebookPath}**`;
                     } else {
-                        responseMessage = `Failed to generate notebook. Please try again.`;
+                        if (response.messageType === 'StreamMessage') {
+                            responseMessage = response.data["choices"]?.[0]?.["delta"]?.["content"];
+                            if (!responseMessage) {
+                                return;
+                            }
+                            responseMessageAll += responseMessage;
+                        } else if (response.messageType === 'StreamEnd') {
+                            setCopilotRequestInProgress(false);
+                        }
                     }
-                } else {
-                    responseMessage = response["choices"][0]["message"]["content"];
+                    setChatMessages([
+                        ...newList,
+                        {
+                            id: UUID.uuid4(),
+                            date: new Date(),
+                            from: 'copilot',
+                            message: responseMessageAll,
+                            notebookLink: notebookPath
+                        }
+                    ]);
                 }
-                setChatMessages([
-                    ...newList,
-                    {
-                        id: UUID.uuid4(),
-                        date: new Date(),
-                        from: 'copilot',
-                        message: responseMessage,
-                        notebookLink: notebookPath
-                    }
-                ]);
-                setCopilotRequestInProgress(false);
             });
             setPrompt('');
             event.stopPropagation();
@@ -261,17 +272,19 @@ function SidebarComponent(props: any) {
         setChatMessages(newList);
 
         setCopilotRequestInProgress(true);
-        submitCompletionRequest(request).then((response) => {
-            setChatMessages([
-                ...newList,
-                {
-                    id: UUID.uuid4(),
-                    date: new Date(),
-                    from: 'copilot',
-                    message: response.data.message
-                }
-            ]);
-            setCopilotRequestInProgress(false);
+        submitCompletionRequest(request, {
+            emit: (response) => {
+                setChatMessages([
+                    ...newList,
+                    {
+                        id: UUID.uuid4(),
+                        date: new Date(),
+                        from: 'copilot',
+                        message: response.data.message
+                    }
+                ]);
+                setCopilotRequestInProgress(false);
+            }
         });
     }, [chatMessages]);
 

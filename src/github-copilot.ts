@@ -1,6 +1,11 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import { ServerConnection } from "@jupyterlab/services";
 import { requestAPI } from "./handler";
+import { URLExt } from "@jupyterlab/coreutils";
+import { UUID } from '@lumino/coreutils';
+import { Signal } from '@lumino/signaling';
+import { IChatCompletionResponseEmitter } from "./tokens";
 
 const LOGIN_STATUS_UPDATE_INTERVAL = 3000;
 
@@ -22,6 +27,8 @@ export class GitHubCopilot {
         verificationURI: '',
         userCode: ''
     };
+    static _webSocket: WebSocket;
+    static _messageReceived = new Signal<unknown, any>(this);
 
     static initialize() {
         this.updateGitHubLoginStatus();
@@ -29,6 +36,23 @@ export class GitHubCopilot {
         setInterval(() => {
             this.updateGitHubLoginStatus();
         }, LOGIN_STATUS_UPDATE_INTERVAL);
+
+        GitHubCopilot.initializeWebsocket();
+    }
+
+    static async initializeWebsocket() {
+        const serverSettings = ServerConnection.makeSettings();
+        const wsUrl = URLExt.join(
+            serverSettings.wsUrl,
+            'notebook-intelligence',
+            'chat'
+          );
+
+        this._webSocket = new WebSocket(wsUrl);
+        this._webSocket.onmessage = msg => {
+            console.log(msg.data);
+            this._messageReceived.emit(msg.data);
+        };
     }
 
     static getLoginStatus(): GitHubCopilotLoginStatus {
@@ -96,12 +120,15 @@ export class GitHubCopilot {
         });
     }
 
-    static async chatRequest(prompt: string, language: string, filename: string) {
-        return requestAPI<any>('chat', { method: 'POST', body: JSON.stringify({
-            prompt,
-            language,
-            filename,
-        })});
+    static async chatRequest(prompt: string, language: string, filename: string, responseEmitter: IChatCompletionResponseEmitter) {
+        const messageId = UUID.uuid4();
+        this._messageReceived.connect((_, msg) => {
+            msg = JSON.parse(msg);
+            if (msg.messageId === messageId) {
+                responseEmitter.emit(msg);
+            }
+        });
+        this._webSocket.send(JSON.stringify({messageId, prompt, language, filename}));
     }
 
     static async inlineCompletionsRequest(prefix: string, suffix: string, language: string, filename: string) {

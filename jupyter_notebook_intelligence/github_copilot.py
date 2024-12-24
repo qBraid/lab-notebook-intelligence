@@ -6,7 +6,8 @@ import nbformat as nbf
 from pathlib import Path
 import uuid
 import secrets
-from jupyter_notebook_intelligence.extension import ChatResponse, ExtensionManager, ChatRequest, ChatParticipant, NotebookIntelligenceExtension
+import sseclient
+from jupyter_notebook_intelligence.extension import ChatResponse, ChatRequest, ChatParticipant
 from jupyter_notebook_intelligence.config import ContextResponse
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
@@ -243,12 +244,12 @@ def inline_completions(prefix, suffix, language, filename, context: ContextRespo
     
     return result
 
-def completions(messages, tools = None):
+def completions(messages, tools = None, response: ChatResponse = None):
     global github_auth
     token = github_auth['token']
 
     try:
-        resp = requests.post(
+        request = requests.post(
             f"{API_ENDPOINT}/chat/completions",
             headers = _generate_copilot_headers(),
             json = {
@@ -260,15 +261,18 @@ def completions(messages, tools = None):
                 'n': 1,
                 'stop': ['<END>'],
                 'nwo': 'NotebookIntelligence',
-                'stream': False,
-            }
+                'stream': True
+            },
+            stream = True
         )
+        client = sseclient.SSEClient(request)
+        for event in client.events():
+            if event.data == '[DONE]':
+                response.finish()
+            else:
+                response.stream(json.loads(event.data))
     except requests.exceptions.ConnectionError:
         return ''
-
-    response = resp.json()
-    # return {"message": response["choices"][0]["message"]["content"]}
-    return response
 
 def chat(prompt, language, filename, context: ContextResponse):
     messages = [
@@ -388,4 +392,4 @@ class GithubCopilotChatParticipant(ChatParticipant):
 
         messages += [{"role": "user", "content": request.prompt}]
 
-        response.stream(completions(messages))
+        completions(messages, response=response)

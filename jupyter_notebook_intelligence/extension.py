@@ -15,8 +15,15 @@ class ChatRequest:
     command: str = ''
     prompt: str = ''
 
+@dataclass
+class MarkdownData:
+    content: str = ''
+
 class ChatResponse:
-    def stream(self, data) -> None:
+    def stream(self, data, finish: bool = False) -> None:
+        raise NotImplemented
+    
+    def finish(self) -> None:
         raise NotImplemented
 
 @dataclass
@@ -149,10 +156,10 @@ class ExtensionManager(Host):
         return DEFAULT_CHAT_AGENT_ID
 
     def get_chat_participant(self, request: ChatRequest) -> ChatParticipant:
-        agent_id = self.get_chat_participant_id(request)
-        return self.chat_participants[agent_id]
+        participant_id = self.get_chat_participant_id(request)
+        return self.chat_participants[participant_id]
 
-    def handle_chat_request(self, request: ChatRequest) -> None:
+    def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         request.host = self
-        agent = self.get_chat_participant(request)
-        return agent.handle_chat_request(request, self)
+        participant = self.get_chat_participant(request)
+        return participant.handle_chat_request(request, response)

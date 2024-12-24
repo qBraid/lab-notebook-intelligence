@@ -4,12 +4,14 @@ import json
 from os import path
 import os
 import sys
+import uuid
 
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
+from tornado import web, websocket
 import traitlets
-from jupyter_notebook_intelligence.extension import ExtensionManager, ChatRequest, ChatParticipant, NotebookIntelligenceExtension
+from jupyter_notebook_intelligence.extension import ChatResponse, ExtensionManager, ChatRequest, ChatParticipant, MarkdownData, NotebookIntelligenceExtension
 from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
 import jupyter_notebook_intelligence.github_copilot as github_copilot
 from jupyter_notebook_intelligence.test_extension import TestExtension
@@ -99,6 +101,59 @@ class PostChatHandler(APIHandler):
         #     "data": response
         # }))
 
+class WebsocketChatResponseEmitter(ChatResponse):
+    def __init__(self, messageId, handler):
+        self.messageId = messageId
+        self.handler = handler
+
+    # data: OpenAIResponse, MarkdownResponse, etc.
+    def stream(self, data):
+        if isinstance(data, MarkdownData):
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "content": data.content,
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
+
+        self.handler.write_message({
+            "messageId": self.messageId,
+            "messageType": "StreamMessage",
+            "data": data
+        })
+
+    def finish(self) -> None:
+        self.handler.write_message({
+            "messageId": self.messageId,
+            "messageType": "StreamEnd",
+            "data": {}
+        })
+
+class WebsocketChatHandler(websocket.WebSocketHandler):
+    def __init__(self, application, request, **kwargs):
+        super().__init__(application, request, **kwargs)
+
+    def open(self):
+        print("WebSocket opened")
+
+    def on_message(self, message):
+        data = json.loads(message)
+
+        messageId = data['messageId']
+        prompt = data['prompt']
+        language = data['language']
+        filename = data['filename']
+
+        responseEmitter = WebsocketChatResponseEmitter(messageId, self)
+        extension_manager.handle_chat_request(ChatRequest(prompt=prompt), responseEmitter)
+
+    def on_close(self):
+        print("WebSocket closed")
+
 class PostExplainThisHandler(APIHandler):
     @tornado.web.authenticated
     async def post(self):
@@ -163,7 +218,8 @@ def setup_handlers(web_app):
         (route_pattern_github_logout, GetGitHubLogoutHandler),
         (route_pattern_inline_completions, PostInlineCompletionsHandler),
         (route_pattern_completions, PostCompletionsHandler),
-        (route_pattern_chat, PostChatHandler),
+        # (route_pattern_chat, PostChatHandler),
+        (route_pattern_chat, WebsocketChatHandler),
         (route_pattern_explain_this, PostExplainThisHandler),
         (route_pattern_fix_this, PostFixThisHandler),
         (route_pattern_new_notebook, PostNewNotebookHandler),

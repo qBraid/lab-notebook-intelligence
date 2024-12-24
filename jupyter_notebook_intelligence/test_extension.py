@@ -1,4 +1,5 @@
-from .extension import NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, Tool, ToolResponse
+from time import sleep
+from .extension import MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, Tool, ToolResponse
 
 class TestChatParticipant(ChatParticipant):
     @property
@@ -10,7 +11,10 @@ class TestChatParticipant(ChatParticipant):
         return "Test Participant"
 
     def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
-        response.stream("Hello world!")
+        for i in range(30):
+            response.stream(MarkdownData(f"Hello world {i + 1}!"))
+            sleep(1)
+        response.finish()
 
 class TestTool(Tool):
     @property
@@ -26,7 +30,8 @@ class TestInlineCompletionContextProvider:
         return "test-inline-completion-context-provider"
 
     def handle_completion_context_request(self, request: ChatRequest, response: ChatResponse) -> None:
-        response.stream("Hello from inline completion context provider!")
+        response.stream(MarkdownData("Hello from inline completion context provider!"))
+        response.finish()
 
 class TestExtension(NotebookIntelligenceExtension):
     def __init__(self):

@@ -6,3 +6,7 @@ export interface IActiveDocumentInfo {
     serverRoot?: string;
     parentDirectory?: string;
 }
+
+export interface IChatCompletionResponseEmitter {
+    emit: (response: any) => void;
+}
