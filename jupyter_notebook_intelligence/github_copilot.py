@@ -6,7 +6,7 @@ import nbformat as nbf
 from pathlib import Path
 import uuid
 import secrets
-from jupyter_notebook_intelligence.agents import AgentManager, ChatRequest, NotebookIntelligenceChatAgent, NotebookIntelligenceExtension
+from jupyter_notebook_intelligence.extension import ChatResponse, ExtensionManager, ChatRequest, ChatParticipant, NotebookIntelligenceExtension
 from jupyter_notebook_intelligence.config import ContextResponse
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
@@ -374,12 +374,12 @@ def new_notebook(prompt, parent_path, context: ContextResponse):
             "notebook_path": os.path.join(parent_path, notebook_name)
         }
 
-class GithubCopilotChatAgent(NotebookIntelligenceChatAgent):
+class GithubCopilotChatParticipant(ChatParticipant):
     @property
     def id(self) -> str:
         return "default"
 
-    def handle_request(self, request: ChatRequest, agent_manager: AgentManager) -> None:
+    def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         messages = [
             {"role": "system", "content": CopilotPrompts.chat_prompt()},
         ]
@@ -388,4 +388,4 @@ class GithubCopilotChatAgent(NotebookIntelligenceChatAgent):
 
         messages += [{"role": "user", "content": request.prompt}]
 
-        return completions(messages)
+        response.stream(completions(messages))

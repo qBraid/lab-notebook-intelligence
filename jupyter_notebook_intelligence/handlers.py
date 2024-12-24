@@ -9,11 +9,12 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 import traitlets
-from jupyter_notebook_intelligence.agents import AgentManager, ChatRequest, NotebookIntelligenceChatAgent, NotebookIntelligenceExtension
+from jupyter_notebook_intelligence.extension import ExtensionManager, ChatRequest, ChatParticipant, NotebookIntelligenceExtension
 from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
 import jupyter_notebook_intelligence.github_copilot as github_copilot
+from jupyter_notebook_intelligence.test_extension import TestExtension
 
-agent_manager: AgentManager = None
+extension_manager: ExtensionManager = None
 
 class GetGitHubLoginStatusHandler(APIHandler):
     # The following decorator should be present on all verb methods (head, get, post,
@@ -79,7 +80,7 @@ class PostChatHandler(APIHandler):
         language = data['language']
         filename = data['filename']
 
-        response = agent_manager.handle_chat_request(ChatRequest(prompt))
+        response = extension_manager.handle_chat_request(ChatRequest(prompt=prompt))
         # data = {"message": response["choices"][0]["message"]["content"]}
     
         self.finish(json.dumps(response))
@@ -136,37 +137,12 @@ class PostNewNotebookHandler(APIHandler):
         response = github_copilot.new_notebook(prompt, parent_path, context)
         self.finish(json.dumps(response))
 
-def load_extension(extension_class: str) -> NotebookIntelligenceExtension:
-    import importlib
-    try:
-        parts = extension_class.split(".")
-        module_name = ".".join(parts[0:-1])
-        class_name = parts[-1]
-        ExtensionClass = getattr(importlib.import_module(module_name), class_name)
-        if ExtensionClass is not None and issubclass(ExtensionClass, NotebookIntelligenceExtension):
-            instance = ExtensionClass()
-            return instance
-    except:
-        pass
-
-    return None
-
 def initialize_extensions():
-    global agent_manager
-    default_chat_agent = github_copilot.GithubCopilotChatAgent()
-    agent_manager = AgentManager(default_chat_agent)
-    extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbiextensions")
-    subfolders = [f.path for f in os.scandir(extensions_dir) if f.is_dir()]
-    for extension_dir in list(subfolders):
-        metadata_path = path.join(extension_dir, "extension.json")
-        if path.exists(metadata_path) and path.isfile(metadata_path):
-            with open(metadata_path, 'r') as file:
-                data = json.load(file)
-                class_name = data['class']
-                extension = load_extension(class_name)
-                if extension:
-                    for chat_agent in extension.chat_agents:
-                        agent_manager.register_chat_agent(chat_agent)
+    global extension_manager
+    default_chat_participant = github_copilot.GithubCopilotChatParticipant()
+    extension_manager = ExtensionManager(default_chat_participant)
+    test_extension = TestExtension()
+    test_extension.activate(extension_manager)
 
 def setup_handlers(web_app):
     host_pattern = ".*$"
