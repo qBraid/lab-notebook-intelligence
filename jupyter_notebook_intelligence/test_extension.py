@@ -1,5 +1,5 @@
 from time import sleep
-from .extension import AnchorData, ButtonData, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolResponse
+from .extension import AnchorData, ButtonData, ChatCommand, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolResponse
 
 class TestChatParticipant(ChatParticipant):
     @property
@@ -10,20 +10,36 @@ class TestChatParticipant(ChatParticipant):
     def name(self) -> str:
         return "Test Participant"
 
+    @property
+    def commands(self) -> list[ChatCommand]:
+        return [
+            ChatCommand(name='repeat', description='Repeats the prompt'),
+            ChatCommand(name='test', description='Test command')
+        ]
+
     def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
-        for i in range(5):
-            response.stream(MarkdownData(f"Hello world {i + 1}!\n\n"))
-            sleep(0.2)
-        response.stream(ProgressData("Running..."))
-        sleep(2)
-        response.stream(HTMLData("<b>Bold text</b>"))
-        response.stream(AnchorData("https://www.jupyter.org", "Click me!"))
-        response.stream(ButtonData("Button title", "apputils:notify", {
-                "message": 'Copilot chat button was clicked',
-                "type": 'success',
-                "options": { "autoClose": False }
-        }))
-        response.finish()
+        if (request.command == 'repeat'):
+            response.stream(MarkdownData(f"repeating: {request.prompt}"))
+            response.finish()
+            return
+        elif (request.command == 'test'):
+            for i in range(5):
+                response.stream(MarkdownData(f"Hello world {i + 1}!\n\n"))
+                sleep(0.2)
+            response.stream(ProgressData("Running..."))
+            sleep(2)
+            response.stream(HTMLData("<b>Bold text</b>"))
+            response.stream(AnchorData("https://www.jupyter.org", "Click me!"))
+            response.stream(ButtonData("Button title", "apputils:notify", {
+                    "message": 'Copilot chat button was clicked',
+                    "type": 'success',
+                    "options": { "autoClose": False }
+            }))
+            response.finish()
+            return
+
+        self.handle_chat_with_tools(request, response)
+        
 
 class TestTool(Tool):
     @property

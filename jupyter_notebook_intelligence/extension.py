@@ -89,6 +89,19 @@ class ChatResponse:
 class ToolResponse:
     response: str = ''
 
+@dataclass
+class ChatCommand:
+    name: str = ''
+    description: str = ''
+
+class Tool:
+    @property
+    def id(self) -> str:
+        raise NotImplemented
+
+    def handle_tool_call(self, request: ChatRequest) -> ToolResponse:
+        raise NotImplemented
+
 class ChatParticipant:
     @property
     def id(self) -> str:
@@ -103,19 +116,63 @@ class ChatParticipant:
         raise NotImplemented
     
     @property
-    def commands(self) -> list[str]:
-        raise NotImplemented
+    def commands(self) -> list[ChatCommand]:
+        return []
+    
+    @property
+    def tools(self) -> list[Tool]:
+        return []
 
     def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         raise NotImplemented
     
-class Tool:
-    @property
-    def id(self) -> str:
-        raise NotImplemented
+    def handle_chat_with_tools(self, request: ChatRequest, response: ChatResponse) -> None:
+        tools = self.tools
 
-    def handle_tool_call(self, request: ChatRequest) -> ToolResponse:
-        raise NotImplemented
+        if len(tools) == 0:
+            response.stream(MarkdownData("No tools available"))
+            response.finish()
+            return
+
+        # response.stream(MarkdownData("Called tools"))
+        # response.finish()
+
+        tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "generate_recipe",
+                "description": "Generate a recipe based on the user's input",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "Title of the recipe.",
+                        },
+                        "ingredients": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of ingredients required for the recipe.",
+                        },
+                        "instructions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Step-by-step instructions for the recipe.",
+                        },
+                    },
+                    "required": ["title", "ingredients", "instructions"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+        ]
+
+        messages = [
+            {"role": "user", "content": request.prompt}
+        ]
+
+        request.host.model.completions(messages, tools, response)
 
 class InlineCompletionContextProvider:
     @property
@@ -123,6 +180,10 @@ class InlineCompletionContextProvider:
         raise NotImplemented
 
     def handle_completion_context_request(self, request: ChatRequest, response: ChatResponse) -> None:
+        raise NotImplemented
+
+class AIModel:
+    def completions(self, messages: list[dict], tools: list[dict], response: ChatResponse) -> None:
         raise NotImplemented
 
 class Host:
@@ -133,6 +194,10 @@ class Host:
         raise NotImplemented
     
     def register_inline_completion_context_provider(self, provider: InlineCompletionContextProvider) -> None:
+        raise NotImplemented
+    
+    @property
+    def model(self) -> AIModel:
         raise NotImplemented
 
 
@@ -200,6 +265,10 @@ class ExtensionManager(Host):
     
     def register_inline_completion_context_provider(self, provider: InlineCompletionContextProvider) -> None:
         pass
+
+    @property
+    def model(self) -> AIModel:
+        raise NotImplemented
 
     def get_chat_participant_id(self, request: ChatRequest) -> str:
         prompt = request.prompt.lstrip()
