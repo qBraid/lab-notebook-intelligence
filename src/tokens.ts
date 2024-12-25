@@ -10,3 +10,12 @@ export interface IActiveDocumentInfo {
 export interface IChatCompletionResponseEmitter {
     emit: (response: any) => void;
 }
+
+export enum ResponseStreamDataType {
+    LLMRaw = 'llm-raw',
+    Markdown = 'markdown',
+    HTML = 'html',
+    Button = 'button',
+    Anchor = 'anchor',
+    Progress = 'progress'
+}

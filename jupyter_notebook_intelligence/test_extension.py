@@ -1,19 +1,28 @@
 from time import sleep
-from .extension import MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, Tool, ToolResponse
+from .extension import AnchorData, ButtonData, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolResponse
 
 class TestChatParticipant(ChatParticipant):
     @property
     def id(self) -> str:
-        return "test-participant"
+        return "test"
 
     @property
     def name(self) -> str:
         return "Test Participant"
 
     def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
-        for i in range(30):
-            response.stream(MarkdownData(f"Hello world {i + 1}!"))
-            sleep(1)
+        for i in range(5):
+            response.stream(MarkdownData(f"Hello world {i + 1}!\n\n"))
+            sleep(0.2)
+        response.stream(ProgressData("Running..."))
+        sleep(2)
+        response.stream(HTMLData("<b>Bold text</b>"))
+        response.stream(AnchorData("https://www.jupyter.org", "Click me!"))
+        response.stream(ButtonData("Button title", "apputils:notify", {
+                "message": 'Copilot chat button was clicked',
+                "type": 'success',
+                "options": { "autoClose": False }
+        }))
         response.finish()
 
 class TestTool(Tool):

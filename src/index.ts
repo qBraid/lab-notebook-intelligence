@@ -137,7 +137,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       openFile: (path: string) => {
         docManager.openOrReveal(path);
-      }
+      },
+      getApp():  JupyterFrontEnd<JupyterFrontEnd.IShell, "desktop" | "mobile"> {
+        return app;
+      },
     });
     panel.addWidget(sidebar);
     app.shell.add(panel, 'left', { rank: 1000 });

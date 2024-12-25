@@ -6,6 +6,18 @@ import os
 import sys
 from typing import Dict
 from dataclasses import dataclass
+from enum import StrEnum
+
+class ResponseStreamDataType(StrEnum):
+    LLMRaw = 'llm-raw'
+    Markdown = 'markdown'
+    HTML = 'html'
+    Button = 'button'
+    Anchor = 'anchor'
+    Progress = 'progress'
+
+    def __str__(self) -> str:
+        return self.value
 
 DEFAULT_CHAT_AGENT_ID = 'default'
 
@@ -15,12 +27,59 @@ class ChatRequest:
     command: str = ''
     prompt: str = ''
 
+
 @dataclass
-class MarkdownData:
+class ResponseStreamData:
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        raise NotImplemented
+
+@dataclass
+class MarkdownData(ResponseStreamData):
     content: str = ''
 
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.Markdown
+
+
+@dataclass
+class HTMLData(ResponseStreamData):
+    content: str = ''
+
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.HTML
+
+@dataclass
+class AnchorData(ResponseStreamData):
+    uri: str = ''
+    title: str = ''
+
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.Anchor
+
+@dataclass
+class ButtonData(ResponseStreamData):
+    title: str = ''
+    commandId: str = ''
+    args: Dict[str, str] = None
+
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.Button
+
+@dataclass
+class ProgressData(ResponseStreamData):
+    title: str = ''
+
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.Progress
+
 class ChatResponse:
-    def stream(self, data, finish: bool = False) -> None:
+    def stream(self, data: ResponseStreamData, finish: bool = False) -> None:
         raise NotImplemented
     
     def finish(self) -> None:

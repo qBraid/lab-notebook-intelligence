@@ -11,7 +11,7 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import web, websocket
 import traitlets
-from jupyter_notebook_intelligence.extension import ChatResponse, ExtensionManager, ChatRequest, ChatParticipant, MarkdownData, NotebookIntelligenceExtension
+from jupyter_notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ExtensionManager, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, ResponseStreamData, ResponseStreamDataType
 from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
 import jupyter_notebook_intelligence.github_copilot as github_copilot
 from jupyter_notebook_intelligence.test_extension import TestExtension
@@ -107,8 +107,10 @@ class WebsocketChatResponseEmitter(ChatResponse):
         self.handler = handler
 
     # data: OpenAIResponse, MarkdownResponse, etc.
-    def stream(self, data):
-        if isinstance(data, MarkdownData):
+    def stream(self, data: ResponseStreamData | dict):
+        data_type = ResponseStreamDataType.LLMRaw if type(data) is dict else data.data_type
+
+        if data_type == ResponseStreamDataType.Markdown:
             data = {
                 "choices": [
                     {
@@ -119,17 +121,84 @@ class WebsocketChatResponseEmitter(ChatResponse):
                     }
                 ]
             }
+        elif data_type == ResponseStreamDataType.HTML:
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": data.content
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
+        elif data_type == ResponseStreamDataType.Anchor:
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": {
+                                    "uri": data.uri,
+                                    "title": data.title
+                                }
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
+        elif data_type == ResponseStreamDataType.Button:
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": {
+                                    "title": data.title,
+                                    "commandId": data.commandId,
+                                    "args": data.args if data.args is not None else {}
+                                }
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
+        elif data_type == ResponseStreamDataType.Progress:
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": data.title
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
 
         self.handler.write_message({
-            "messageId": self.messageId,
-            "messageType": "StreamMessage",
+            "id": self.messageId,
+            "type": "StreamMessage",
             "data": data
         })
 
     def finish(self) -> None:
         self.handler.write_message({
-            "messageId": self.messageId,
-            "messageType": "StreamEnd",
+            "id": self.messageId,
+            "type": "StreamEnd",
             "data": {}
         })
 
@@ -143,7 +212,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
     def on_message(self, message):
         data = json.loads(message)
 
-        messageId = data['messageId']
+        messageId = data['id']
         prompt = data['prompt']
         language = data['language']
         filename = data['filename']

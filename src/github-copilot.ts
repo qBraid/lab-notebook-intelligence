@@ -124,11 +124,11 @@ export class GitHubCopilot {
         const messageId = UUID.uuid4();
         this._messageReceived.connect((_, msg) => {
             msg = JSON.parse(msg);
-            if (msg.messageId === messageId) {
+            if (msg.id === messageId) {
                 responseEmitter.emit(msg);
             }
         });
-        this._webSocket.send(JSON.stringify({messageId, prompt, language, filename}));
+        this._webSocket.send(JSON.stringify({id: messageId, prompt, language, filename}));
     }
 
     static async inlineCompletionsRequest(prefix: string, suffix: string, language: string, filename: string) {

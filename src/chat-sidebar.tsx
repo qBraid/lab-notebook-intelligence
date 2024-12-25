@@ -6,7 +6,8 @@ import Markdown from 'react-markdown';
 import { UUID } from '@lumino/coreutils';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
-import { IActiveDocumentInfo, IChatCompletionResponseEmitter } from './tokens';
+import { IActiveDocumentInfo, IChatCompletionResponseEmitter, ResponseStreamDataType } from './tokens';
+import { JupyterFrontEnd } from '@jupyterlab/application';
 
 export enum RunChatCompletionType {
     Chat,
@@ -26,6 +27,7 @@ export interface IRunChatCompletionRequest {
 export interface IChatSidebarOptions {
     getActiveDocumentInfo: () => IActiveDocumentInfo;
     openFile: (path: string) => void;
+    getApp: () =>  JupyterFrontEnd<JupyterFrontEnd.IShell, "desktop" | "mobile">;
 }
 
 export class ChatSidebar extends ReactWidget {
@@ -35,14 +37,21 @@ export class ChatSidebar extends ReactWidget {
         this.node.style.height = '100%';
         this._getActiveDocumentInfo = options.getActiveDocumentInfo;
         this._openFile = options.openFile;
+        this._getApp = options.getApp;
     }
 
     render(): JSX.Element {
-        return <SidebarComponent getActiveDocumentInfo={this._getActiveDocumentInfo} openFile={this._openFile} />;
+        return <SidebarComponent getActiveDocumentInfo={this._getActiveDocumentInfo} openFile={this._openFile} getApp={this._getApp} />;
     }
 
     private _getActiveDocumentInfo: () => IActiveDocumentInfo;
     private _openFile: (path: string) => void;
+    private _getApp: () => JupyterFrontEnd<JupyterFrontEnd.IShell, "desktop" | "mobile">;
+}
+
+interface IChatMessageContent {
+    type: ResponseStreamDataType;
+    content: any;
 }
 
 interface IChatMessage {
@@ -50,7 +59,7 @@ interface IChatMessage {
     parentId?: string;
     date: Date;
     from: string; // 'user' | 'copilot';
-    message: string;
+    contents: IChatMessageContent[];
     notebookLink?: string;
 }
 
@@ -63,6 +72,26 @@ function ChatResponse(props: any) {
         props.openFile(notebookPath);
     };
 
+    const runCommand = (commandId: string, args: any) => {
+        props.getApp().commands.execute(commandId, args);
+    };
+
+    // group messages by type
+    const groupedContents: IChatMessageContent[] = [];
+    let lastItemType: ResponseStreamDataType | undefined;
+
+    for (let i = 0; i < msg.contents.length; i++) {
+        const item = msg.contents[i];
+        if (item.type === lastItemType &&
+            (lastItemType === ResponseStreamDataType.Markdown || lastItemType === ResponseStreamDataType.HTML)) {
+            const lastItem = groupedContents[groupedContents.length - 1];
+            lastItem.content += item.content;
+        } else {
+            groupedContents.push(structuredClone(item));
+            lastItemType = item.type;
+        }
+    }
+
     return (
         <div className={`chat-message chat-message-${msg.from}`} >
             <div className="chat-message-header">
@@ -70,7 +99,23 @@ function ChatResponse(props: any) {
                 <div className="chat-message-timestamp">{timestamp}</div>
             </div>
             <div className="chat-message-content">
-                <Markdown>{msg.message}</Markdown>
+                {groupedContents.map((item, index) => {
+                    switch (item.type) {
+                        case ResponseStreamDataType.Markdown:
+                            return <Markdown key={`key-${index}`}>{item.content}</Markdown>;
+                        case ResponseStreamDataType.HTML:
+                            return <div key={`key-${index}`} dangerouslySetInnerHTML={{__html: item.content}} />;
+                        case ResponseStreamDataType.Button:
+                            return <button key={`key-${index}`} onClick={() => runCommand(item.content.commandId, item.content.args)}>{item.content.title}</button>;
+                        case ResponseStreamDataType.Anchor:
+                            return <a key={`key-${index}`} href={item.content.uri} target="_blank">{item.content.title}</a>;
+                        case ResponseStreamDataType.Progress:
+                            // show only if no more message available
+                            return (index === (groupedContents.length - 1)) ? <div key={`key-${index}`}>&#x2713; {item.content}</div> : null;
+                    }
+                    return null;
+                })}
+
                 {msg.notebookLink && (
                     <a className="copilot-generated-notebook-link" data-ref={msg.notebookLink} onClick={openNotebook}>open notebook</a>
                 )}
@@ -155,7 +200,10 @@ function SidebarComponent(props: any) {
                     id: UUID.uuid4(),
                     date: new Date(),
                     from: "user",
-                    message: prompt
+                    contents: [{
+                        type: ResponseStreamDataType.Markdown,
+                        content: prompt
+                    }],
                 }
             ];
             setChatMessages(newList);
@@ -184,7 +232,7 @@ function SidebarComponent(props: any) {
             const extractedPrompt = isNewNotebook ? prompt.substring(newNotebookPrefix.length) : prompt;
             const serverRoot = activeDocInfo.serverRoot!;
             const parentDirectory = activeDocInfo.parentDirectory!;
-            let responseMessageAll = '';
+            const contents: IChatMessageContent[] = [];
 
             submitCompletionRequest({
                 type: isNewNotebook ? RunChatCompletionType.NewNotebook : RunChatCompletionType.Chat,
@@ -207,13 +255,28 @@ function SidebarComponent(props: any) {
                             responseMessage = `Failed to generate notebook. Please try again.`;
                         }
                     } else {
-                        if (response.messageType === 'StreamMessage') {
-                            responseMessage = response.data["choices"]?.[0]?.["delta"]?.["content"];
-                            if (!responseMessage) {
+                        if (response.type === 'StreamMessage') {
+                            const delta = response.data["choices"]?.[0]?.["delta"];
+                            if (!delta) {
                                 return;
                             }
-                            responseMessageAll += responseMessage;
-                        } else if (response.messageType === 'StreamEnd') {
+                            if (delta["nbiContent"]) {
+                                const nbiContent = delta["nbiContent"];
+                                contents.push({
+                                    type: nbiContent.type,
+                                    content: nbiContent.content
+                                });
+                            } else {
+                                responseMessage = response.data["choices"]?.[0]?.["delta"]?.["content"];
+                                if (!responseMessage) {
+                                    return;
+                                }
+                                contents.push({
+                                    type: ResponseStreamDataType.Markdown,
+                                    content: responseMessage
+                                });
+                            }
+                        } else if (response.type === 'StreamEnd') {
                             setCopilotRequestInProgress(false);
                         }
                     }
@@ -223,7 +286,7 @@ function SidebarComponent(props: any) {
                             id: UUID.uuid4(),
                             date: new Date(),
                             from: 'copilot',
-                            message: responseMessageAll,
+                            contents: contents,
                             notebookLink: notebookPath
                         }
                     ]);
@@ -266,7 +329,10 @@ function SidebarComponent(props: any) {
                 id: UUID.uuid4(),
                 date: new Date(),
                 from: 'user',
-                message
+                contents: [{
+                    type: ResponseStreamDataType.Markdown,
+                    content: message
+                }]
             }
         ];
         setChatMessages(newList);
@@ -280,7 +346,10 @@ function SidebarComponent(props: any) {
                         id: UUID.uuid4(),
                         date: new Date(),
                         from: 'copilot',
-                        message: response.data.message
+                        contents: [{
+                            type: ResponseStreamDataType.Markdown,
+                            content: response.data.message
+                        }]
                     }
                 ]);
                 setCopilotRequestInProgress(false);
@@ -337,7 +406,7 @@ By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/r
                 ) : (
                 <div className="sidebar-messages">
                     {chatMessages.map((msg, index) => (
-                        <ChatResponse key={`key-${index}`} message={msg} openFile={props.openFile} />
+                        <ChatResponse key={`key-${index}`} message={msg} openFile={props.openFile} getApp={props.getApp} />
                     ))}
                     <div className='copilot-progress-row' style={{display: `${copilotRequestInProgress ? 'flex' : 'none'}`}}>
                         <div className='copilot-progress'></div>
