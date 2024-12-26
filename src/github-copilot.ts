@@ -5,7 +5,7 @@ import { requestAPI } from "./handler";
 import { URLExt } from "@jupyterlab/coreutils";
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IChatCompletionResponseEmitter } from "./tokens";
+import { IChatCompletionResponseEmitter, RequestDataType } from "./tokens";
 
 const LOGIN_STATUS_UPDATE_INTERVAL = 3000;
 
@@ -128,7 +128,11 @@ export class GitHubCopilot {
                 responseEmitter.emit(msg);
             }
         });
-        this._webSocket.send(JSON.stringify({id: messageId, prompt, language, filename}));
+        this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatRequest, data: { prompt, language, filename }}));
+    }
+
+    static async sendChatUserInput(messageId: string, data: any) {
+        this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatUserInput, data}));
     }
 
     static async inlineCompletionsRequest(prefix: string, suffix: string, language: string, filename: string) {

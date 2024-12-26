@@ -245,8 +245,7 @@ def inline_completions(prefix, suffix, language, filename, context: ContextRespo
     return result
 
 def completions(messages, tools = None, response: ChatResponse = None):
-    global github_auth
-    token = github_auth['token']
+    stream = response is not None
 
     try:
         request = requests.post(
@@ -261,18 +260,23 @@ def completions(messages, tools = None, response: ChatResponse = None):
                 'n': 1,
                 'stop': ['<END>'],
                 'nwo': 'NotebookIntelligence',
-                'stream': True
+                'stream': stream
             },
-            stream = True
+            stream = stream
         )
-        client = sseclient.SSEClient(request)
-        for event in client.events():
-            if event.data == '[DONE]':
-                response.finish()
-            else:
-                response.stream(json.loads(event.data))
+
+        if stream:
+            client = sseclient.SSEClient(request)
+            for event in client.events():
+                if event.data == '[DONE]':
+                    response.finish()
+                else:
+                    response.stream(json.loads(event.data))
+            return
+        else:
+            return request.json()
     except requests.exceptions.ConnectionError:
-        return ''
+        raise Exception("Connection error")
 
 def chat(prompt, language, filename, context: ContextResponse):
     messages = [
@@ -383,7 +387,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
     def id(self) -> str:
         return "default"
 
-    def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
+    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         messages = [
             {"role": "system", "content": CopilotPrompts.chat_prompt()},
         ]

@@ -1,5 +1,5 @@
 from time import sleep
-from .extension import AnchorData, ButtonData, ChatCommand, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolResponse
+from .extension import AnchorData, ButtonData, ChatCommand, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolPreInvokeResponse
 
 class TestChatParticipant(ChatParticipant):
     @property
@@ -16,8 +16,12 @@ class TestChatParticipant(ChatParticipant):
             ChatCommand(name='repeat', description='Repeats the prompt'),
             ChatCommand(name='test', description='Test command')
         ]
+    
+    @property
+    def tools(self) -> list[Tool]:
+        return [ConvertFahrenheitToCelciusTool(), ConvertCelciusToKelvinTool()]
 
-    def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
+    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         if (request.command == 'repeat'):
             response.stream(MarkdownData(f"repeating: {request.prompt}"))
             response.finish()
@@ -38,16 +42,106 @@ class TestChatParticipant(ChatParticipant):
             response.finish()
             return
 
-        self.handle_chat_with_tools(request, response)
+        await self.handle_chat_request_with_tools(request, response)
         
 
-class TestTool(Tool):
+class ConvertFahrenheitToCelciusTool(Tool):
     @property
-    def id(self) -> str:
-        return "test-tool"
+    def name(self) -> str:
+        return "convert_fahnrenheit_to_celcius"
 
-    def handle_tool_call(self, request: ChatRequest) -> ToolResponse:
-        return ToolResponse("Hello from tool!")
+    @property
+    def title(self) -> str:
+        return "Convert Fahrenheit to Celcius Tool"
+    
+    @property
+    def tags(self) -> list[str]:
+        return ["test-participant-tool"]
+    
+    @property
+    def description(self) -> str:
+        return "This is a tool that converts fahrenheit to celcius"
+    
+    @property
+    def schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "temperature": {
+                            "type": "number",
+                            "description": "Temperature in fahrenheit",
+                        }
+                    },
+                    "required": ["temperature"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> ToolPreInvokeResponse | None:
+        return ToolPreInvokeResponse(
+            message="Converting fahrenheit to celcius",
+            confirmationTitle="Confirm",
+            confirmationMessage="Are you sure you want to convert the temperature?"
+        )
+
+    def handle_tool_call(self, request: ChatRequest, tool_args: dict) -> dict:
+        temperature = tool_args.get('temperature')
+        return {"celcius": (temperature - 32) * 5/9}
+
+class ConvertCelciusToKelvinTool(Tool):
+    @property
+    def name(self) -> str:
+        return "convert_celcius_to_kelvin"
+
+    @property
+    def title(self) -> str:
+        return "Convert Celcius to Kelvin Tool"
+    
+    @property
+    def tags(self) -> list[str]:
+        return ["test-participant-tool"]
+    
+    @property
+    def description(self) -> str:
+        return "This is a tool that converts celcius to kelvin"
+    
+    @property
+    def schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "temperature": {
+                            "type": "number",
+                            "description": "Temperature in celcius",
+                        }
+                    },
+                    "required": ["temperature"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> ToolPreInvokeResponse | None:
+        return ToolPreInvokeResponse(
+            message="Converting celcius to kelvin",
+            # confirmationTitle="Confirm",
+            # confirmationMessage="Are you sure you want to convert the temperature?"
+        )
+
+    def handle_tool_call(self, request: ChatRequest, tool_args: dict) -> dict:
+        temperature = tool_args.get('temperature')
+        return {"kelvin": temperature + 273.15}
 
 class TestInlineCompletionContextProvider:
     @property
@@ -61,7 +155,7 @@ class TestInlineCompletionContextProvider:
 class TestExtension(NotebookIntelligenceExtension):
     def __init__(self):
         self.participant = TestChatParticipant()
-        self.tool = TestTool()
+        self.tool = ConvertFahrenheitToCelciusTool()
         self.inline_completion_context_provider = TestInlineCompletionContextProvider()
 
     @property

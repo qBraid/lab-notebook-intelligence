@@ -112,6 +112,12 @@ function ChatResponse(props: any) {
                         case ResponseStreamDataType.Progress:
                             // show only if no more message available
                             return (index === (groupedContents.length - 1)) ? <div key={`key-${index}`}>&#x2713; {item.content}</div> : null;
+                        case ResponseStreamDataType.Confirmation:
+                            return <div key={`key-${index}`}>
+                                    <div>{item.content.title}</div>
+                                    <button key={`key-${index}`} onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.confirmArgs)}>{item.content.confirmButtonTitle}</button>
+                                    <button key={`key-${index}`} onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.cancelArgs)}>Cancel</button>
+                                </div>;
                     }
                     return null;
                 })}

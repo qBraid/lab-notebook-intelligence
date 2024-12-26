@@ -32,6 +32,7 @@ import { GitHubCopilot } from './github-copilot';
 import { IActiveDocumentInfo } from './tokens';
 
 namespace CommandIDs {
+  export const chatuserInput = 'notebook-intelligence:chat_user_input';
   export const explainThis = 'notebook-intelligence:explain-this';
   export const fixThis = 'notebook-intelligence:fix-this';
 }
@@ -145,6 +146,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
     panel.addWidget(sidebar);
     app.shell.add(panel, 'left', { rank: 1000 });
     app.shell.activateById(panel.id);
+
+    app.commands.addCommand(CommandIDs.chatuserInput, {
+      execute: (args) => {
+        // @ts-ignore
+        GitHubCopilot.sendChatUserInput(args.id, args.data);
+      }
+    });
 
     app.commands.addCommand(CommandIDs.explainThis, {
       execute: (args) => {

@@ -1,5 +1,6 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import asyncio
 import json
 from os import path
 import os
@@ -11,8 +12,9 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import web, websocket
 import traitlets
-from jupyter_notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ExtensionManager, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, ResponseStreamData, ResponseStreamDataType
+from jupyter_notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, RequestDataType, ResponseStreamData, ResponseStreamDataType
 from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
+from jupyter_notebook_intelligence.extension_manager import ExtensionManager
 import jupyter_notebook_intelligence.github_copilot as github_copilot
 from jupyter_notebook_intelligence.test_extension import TestExtension
 
@@ -103,8 +105,13 @@ class PostChatHandler(APIHandler):
 
 class WebsocketChatResponseEmitter(ChatResponse):
     def __init__(self, messageId, handler):
+        super().__init__()
         self.messageId = messageId
         self.handler = handler
+
+    @property
+    def message_id(self) -> str:
+        return self.messageId
 
     # data: OpenAIResponse, MarkdownResponse, etc.
     def stream(self, data: ResponseStreamData | dict):
@@ -188,6 +195,26 @@ class WebsocketChatResponseEmitter(ChatResponse):
                     }
                 ]
             }
+        elif data_type == ResponseStreamDataType.Confirmation:
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": {
+                                    "title": data.title,
+                                    "confirmButtonTitle": data.confirmButtonTitle,
+                                    "confirmArgs": data.confirmArgs if data.confirmArgs is not None else {},
+                                    "cancelArgs": data.cancelArgs if data.cancelArgs is not None else {}
+                                }
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
 
         self.handler.write_message({
             "id": self.messageId,
@@ -205,21 +232,30 @@ class WebsocketChatResponseEmitter(ChatResponse):
 class WebsocketChatHandler(websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
+        self._responseEmitters = {}
 
     def open(self):
         print("WebSocket opened")
 
     def on_message(self, message):
-        data = json.loads(message)
+        msg = json.loads(message)
 
-        messageId = data['id']
-        prompt = data['prompt']
-        language = data['language']
-        filename = data['filename']
-
-        responseEmitter = WebsocketChatResponseEmitter(messageId, self)
-        extension_manager.handle_chat_request(ChatRequest(prompt=prompt), responseEmitter)
-
+        messageId = msg['id']
+        messageType = msg['type']
+        if messageType == RequestDataType.ChatRequest:
+            data = msg['data']
+            prompt = data['prompt']
+            language = data['language']
+            filename = data['filename']
+            responseEmitter = WebsocketChatResponseEmitter(messageId, self)
+            self._responseEmitters[messageId] = responseEmitter
+            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt), responseEmitter))
+        elif messageType == RequestDataType.ChatUserInput:
+            responseEmitter = self._responseEmitters.get(messageId)
+            if responseEmitter is None:
+                return
+            responseEmitter.on_user_input(msg['data'])
+ 
     def on_close(self):
         print("WebSocket closed")
 
