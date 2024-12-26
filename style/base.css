@@ -142,3 +142,9 @@
 .user-code-span:active {
     color: var(--jp-ui-font-color2);
 }
+
+.chat-confirmation-form {
+    border: 1px solid var(--jp-border-color1);
+    padding: 5px;
+    line-height: 20px;
+}

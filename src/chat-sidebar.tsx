@@ -50,6 +50,7 @@ export class ChatSidebar extends ReactWidget {
 }
 
 interface IChatMessageContent {
+    id: string;
     type: ResponseStreamDataType;
     content: any;
 }
@@ -63,6 +64,8 @@ interface IChatMessage {
     notebookLink?: string;
 }
 
+const answeredForms = new Map<string, string>();
+
 function ChatResponse(props: any) {
     const msg: IChatMessage = props.message;
     const timestamp = `${msg.date.getHours()}:${msg.date.getMinutes()}:${msg.date.getSeconds()}`;
@@ -70,6 +73,13 @@ function ChatResponse(props: any) {
     const openNotebook = (event: any) => {
         const notebookPath = event.target.dataset['ref'];
         props.openFile(notebookPath);
+    };
+
+    const markFormConfirmed = (messageId: string) => {
+        answeredForms.set(messageId, 'confirmed');
+    };
+    const markFormCanceled = (messageId: string) => {
+        answeredForms.set(messageId, 'canceled');
     };
 
     const runCommand = (commandId: string, args: any) => {
@@ -113,11 +123,19 @@ function ChatResponse(props: any) {
                             // show only if no more message available
                             return (index === (groupedContents.length - 1)) ? <div key={`key-${index}`}>&#x2713; {item.content}</div> : null;
                         case ResponseStreamDataType.Confirmation:
-                            return <div key={`key-${index}`}>
+                            return answeredForms.get(item.id) === 'confirmed' ? null :
+                                answeredForms.get(item.id) === 'canceled' ? <div>&#10006; Canceled</div> :
+                                <div className='chat-confirmation-form' key={`key-${index}`}>
                                     {item.content.title ? <div><b>{item.content.title}</b></div> : null}
                                     {item.content.message ? <div>{item.content.message}</div> : null}
-                                    <button onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.confirmArgs)}>Proceed</button>
-                                    <button onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.cancelArgs)}>Cancel</button>
+                                    <button onClick={() => {
+                                        markFormConfirmed(item.id);
+                                        runCommand('notebook-intelligence:chat_user_input', item.content.confirmArgs)
+                                        }}>Proceed</button>
+                                    <button onClick={() => {
+                                        markFormCanceled(item.id);
+                                        runCommand('notebook-intelligence:chat_user_input', item.content.cancelArgs);
+                                        }}>Cancel</button>
                                 </div>;
                     }
                     return null;
@@ -201,13 +219,15 @@ function SidebarComponent(props: any) {
 
     const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.shiftKey && event.key == 'Enter') {
+            const messageId = UUID.uuid4();
             const newList = [
                 ...chatMessages,
                 {
-                    id: UUID.uuid4(),
+                    id: messageId,
                     date: new Date(),
                     from: "user",
                     contents: [{
+                        id: messageId,
                         type: ResponseStreamDataType.Markdown,
                         content: prompt
                     }],
@@ -270,6 +290,7 @@ function SidebarComponent(props: any) {
                             if (delta["nbiContent"]) {
                                 const nbiContent = delta["nbiContent"];
                                 contents.push({
+                                    id: response.id,
                                     type: nbiContent.type,
                                     content: nbiContent.content
                                 });
@@ -279,6 +300,7 @@ function SidebarComponent(props: any) {
                                     return;
                                 }
                                 contents.push({
+                                    id: response.id,
                                     type: ResponseStreamDataType.Markdown,
                                     content: responseMessage
                                 });
@@ -287,10 +309,11 @@ function SidebarComponent(props: any) {
                             setCopilotRequestInProgress(false);
                         }
                     }
+                    const messageId = UUID.uuid4();
                     setChatMessages([
                         ...newList,
                         {
-                            id: UUID.uuid4(),
+                            id: messageId,
                             date: new Date(),
                             from: 'copilot',
                             contents: contents,
@@ -330,13 +353,15 @@ function SidebarComponent(props: any) {
         const message = request.type === RunChatCompletionType.ExplainThis ?
             `Explain this code:\n\`\`\`\n${request.content}\n\`\`\`\n` :
             `Fix this code:\n\`\`\`\n${request.content}\n\`\`\`\n`;
+        const messageId = UUID.uuid4();
         const newList = [
             ...chatMessages,
             {
-                id: UUID.uuid4(),
+                id: messageId,
                 date: new Date(),
                 from: 'user',
                 contents: [{
+                    id: messageId,
                     type: ResponseStreamDataType.Markdown,
                     content: message
                 }]
@@ -347,13 +372,15 @@ function SidebarComponent(props: any) {
         setCopilotRequestInProgress(true);
         submitCompletionRequest(request, {
             emit: (response) => {
+                const messageId = UUID.uuid4();
                 setChatMessages([
                     ...newList,
                     {
-                        id: UUID.uuid4(),
+                        id: messageId,
                         date: new Date(),
                         from: 'copilot',
                         contents: [{
+                            id: messageId,
                             type: ResponseStreamDataType.Markdown,
                             content: response.data.message
                         }]
