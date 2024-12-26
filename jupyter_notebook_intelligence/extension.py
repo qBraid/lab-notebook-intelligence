@@ -85,7 +85,7 @@ class ProgressData(ResponseStreamData):
 @dataclass
 class ConfirmationData(ResponseStreamData):
     title: str = ''
-    confirmButtonTitle: str = 'Proceed'
+    message: str = ''
     confirmArgs: dict = None
     cancelArgs: dict = None
 
@@ -209,8 +209,6 @@ class ChatParticipant:
         ]
         openai_tools = [tool.schema for tool in tools]
 
-        print(f"OpenAI tools: {openai_tools}")
-
 
         tool_call_rounds = []
 
@@ -239,8 +237,8 @@ class ChatParticipant:
                         response.stream(MarkdownData(f"&#x2713; {tool_pre_invoke_response.message}..."))
                     if tool_pre_invoke_response.confirmationMessage is not None:
                         response.stream(ConfirmationData(
-                            tool_pre_invoke_response.confirmationMessage,
-                            tool_pre_invoke_response.confirmationTitle if tool_pre_invoke_response.confirmationTitle != '' else 'Proceed',
+                            title=tool_pre_invoke_response.confirmationTitle,
+                            message=tool_pre_invoke_response.confirmationMessage,
                             confirmArgs={"id": response.message_id, "data": { "callback_id": tool_call['id'], "data": {"confirmed": True}}},
                             cancelArgs={"id": response.message_id, "data": { "callback_id": tool_call['id'], "data": {"confirmed": False}}},
                         ))

@@ -114,9 +114,10 @@ function ChatResponse(props: any) {
                             return (index === (groupedContents.length - 1)) ? <div key={`key-${index}`}>&#x2713; {item.content}</div> : null;
                         case ResponseStreamDataType.Confirmation:
                             return <div key={`key-${index}`}>
-                                    <div>{item.content.title}</div>
-                                    <button key={`key-${index}`} onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.confirmArgs)}>{item.content.confirmButtonTitle}</button>
-                                    <button key={`key-${index}`} onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.cancelArgs)}>Cancel</button>
+                                    {item.content.title ? <div><b>{item.content.title}</b></div> : null}
+                                    {item.content.message ? <div>{item.content.message}</div> : null}
+                                    <button onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.confirmArgs)}>Proceed</button>
+                                    <button onClick={() => runCommand('notebook-intelligence:chat_user_input', item.content.cancelArgs)}>Cancel</button>
                                 </div>;
                     }
                     return null;

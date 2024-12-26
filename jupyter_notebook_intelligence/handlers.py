@@ -204,7 +204,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
                                 "type": data_type,
                                 "content": {
                                     "title": data.title,
-                                    "confirmButtonTitle": data.confirmButtonTitle,
+                                    "message": data.message,
                                     "confirmArgs": data.confirmArgs if data.confirmArgs is not None else {},
                                     "cancelArgs": data.cancelArgs if data.cancelArgs is not None else {}
                                 }

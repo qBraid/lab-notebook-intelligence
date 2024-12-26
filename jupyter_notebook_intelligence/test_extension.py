@@ -86,7 +86,7 @@ class ConvertFahrenheitToCelciusTool(Tool):
     def pre_invoke(self, request: ChatRequest, tool_args: dict) -> ToolPreInvokeResponse | None:
         return ToolPreInvokeResponse(
             message="Converting fahrenheit to celcius",
-            confirmationTitle="Confirm",
+            confirmationTitle="Confirm conversion",
             confirmationMessage="Are you sure you want to convert the temperature?"
         )
 
