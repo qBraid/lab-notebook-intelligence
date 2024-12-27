@@ -8,6 +8,7 @@ import { UUID } from '@lumino/coreutils';
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 import { IActiveDocumentInfo, IChatCompletionResponseEmitter, ResponseStreamDataType } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
+import { requestAPI } from "./handler";
 
 export enum RunChatCompletionType {
     Chat,
@@ -195,6 +196,37 @@ function SidebarComponent(props: any) {
     const [deviceActivationURL, setDeviceActivationURL] = useState('');
     const [deviceActivationCode, setDeviceActivationCode] = useState('');
     const [copilotRequestInProgress, setCopilotRequestInProgress] = useState(false);
+    const [showPopover, setShowPopover] = useState(false);
+    const [originalPrefixes, setOriginalPrefixes] = useState<string[]>([]);
+    const [prefixSuggestions, setPrefixSuggestions] = useState<string[]>([]);
+    const promptInputRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        requestAPI<any>('capabilities', {method: 'GET'})
+            .then(data => {
+                console.log(data);
+                const prefixes: string[] = [];
+                for (const participant of data.chat_participants) {
+                    const id = participant.id;
+                    const commands = participant.commands;
+                    const participantPrefix = id === 'default' ? '' : `@${id}`;
+                    if (participantPrefix !== '') {
+                        prefixes.push(participantPrefix);
+                    }
+                    let commandPrefix = participantPrefix === '' ? '' : `${participantPrefix} `;
+                    for (const command of commands) {
+                        prefixes.push(`${commandPrefix}/${command}`);
+                    }
+                }
+                setOriginalPrefixes(prefixes);
+                setPrefixSuggestions(prefixes);
+            })
+            .catch(reason => {
+                console.error(
+                `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+                );
+            });
+    }, []);
 
     useEffect(() => {
         const fetchData = () => {
@@ -214,12 +246,46 @@ function SidebarComponent(props: any) {
     }, [loginClickCount]);
 
     const onPromptChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-        setPrompt(event.target.value);
+        const newPrompt = event.target.value;
+        setPrompt(newPrompt);
+        const trimmedPrompt = newPrompt.trimStart();
+        if (trimmedPrompt === '@' || trimmedPrompt === '/') {
+            setShowPopover(true);
+            filterPrefixSuggestions(trimmedPrompt);
+        } else if (trimmedPrompt.startsWith('@') || trimmedPrompt.startsWith('/') || trimmedPrompt === '') {
+            filterPrefixSuggestions(trimmedPrompt);
+        } else {
+            setShowPopover(false);
+        }
     };
 
-    const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
-        if (event.shiftKey && event.key == 'Enter') {
-            const messageId = UUID.uuid4();
+    const prefixSuggestionSelected = (event: any) => {
+        const prefix = event.target.dataset['value'];
+
+        if (prefix.includes(prompt)) {
+            setPrompt(`${prefix} `);
+        } else {
+            setPrompt(`${prefix} ${prompt} `);
+        }
+        setShowPopover(false);
+        promptInputRef.current?.focus();
+    };
+
+    const handleUserInputSubmit = async () => {
+        const promptPrefixParts = [];
+        const promptParts = prompt.split(' ');
+        if (promptParts.length > 1) {
+            for (let i = 0; i < Math.min(promptParts.length, 2); i++) {
+                const part = promptParts[i];
+                if (part.startsWith('@') || part.startsWith('/')) {
+                    promptPrefixParts.push(part);
+                }
+            }
+        }
+
+        const promptPrefix = promptPrefixParts.length > 0 ? (promptPrefixParts.join(' ') + ' ') : '';
+
+        const messageId = UUID.uuid4();
             const newList = [
                 ...chatMessages,
                 {
@@ -238,14 +304,12 @@ function SidebarComponent(props: any) {
             if (prompt.startsWith('/clear')) {
                 setChatMessages([]);
                 setPrompt('');
-                event.stopPropagation();
-                event.preventDefault();
+                resetPrefixSuggestions();
                 return;
             } else if (prompt.startsWith('/logout')) {
                 setChatMessages([]);
                 setPrompt('');
-                event.stopPropagation();
-                event.preventDefault();
+                resetPrefixSuggestions();
                 await GitHubCopilot.logoutFromGitHub();
                 setLoginClickCount(loginClickCount + 1);
                 return;
@@ -322,9 +386,33 @@ function SidebarComponent(props: any) {
                     ]);
                 }
             });
-            setPrompt('');
+            setPrompt(promptPrefix);
+            filterPrefixSuggestions(promptPrefix);
+            
+    };
+
+    const filterPrefixSuggestions = (prmpt: string) => {
+        const userInput = prmpt.trimStart();
+        if (userInput === '') {
+            setPrefixSuggestions(originalPrefixes);
+        } else {
+            setPrefixSuggestions(originalPrefixes.filter(prefix => prefix.includes(userInput)));
+        }
+    };
+
+    const resetPrefixSuggestions = () => {
+        setPrefixSuggestions(originalPrefixes);
+    };
+
+    const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (event.key == 'Enter') {
             event.stopPropagation();
             event.preventDefault();
+            handleUserInputSubmit();
+        } else if (event.key == 'Escape') {
+            event.stopPropagation();
+            event.preventDefault();
+            setShowPopover(false);
         }
     };
 
@@ -449,8 +537,23 @@ By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/r
                 </div>
             )}
             {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
-                <div className="sidebar-footer">
-                    <textarea rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' value={prompt} />
+                <div className="sidebar-user-input">
+                    <textarea ref={promptInputRef} rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' value={prompt} />
+                    <div className="user-input-context-row">
+                    {/* <div>Context</div> */}
+                    </div>
+                    <div className="user-input-footer">
+                        <div><a href='javascript:void(0)' onClick={() => setShowPopover(true)} title='Select chat participant'>@</a></div>
+                        <div style={{flexGrow: 1}}></div>
+                        <div><button onClick={() => handleUserInputSubmit()} disabled={prompt.length == 0}>Send</button></div>
+                    </div>
+                    {showPopover && prefixSuggestions.length > 0 && (
+                    <div className="user-input-autocomplete">
+                        {prefixSuggestions.map((prefix, index) => (
+                            <div key={`key-${index}`} className='user-input-autocomplete-item' data-value={prefix} onClick={(event) => prefixSuggestionSelected(event)}>{prefix}</div>
+                        ))}
+                    </div>
+                  )}
                 </div>
             )}
             

@@ -9,7 +9,7 @@ from jupyter_notebook_intelligence.extension import AIModel, ChatParticipant, Ch
 from jupyter_notebook_intelligence.github_copilot import completions
 
 
-DEFAULT_CHAT_AGENT_ID = 'default'
+DEFAULT_CHAT_PARTICIPANT_ID = 'default'
 
 class GitHubAIModel(AIModel):
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None) -> None:
@@ -79,7 +79,7 @@ class ExtensionManager(Host):
             except:
                 pass
         
-        return DEFAULT_CHAT_AGENT_ID
+        return DEFAULT_CHAT_PARTICIPANT_ID
 
     def get_chat_participant(self, request: ChatRequest) -> ChatParticipant:
         participant_id = self.get_chat_participant_id(request)

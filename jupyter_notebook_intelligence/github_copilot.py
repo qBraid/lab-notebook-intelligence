@@ -7,7 +7,7 @@ from pathlib import Path
 import uuid
 import secrets
 import sseclient
-from jupyter_notebook_intelligence.extension import ChatResponse, ChatRequest, ChatParticipant
+from jupyter_notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant
 from jupyter_notebook_intelligence.config import ContextResponse
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
@@ -386,6 +386,13 @@ class GithubCopilotChatParticipant(ChatParticipant):
     @property
     def id(self) -> str:
         return "default"
+    
+    @property
+    def commands(self) -> list[ChatCommand]:
+        return [
+            ChatCommand(name='clear', description='Clears chat history'),
+            ChatCommand(name='logout', description='Logs out from GitHub Copilot')
+        ]
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         messages = [

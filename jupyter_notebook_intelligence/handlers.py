@@ -20,6 +20,20 @@ from jupyter_notebook_intelligence.test_extension import TestExtension
 
 extension_manager: ExtensionManager = None
 
+class GetCapabilitiesHandler(APIHandler):
+    @tornado.web.authenticated
+    def get(self):
+        response = {
+            "chat_participants": []
+        }
+        for participant_id in extension_manager.chat_participants:
+            participant = extension_manager.chat_participants[participant_id]
+            response["chat_participants"].append({
+                "id": participant.id,
+                "commands": [command.name for command in participant.commands]
+            })
+        self.finish(json.dumps(response))
+
 class GetGitHubLoginStatusHandler(APIHandler):
     # The following decorator should be present on all verb methods (head, get, post,
     # patch, put, delete, options) to ensure only authorized user can request the
@@ -308,6 +322,7 @@ def setup_handlers(web_app):
     host_pattern = ".*$"
 
     base_url = web_app.settings["base_url"]
+    route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
     route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
     route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
     route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
@@ -318,6 +333,7 @@ def setup_handlers(web_app):
     route_pattern_fix_this = url_path_join(base_url, "notebook-intelligence", "fix-this")
     route_pattern_new_notebook = url_path_join(base_url, "notebook-intelligence", "new-notebook")
     handlers = [
+        (route_pattern_capabilities, GetCapabilitiesHandler),
         (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
         (route_pattern_github_login, PostGitHubLoginHandler),
         (route_pattern_github_logout, GetGitHubLogoutHandler),
