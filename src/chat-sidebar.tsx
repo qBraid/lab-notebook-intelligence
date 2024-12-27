@@ -278,6 +278,7 @@ function SidebarComponent(props: any) {
     const handleUserInputSubmit = async () => {
         setPromptHistoryIndex(promptHistory.length + 1);
         setPromptHistory([...promptHistory, prompt]);
+        setShowPopover(false);
 
         const promptPrefixParts = [];
         const promptParts = prompt.split(' ');
@@ -312,14 +313,14 @@ function SidebarComponent(props: any) {
                 setChatMessages([]);
                 setPrompt('');
                 resetPrefixSuggestions();
-                promptHistory.length = 0;
+                setPromptHistory([]);
                 setPromptHistoryIndex(0);
                 return;
             } else if (prompt.startsWith('/logout')) {
                 setChatMessages([]);
                 setPrompt('');
                 resetPrefixSuggestions();
-                promptHistory.length = 0;
+                setPromptHistory([]);
                 setPromptHistoryIndex(0);
                 await GitHubCopilot.logoutFromGitHub();
                 setLoginClickCount(loginClickCount + 1);
