@@ -190,6 +190,7 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest, respo
 function SidebarComponent(props: any) {
     const [chatMessages, setChatMessages] = useState<IChatMessage[]>([]);
     const [prompt, setPrompt] = useState<string>('');
+    const [draftPrompt, setDraftPrompt] = useState<string>('');
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
     const [loginClickCount, setLoginClickCount] = useState(0);
@@ -200,6 +201,9 @@ function SidebarComponent(props: any) {
     const [originalPrefixes, setOriginalPrefixes] = useState<string[]>([]);
     const [prefixSuggestions, setPrefixSuggestions] = useState<string[]>([]);
     const promptInputRef = useRef<HTMLTextAreaElement>(null);
+    const [promptHistory, setPromptHistory] = useState<string[]>([]);
+    // position on prompt history stack
+    const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
 
     useEffect(() => {
         requestAPI<any>('capabilities', {method: 'GET'})
@@ -272,6 +276,9 @@ function SidebarComponent(props: any) {
     };
 
     const handleUserInputSubmit = async () => {
+        setPromptHistoryIndex(promptHistory.length + 1);
+        setPromptHistory([...promptHistory, prompt]);
+
         const promptPrefixParts = [];
         const promptParts = prompt.split(' ');
         if (promptParts.length > 1) {
@@ -305,11 +312,15 @@ function SidebarComponent(props: any) {
                 setChatMessages([]);
                 setPrompt('');
                 resetPrefixSuggestions();
+                promptHistory.length = 0;
+                setPromptHistoryIndex(0);
                 return;
             } else if (prompt.startsWith('/logout')) {
                 setChatMessages([]);
                 setPrompt('');
                 resetPrefixSuggestions();
+                promptHistory.length = 0;
+                setPromptHistoryIndex(0);
                 await GitHubCopilot.logoutFromGitHub();
                 setLoginClickCount(loginClickCount + 1);
                 return;
@@ -413,6 +424,36 @@ function SidebarComponent(props: any) {
             event.stopPropagation();
             event.preventDefault();
             setShowPopover(false);
+        } else if (event.key == 'ArrowUp') {
+            event.stopPropagation();
+            event.preventDefault();
+            setShowPopover(false);
+            // first time up key press
+            if (promptHistory.length > 0 && promptHistoryIndex == promptHistory.length) {
+                setDraftPrompt(prompt);
+            }
+
+            if (promptHistory.length > 0 && promptHistoryIndex > 0 && promptHistoryIndex <= promptHistory.length) {
+                const prevPrompt = promptHistory[promptHistoryIndex - 1];
+                const newIndex = promptHistoryIndex - 1;
+                setPrompt(prevPrompt);
+                setPromptHistoryIndex(newIndex);
+            }
+        } else if (event.key == 'ArrowDown') {
+            event.stopPropagation();
+            event.preventDefault();
+            setShowPopover(false);
+            if (promptHistory.length > 0 && promptHistoryIndex >= 0 && promptHistoryIndex < promptHistory.length) {
+                if (promptHistoryIndex == promptHistory.length - 1) {
+                    setPrompt(draftPrompt);
+                    setPromptHistoryIndex(promptHistory.length);
+                    return;
+                }
+                const prevPrompt = promptHistory[promptHistoryIndex + 1];
+                const newIndex = promptHistoryIndex + 1;
+                setPrompt(prevPrompt);
+                setPromptHistoryIndex(newIndex);
+            }
         }
     };
 
@@ -538,7 +579,7 @@ By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/r
             )}
             {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&  (
                 <div className="sidebar-user-input">
-                    <textarea ref={promptInputRef} rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' value={prompt} />
+                    <textarea ref={promptInputRef} rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} placeholder='Ask Copilot...' spellCheck={false} value={prompt} />
                     <div className="user-input-context-row">
                     {/* <div>Context</div> */}
                     </div>
