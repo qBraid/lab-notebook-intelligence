@@ -56,7 +56,8 @@ class ExtensionManager(Host):
         return None
     
     def register_chat_participant(self, participant: ChatParticipant):
-        self.chat_participants[participant.id] = participant
+        if participant.id not in self.chat_participants:
+            self.chat_participants[participant.id] = participant
 
     def register_tool(self, tool: Tool) -> None:
         pass

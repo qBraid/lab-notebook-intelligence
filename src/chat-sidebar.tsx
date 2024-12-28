@@ -70,7 +70,7 @@ const answeredForms = new Map<string, string>();
 
 function ChatResponse(props: any) {
     const msg: IChatMessage = props.message;
-    const timestamp = `${msg.date.getHours()}:${msg.date.getMinutes()}:${msg.date.getSeconds()}`;
+    const timestamp = msg.date.toLocaleTimeString('en-US', { hour12: false });
 
     const openNotebook = (event: any) => {
         const notebookPath = event.target.dataset['ref'];
