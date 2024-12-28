@@ -397,10 +397,6 @@ class GithubCopilotChatParticipant(ChatParticipant):
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         messages = [
             {"role": "system", "content": CopilotPrompts.chat_prompt()},
-        ]
-
-        print("FROM GITHUB COPILOT CHAT AGENT")
-
-        messages += [{"role": "user", "content": request.prompt}]
+        ] + request.chat_history
 
         completions(messages, response=response)

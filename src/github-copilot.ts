@@ -120,7 +120,7 @@ export class GitHubCopilot {
         });
     }
 
-    static async chatRequest(prompt: string, language: string, filename: string, responseEmitter: IChatCompletionResponseEmitter) {
+    static async chatRequest(chatId: string, prompt: string, language: string, filename: string, responseEmitter: IChatCompletionResponseEmitter) {
         const messageId = UUID.uuid4();
         this._messageReceived.connect((_, msg) => {
             msg = JSON.parse(msg);
@@ -128,11 +128,15 @@ export class GitHubCopilot {
                 responseEmitter.emit(msg);
             }
         });
-        this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatRequest, data: { prompt, language, filename }}));
+        this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatRequest, data: { chatId, prompt, language, filename }}));
     }
 
     static async sendChatUserInput(messageId: string, data: any) {
         this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatUserInput, data}));
+    }
+
+    static async sendWebSocketMessage(messageId: string, messageType: RequestDataType, data: any) {
+        this._webSocket.send(JSON.stringify({id: messageId, type: messageType, data}));
     }
 
     static async inlineCompletionsRequest(prefix: string, suffix: string, language: string, filename: string) {

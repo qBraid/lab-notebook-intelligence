@@ -68,24 +68,35 @@ class ExtensionManager(Host):
     def model(self) -> AIModel:
         return GitHubAIModel()
 
-    def get_chat_participant_id(self, request: ChatRequest) -> str:
-        prompt = request.prompt.lstrip()
-        if prompt.startswith('@'):
-            try:
-                space_loc = prompt.index(' ')
-                id = prompt[1: space_loc]
-                if id in self.chat_participants:
-                    return id
-            except:
-                pass
-        
-        return DEFAULT_CHAT_PARTICIPANT_ID
+    @staticmethod
+    def parse_prompt(prompt: str) -> tuple[str, str, str]:
+        participant = DEFAULT_CHAT_PARTICIPANT_ID
+        command = ''
+        input = ''
 
-    def get_chat_participant(self, request: ChatRequest) -> ChatParticipant:
-        participant_id = self.get_chat_participant_id(request)
-        return self.chat_participants[participant_id]
+        prompt = prompt.lstrip()
+        parts = prompt.split(' ')
+        parts = [part for part in parts if part.strip() != '']
+
+        if len(parts) > 0:
+            if parts[0].startswith('@'):
+                participant = parts[0][1:]
+                parts = parts[1:]
+
+        if len(parts) > 0:
+            if parts[0].startswith('/'):
+                command = parts[0][1:]
+                parts = parts[1:]
+
+        if len(parts) > 0:
+            input = " ".join(parts)
+
+        return [participant, command, input]
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
         request.host = self
-        participant = self.get_chat_participant(request)
+        (participant_name, command, prompt) = ExtensionManager.parse_prompt(request.prompt)
+        participant = self.chat_participants.get(participant_name, DEFAULT_CHAT_PARTICIPANT_ID)
+        request.command = command
+        request.prompt = prompt
         return await participant.handle_chat_request(request, response)

@@ -117,11 +117,60 @@ class PostChatHandler(APIHandler):
         #     "data": response
         # }))
 
+class ChatHistory:
+    """
+    History of chat messages, key is chat id, value is list of messages
+    keep the last 10 messages in the same chat participant
+    """
+    MAX_MESSAGES = 10
+
+    def __init__(self):
+        self.messages = {}
+
+    def clear(self, chatId = None):
+        if chatId is None:
+            self.messages = {}
+            return True
+        elif chatId in self.messages:
+            del self.messages[chatId]
+            return True
+
+        return False
+
+    def add_message(self, chatId, message):
+        if chatId not in self.messages:
+            self.messages[chatId] = []
+
+        # clear the chat history if participant changed
+        if message["role"] == "user":
+            existing_messages = self.messages[chatId]
+            prev_user_message = next((m for m in reversed(existing_messages) if m["role"] == "user"), None)
+            if prev_user_message is not None:
+                (current_participant, command, prompt) = ExtensionManager.parse_prompt(message["content"])
+                (prev_participant, command, prompt) = ExtensionManager.parse_prompt(prev_user_message["content"])
+                if current_participant != prev_participant:
+                    self.messages[chatId] = []
+
+        self.messages[chatId].append(message)
+        # limit number of messages kept in history
+        if len(self.messages[chatId]) > ChatHistory.MAX_MESSAGES:
+            self.messages[chatId] = self.messages[chatId][-ChatHistory.MAX_MESSAGES:]
+
+    def get_history(self, chatId):
+        return self.messages.get(chatId, [])
+
 class WebsocketChatResponseEmitter(ChatResponse):
-    def __init__(self, messageId, handler):
+    def __init__(self, chatId, messageId, websocket_handler, chat_history):
         super().__init__()
+        self.chatId = chatId
         self.messageId = messageId
-        self.handler = handler
+        self.websocket_handler = websocket_handler
+        self.chat_history = chat_history
+        self.streamed_contents = []
+
+    @property
+    def chat_id(self) -> str:
+        return self.chatId
 
     @property
     def message_id(self) -> str:
@@ -132,6 +181,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
         data_type = ResponseStreamDataType.LLMRaw if type(data) is dict else data.data_type
 
         if data_type == ResponseStreamDataType.Markdown:
+            self.chat_history.add_message(self.chatId, {"role": "assistant", "content": data.content})
             data = {
                 "choices": [
                     {
@@ -229,15 +279,22 @@ class WebsocketChatResponseEmitter(ChatResponse):
                     }
                 ]
             }
+        else: # ResponseStreamDataType.LLMRaw
+            if len(data.get("choices", [])) > 0:
+                part = data["choices"][0].get("delta", {}).get("content", "")
+                if part is not None:
+                    self.streamed_contents.append(part)
 
-        self.handler.write_message({
+        self.websocket_handler.write_message({
             "id": self.messageId,
             "type": "StreamMessage",
             "data": data
         })
 
     def finish(self) -> None:
-        self.handler.write_message({
+        self.chat_history.add_message(self.chatId, {"role": "assistant", "content": "".join(self.streamed_contents)})
+        self.streamed_contents = []
+        self.websocket_handler.write_message({
             "id": self.messageId,
             "type": "StreamEnd",
             "data": {}
@@ -247,6 +304,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
         self._responseEmitters = {}
+        self.chat_history = ChatHistory()
 
     def open(self):
         print("WebSocket opened")
@@ -258,17 +316,21 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
         messageType = msg['type']
         if messageType == RequestDataType.ChatRequest:
             data = msg['data']
+            chatId = data['chatId']
             prompt = data['prompt']
             language = data['language']
             filename = data['filename']
-            responseEmitter = WebsocketChatResponseEmitter(messageId, self)
+            self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
+            responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             self._responseEmitters[messageId] = responseEmitter
-            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt), responseEmitter))
+            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter))
         elif messageType == RequestDataType.ChatUserInput:
             responseEmitter = self._responseEmitters.get(messageId)
             if responseEmitter is None:
                 return
             responseEmitter.on_user_input(msg['data'])
+        elif messageType == RequestDataType.ClearChatHistory:
+            self.chat_history.clear(msg['data']['chatId'])
  
     def on_close(self):
         print("WebSocket closed")

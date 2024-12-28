@@ -6,7 +6,7 @@ import Markdown from 'react-markdown';
 import { UUID } from '@lumino/coreutils';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
-import { IActiveDocumentInfo, IChatCompletionResponseEmitter, ResponseStreamDataType } from './tokens';
+import { IActiveDocumentInfo, IChatCompletionResponseEmitter, RequestDataType, ResponseStreamDataType } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { requestAPI } from "./handler";
 
@@ -18,6 +18,7 @@ export enum RunChatCompletionType {
 }
 
 export interface IRunChatCompletionRequest {
+    chatId: string,
     type: RunChatCompletionType,
     content: string,
     language?: string,
@@ -154,6 +155,7 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest, respo
     switch (request.type) {
         case RunChatCompletionType.Chat:
             return GitHubCopilot.chatRequest(
+                request.chatId,
                 request.content,
                 request.language || 'python',
                 request.filename || 'Untitled.ipynb',
@@ -204,6 +206,7 @@ function SidebarComponent(props: any) {
     const [promptHistory, setPromptHistory] = useState<string[]>([]);
     // position on prompt history stack
     const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
+    const [chatId, setChatId] = useState(UUID.uuid4());
 
     useEffect(() => {
         requestAPI<any>('capabilities', { method: 'GET' })
@@ -312,13 +315,16 @@ function SidebarComponent(props: any) {
         if (prompt.startsWith('/clear')) {
             setChatMessages([]);
             setPrompt('');
+            resetChatId();
             resetPrefixSuggestions();
             setPromptHistory([]);
             setPromptHistoryIndex(0);
+            GitHubCopilot.sendWebSocketMessage(UUID.uuid4(), RequestDataType.ClearChatHistory, { chatId });
             return;
         } else if (prompt.startsWith('/logout')) {
             setChatMessages([]);
             setPrompt('');
+            resetChatId();
             resetPrefixSuggestions();
             setPromptHistory([]);
             setPromptHistoryIndex(0);
@@ -338,6 +344,7 @@ function SidebarComponent(props: any) {
         const contents: IChatMessageContent[] = [];
 
         submitCompletionRequest({
+            chatId,
             type: isNewNotebook ? RunChatCompletionType.NewNotebook : RunChatCompletionType.Chat,
             content: extractedPrompt,
             language: activeDocInfo.language,
@@ -414,6 +421,9 @@ function SidebarComponent(props: any) {
 
     const resetPrefixSuggestions = () => {
         setPrefixSuggestions(originalPrefixes);
+    };
+    const resetChatId = () => {
+        setChatId(UUID.uuid4());
     };
 
     const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {

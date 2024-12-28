@@ -12,6 +12,7 @@ from enum import StrEnum
 class RequestDataType(StrEnum):
     ChatRequest = 'chat-request'
     ChatUserInput = 'chat-user-input'
+    ClearChatHistory = 'clear-chat-history'
 
 class ResponseStreamDataType(StrEnum):
     LLMRaw = 'llm-raw'
@@ -30,7 +31,7 @@ class ChatRequest:
     host: 'Host' = None
     command: str = ''
     prompt: str = ''
-
+    chat_history: list[dict] = None
 
 @dataclass
 class ResponseStreamData:
@@ -200,13 +201,12 @@ class ChatParticipant:
     async def handle_chat_request_with_tools(self, request: ChatRequest, response: ChatResponse) -> None:
         tools = self.tools
 
+        messages = request.chat_history.copy()
+
         if len(tools) == 0:
             request.host.model.completions(messages, tools=None, response=response)
             return
 
-        messages = [
-            {"role": "user", "content": request.prompt}
-        ]
         openai_tools = [tool.schema for tool in tools]
 
 
@@ -257,6 +257,7 @@ class ChatParticipant:
                     "tool_call_id": tool_call['id']
                 }
 
+                # TODO: duplicate message?
                 messages.append(tool_response['choices'][0]['message'])
                 messages.append(function_call_result_message)
                 await _tool_call_loop(tool_call_rounds)

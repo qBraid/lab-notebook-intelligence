@@ -13,7 +13,8 @@ export interface IChatCompletionResponseEmitter {
 
 export enum RequestDataType {
     ChatRequest = 'chat-request',
-    ChatUserInput = 'chat-user-input'
+    ChatUserInput = 'chat-user-input',
+    ClearChatHistory = 'clear-chat-history',
 }
 
 export enum ResponseStreamDataType {
