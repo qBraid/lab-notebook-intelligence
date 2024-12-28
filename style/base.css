@@ -82,8 +82,30 @@
 }
 
 .chat-message-from {
-    font-weight: bold;
+    display: flex;
     flex-grow: 1;
+}
+.chat-message-from-title {
+    font-weight: bold;
+}
+.chat-message-from-progress {
+    padding-left: 10px;
+    flex-grow: 1;
+    font-size: 12px;
+}
+
+.loading-ellipsis::after {
+    display: inline-block;
+    animation: animated-ellipsis steps(1,end) 1s infinite;
+    content: '';
+}
+  
+@keyframes animated-ellipsis {
+    0%   { content: ''; }
+    25%  { content: '.'; }
+    50%  { content: '..'; }
+    75%  { content: '...'; }
+    100% { content: ''; }
 }
 
 .chat-message-timestamp {
@@ -98,30 +120,6 @@
 
 .chat-message-user {
     background-color: var(--jp-toolbar-active-background);
-}
-
-.copilot-progress-row {
-    width: 100%;
-    height: 18px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.copilot-progress {
-    color: var(--jp-ui-font-color1);
-    width: 4px;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    box-shadow: 19px 0 0 7px, 38px 0 0 3px, 57px 0 0 0;
-    transform: translateX(-38px) translateY(8px);
-    animation: copilot_progress_animation .5s infinite alternate linear;
-    scale: 0.5;
-}
-  
-@keyframes copilot_progress_animation {
-    50%  {box-shadow: 19px 0 0 3px, 38px 0 0 7px, 57px 0 0 3px}
-    100% {box-shadow: 19px 0 0 0  , 38px 0 0 3px, 57px 0 0 7px}
 }
 
 .copilot-generated-notebook-link {

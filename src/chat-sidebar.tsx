@@ -107,7 +107,10 @@ function ChatResponse(props: any) {
     return (
         <div className={`chat-message chat-message-${msg.from}`} >
             <div className="chat-message-header">
-                <div className="chat-message-from">{msg.from === 'user' ? 'User' : 'Copilot'}</div>
+                <div className="chat-message-from">
+                    <div className="chat-message-from-title">{msg.from === 'user' ? 'User' : 'Copilot'}</div>
+                    <div className='chat-message-from-progress' style={{ display: `${props.showGenerating ? 'visible' : 'none'}` }}><div className='loading-ellipsis'>Generating</div></div>
+                </div>
                 <div className="chat-message-timestamp">{timestamp}</div>
             </div>
             <div className="chat-message-content">
@@ -581,11 +584,8 @@ function SidebarComponent(props: any) {
                 ) : (
                     <div className="sidebar-messages">
                         {chatMessages.map((msg, index) => (
-                            <ChatResponse key={`key-${index}`} message={msg} openFile={props.openFile} getApp={props.getApp} />
+                            <ChatResponse key={`key-${index}`} message={msg} openFile={props.openFile} getApp={props.getApp} showGenerating={(index === chatMessages.length - 1 && msg.from === 'copilot') && copilotRequestInProgress} />
                         ))}
-                        <div className='copilot-progress-row' style={{ display: `${copilotRequestInProgress ? 'flex' : 'none'}` }}>
-                            <div className='copilot-progress'></div>
-                        </div>
                         <div ref={messagesEndRef} />
                     </div>
                 )}
