@@ -25,11 +25,14 @@ import {
 
 import { NotebookPanel } from '@jupyterlab/notebook';
 
+import { LabIcon } from '@jupyterlab/ui-components';
+
 import { Panel } from '@lumino/widgets';
 
 import { ChatSidebar, RunChatCompletionType } from './chat-sidebar';
 import { GitHubCopilot } from './github-copilot';
 import { IActiveDocumentInfo } from './tokens';
+import sparklesSvgstr from '../style/icons/sparkles.svg';
 
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat_user_input';
@@ -132,6 +135,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
     panel.title.caption = 'Copilot Chat';
+    const sidebarIcon = new LabIcon({ name: 'ui-components:palette', svgstr: sparklesSvgstr });
+    panel.title.icon = sidebarIcon;
     const sidebar = new ChatSidebar({
       getActiveDocumentInfo: () : IActiveDocumentInfo => {
         return activeDocumentInfo;
