@@ -17,6 +17,7 @@ class RequestDataType(StrEnum):
 class ResponseStreamDataType(StrEnum):
     LLMRaw = 'llm-raw'
     Markdown = 'markdown'
+    MarkdownPart = 'markdown-part'
     HTML = 'html'
     Button = 'button'
     Anchor = 'anchor'
@@ -46,6 +47,14 @@ class MarkdownData(ResponseStreamData):
     @property
     def data_type(self) -> ResponseStreamDataType:
         return ResponseStreamDataType.Markdown
+
+@dataclass
+class MarkdownPartData(ResponseStreamData):
+    content: str = ''
+
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.MarkdownPart
 
 
 @dataclass

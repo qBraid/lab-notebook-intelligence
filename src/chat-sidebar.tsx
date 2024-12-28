@@ -95,7 +95,7 @@ function ChatResponse(props: any) {
     for (let i = 0; i < msg.contents.length; i++) {
         const item = msg.contents[i];
         if (item.type === lastItemType &&
-            (lastItemType === ResponseStreamDataType.Markdown || lastItemType === ResponseStreamDataType.HTML)) {
+            (lastItemType === ResponseStreamDataType.MarkdownPart)) {
             const lastItem = groupedContents[groupedContents.length - 1];
             lastItem.content += item.content;
         } else {
@@ -114,6 +114,7 @@ function ChatResponse(props: any) {
                 {groupedContents.map((item, index) => {
                     switch (item.type) {
                         case ResponseStreamDataType.Markdown:
+                        case ResponseStreamDataType.MarkdownPart:
                             return <Markdown key={`key-${index}`}>{item.content}</Markdown>;
                         case ResponseStreamDataType.HTML:
                             return <div key={`key-${index}`} dangerouslySetInnerHTML={{ __html: item.content }} />;
@@ -384,7 +385,7 @@ function SidebarComponent(props: any) {
                             }
                             contents.push({
                                 id: response.id,
-                                type: ResponseStreamDataType.Markdown,
+                                type: ResponseStreamDataType.MarkdownPart,
                                 content: responseMessage
                             });
                         }

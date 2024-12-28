@@ -20,6 +20,7 @@ export enum RequestDataType {
 export enum ResponseStreamDataType {
     LLMRaw = 'llm-raw',
     Markdown = 'markdown',
+    MarkdownPart = 'markdown-part',
     HTML = 'html',
     Button = 'button',
     Anchor = 'anchor',

@@ -186,7 +186,11 @@ class WebsocketChatResponseEmitter(ChatResponse):
                 "choices": [
                     {
                         "delta": {
-                            "content": data.content,
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": data.content
+                            },
+                            "content": "",
                             "role": "assistant"
                         }
                     }
