@@ -178,3 +178,33 @@
 .user-input-autocomplete-item {
     cursor: pointer;
 }
+
+.code-block-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.code-block-header-language {
+    flex-grow: 1;
+}
+
+.code-block-header-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.code-block-header-button:hover {
+    background-color: var(--jp-layout-color1);
+}
+.code-block-header-button:active {
+    background-color: var(--jp-layout-color3);
+}
+
+.copy-icon svg {
+    width: 12px;
+    height: 12px;
+}

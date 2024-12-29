@@ -36,6 +36,8 @@ import sparklesSvgstr from '../style/icons/sparkles.svg';
 
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat_user_input';
+  export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
+  export const createNewFile = 'notebook-intelligence:create-new-file';
   export const explainThis = 'notebook-intelligence:explain-this';
   export const fixThis = 'notebook-intelligence:fix-this';
 }
@@ -144,7 +146,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       openFile: (path: string) => {
         docManager.openOrReveal(path);
       },
-      getApp():  JupyterFrontEnd<JupyterFrontEnd.IShell, "desktop" | "mobile"> {
+      getApp():  JupyterFrontEnd {
         return app;
       },
     });
@@ -156,6 +158,18 @@ const plugin: JupyterFrontEndPlugin<void> = {
       execute: (args) => {
         // @ts-ignore
         GitHubCopilot.sendChatUserInput(args.id, args.data);
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.insertAtCursor, {
+      execute: (args) => {
+        console.log(args.code);
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.createNewFile, {
+      execute: (args) => {
+        console.log(args.code);
       }
     });
 

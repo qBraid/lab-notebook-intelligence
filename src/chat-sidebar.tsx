@@ -2,13 +2,15 @@
 
 import React, { ChangeEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { ReactWidget } from '@jupyterlab/apputils';
-import Markdown from 'react-markdown';
 import { UUID } from '@lumino/coreutils';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 import { IActiveDocumentInfo, IChatCompletionResponseEmitter, RequestDataType, ResponseStreamDataType } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { requestAPI } from "./handler";
+import {MarkdownRenderer} from './markdown-renderer';
+
+import copySvgstr from '../style/icons/copy.svg';
 
 export enum RunChatCompletionType {
     Chat,
@@ -29,7 +31,7 @@ export interface IRunChatCompletionRequest {
 export interface IChatSidebarOptions {
     getActiveDocumentInfo: () => IActiveDocumentInfo;
     openFile: (path: string) => void;
-    getApp: () => JupyterFrontEnd<JupyterFrontEnd.IShell, "desktop" | "mobile">;
+    getApp: () => JupyterFrontEnd;
 }
 
 export class ChatSidebar extends ReactWidget {
@@ -48,7 +50,7 @@ export class ChatSidebar extends ReactWidget {
 
     private _getActiveDocumentInfo: () => IActiveDocumentInfo;
     private _openFile: (path: string) => void;
-    private _getApp: () => JupyterFrontEnd<JupyterFrontEnd.IShell, "desktop" | "mobile">;
+    private _getApp: () => JupyterFrontEnd;
 }
 
 interface IChatMessageContent {
@@ -118,7 +120,7 @@ function ChatResponse(props: any) {
                     switch (item.type) {
                         case ResponseStreamDataType.Markdown:
                         case ResponseStreamDataType.MarkdownPart:
-                            return <Markdown key={`key-${index}`}>{item.content}</Markdown>;
+                            return <MarkdownRenderer key={`key-${index}`} getApp={props.getApp}>{item.content}</MarkdownRenderer>;
                         case ResponseStreamDataType.HTML:
                             return <div key={`key-${index}`} dangerouslySetInnerHTML={{ __html: item.content }} />;
                         case ResponseStreamDataType.Button:
@@ -572,7 +574,8 @@ function SidebarComponent(props: any) {
             )}
             {
                 (ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && deviceActivationURL && deviceActivationCode) &&
-                (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <span className="user-code-span" onClick={() => { navigator.clipboard.writeText(deviceActivationCode); return true; }}><b>{deviceActivationCode}&#x1F4CB;</b></span> to allow access to GitHub Copilot from this app.</div>)
+                (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <span className="user-code-span" onClick={() => { navigator.clipboard.writeText(deviceActivationCode); return true; }}><b>{deviceActivationCode} <span className='copy-icon' dangerouslySetInnerHTML={{ __html: copySvgstr }}></span>
+            </b></span> to allow access to GitHub Copilot from this app.</div>)
             }
             {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn && chatMessages.length == 0 ?
                 (
