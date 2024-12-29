@@ -303,9 +303,6 @@ class Host:
     def register_chat_participant(self, participant: ChatParticipant) -> None:
         raise NotImplemented
     
-    def register_tool(self, tool: Tool) -> None:
-        raise NotImplemented
-    
     def register_inline_completion_context_provider(self, provider: InlineCompletionContextProvider) -> None:
         raise NotImplemented
     

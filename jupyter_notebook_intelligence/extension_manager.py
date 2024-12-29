@@ -58,9 +58,6 @@ class ExtensionManager(Host):
     def register_chat_participant(self, participant: ChatParticipant):
         if participant.id not in self.chat_participants:
             self.chat_participants[participant.id] = participant
-
-    def register_tool(self, tool: Tool) -> None:
-        pass
     
     def register_inline_completion_context_provider(self, provider: InlineCompletionContextProvider) -> None:
         pass

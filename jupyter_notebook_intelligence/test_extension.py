@@ -168,5 +168,4 @@ class TestExtension(NotebookIntelligenceExtension):
 
     def activate(self, host: Host) -> None:
         host.register_chat_participant(self.participant)
-        host.register_tool(self.tool)
         host.register_inline_completion_context_provider(self.inline_completion_context_provider)
