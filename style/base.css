@@ -208,3 +208,15 @@
     width: 12px;
     height: 12px;
 }
+
+.send-button {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 5px;
+    border: 1px solid var(--jp-border-color1);
+    padding: 3px 5px;
+}
+.send-button:hover:enabled {
+    background-color: var(--jp-layout-color1);
+}

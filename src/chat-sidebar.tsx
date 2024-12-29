@@ -11,6 +11,7 @@ import { requestAPI } from "./handler";
 import {MarkdownRenderer} from './markdown-renderer';
 
 import copySvgstr from '../style/icons/copy.svg';
+import { VscSend } from 'react-icons/vsc';
 
 export enum RunChatCompletionType {
     Chat,
@@ -601,7 +602,7 @@ function SidebarComponent(props: any) {
                     <div className="user-input-footer">
                         <div><a href='javascript:void(0)' onClick={() => setShowPopover(true)} title='Select chat participant'>@</a></div>
                         <div style={{ flexGrow: 1 }}></div>
-                        <div><button onClick={() => handleUserInputSubmit()} disabled={prompt.length == 0}>Send</button></div>
+                        <div><button className='send-button' onClick={() => handleUserInputSubmit()} disabled={prompt.length == 0}><VscSend></VscSend> Send</button></div>
                     </div>
                     {showPopover && prefixSuggestions.length > 0 && (
                         <div className="user-input-autocomplete">
