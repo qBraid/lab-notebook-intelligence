@@ -24,6 +24,11 @@ import {
 } from '@jupyterlab/completer';
 
 import { NotebookPanel } from '@jupyterlab/notebook';
+import {
+  FileEditorWidget
+} from '@jupyterlab/fileeditor';
+
+import { ContentsManager, KernelSpecManager } from '@jupyterlab/services';
 
 import { LabIcon } from '@jupyterlab/ui-components';
 
@@ -38,9 +43,17 @@ namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat_user_input';
   export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
   export const createNewFile = 'notebook-intelligence:create-new-file';
+  export const createNewNotebookFromPython = 'notebook-intelligence:create-new-notebook-from-py';
   export const explainThis = 'notebook-intelligence:explain-this';
   export const fixThis = 'notebook-intelligence:fix-this';
 }
+
+const emptyNotebookContent = {
+  "cells": [],
+  "metadata": {},
+  "nbformat": 4,
+  "nbformat_minor": 5
+};
 
 const activeDocumentInfo: IActiveDocumentInfo = {
   language: 'python',
@@ -163,13 +176,79 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.commands.addCommand(CommandIDs.insertAtCursor, {
       execute: (args) => {
-        console.log(args.code);
+        const currentWidget = app.shell.currentWidget;
+        if (currentWidget instanceof NotebookPanel) {
+          const activeCell = currentWidget.content.activeCell;
+
+          let activeCellIndex = currentWidget.content.widgets.findIndex(cell => cell === activeCell);
+          activeCellIndex = activeCellIndex === -1 ? currentWidget.content.widgets.length : activeCellIndex;
+
+          currentWidget.model?.sharedModel.insertCell(activeCellIndex, {
+            cell_type: 'code',
+            metadata: { trusted: true },
+            source: args.code as string
+          });
+        } else if (currentWidget instanceof FileEditorWidget)  {
+          const editor = currentWidget.content.editor;
+          const cursor = editor.getCursorPosition();
+          editor.setCursorPosition(cursor);
+          editor.replaceSelection?.(args.code as string);
+        } else {
+          app.commands.execute('apputils:notify', {
+            "message": 'Open a notebook or file to insert the code at cursor',
+            "type": 'error',
+            "options": { "autoClose": true }
+          });
+        }
       }
     });
 
     app.commands.addCommand(CommandIDs.createNewFile, {
-      execute: (args) => {
-        console.log(args.code);
+      execute: async (args) => {
+        const contents = new ContentsManager();
+        const newPyFile = await contents.newUntitled({ext: '.py'});
+        contents.save(newPyFile.path, { content: args.code, format: 'text', type: 'file' });
+        docManager.openOrReveal(newPyFile.path);
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.createNewNotebookFromPython, {
+      execute: async (args) => {
+        let pythonKernelSpec = null;
+        const contents = new ContentsManager();
+        const kernels = new KernelSpecManager();
+        await kernels.ready;
+        const kernelspecs = kernels.specs?.kernelspecs;
+        if (kernelspecs) {
+          for (const key in kernelspecs) {
+            const kernelspec = kernelspecs[key];
+            if (kernelspec?.language === 'python') {
+              pythonKernelSpec = kernelspec;
+              break;
+            }
+          }
+        }
+
+        const newPyFile = await contents.newUntitled({ext: '.ipynb'});
+        const nbFileContent = structuredClone(emptyNotebookContent);
+        if (pythonKernelSpec) {
+          nbFileContent.metadata = {
+              "kernelspec": {
+              "language": "python",
+              "name": pythonKernelSpec.name,
+            }
+          };
+        }
+
+        // @ts-ignore
+        nbFileContent.cells.push({
+          cell_type: 'code',
+          metadata: { trusted: true },
+          source: [args.code as string],
+          outputs: []
+        });
+        contents.save(newPyFile.path, { content: nbFileContent, format: 'json', type: 'notebook' });
+        docManager.openOrReveal(newPyFile.path);
       }
     });
 

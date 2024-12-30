@@ -5,7 +5,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dracula } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { VscNewFile, VscInsert, VscCopy } from "react-icons/vsc";
+import { VscNewFile, VscInsert, VscCopy, VscNotebook } from "react-icons/vsc";
 import { JupyterFrontEnd } from '@jupyterlab/application';
 
 type MarkdownRendererProps = {
@@ -23,24 +23,29 @@ export function MarkdownRenderer({ children: markdown, getApp }: MarkdownRendere
         code({ node, inline, className, children, getApp, ...props }: any) {
           const match = /language-(\w+)/.exec(className || '');
           const codeString = String(children).replace(/\n$/, '');
+          const language = match ? match[1] : 'text';
 
           const handleCopyClick = () => {
             navigator.clipboard.writeText(codeString);
           };
         
           const handleInsertAtCursorClick = () => {
-            app.commands.execute('notebook-intelligence:insert-at-cursor', { code: codeString });
+            app.commands.execute('notebook-intelligence:insert-at-cursor', { language, code: codeString });
           };
         
           const handleCreateNewFileClick = () => {
-            app.commands.execute('notebook-intelligence:create-new-file', { code: codeString });
+            app.commands.execute('notebook-intelligence:create-new-file', { language, code: codeString });
+          };
+
+          const handleCreateNewNotebookClick = () => {
+            app.commands.execute('notebook-intelligence:create-new-notebook-from-py', { language, code: codeString });
           };
 
           return !inline && match ? (
             <div>
               <div className="code-block-header">
                 <div className="code-block-header-language">
-                  <span>{match[1]}</span>
+                  <span>{language}</span>
                 </div>
                 <div className="code-block-header-button" onClick={() => handleCopyClick()}>
                   <VscCopy size={16} title='Copy to clipboard' />
@@ -52,8 +57,12 @@ export function MarkdownRenderer({ children: markdown, getApp }: MarkdownRendere
                 <div className="code-block-header-button" onClick={() => handleCreateNewFileClick()}>
                   <VscNewFile size={16} title='New file' />
                 </div>
+                {language === 'python' && (
+                <div className="code-block-header-button" onClick={() => handleCreateNewNotebookClick()}>
+                  <VscNotebook size={16} title='New notebook' />
+                </div>)}
               </div>
-              <SyntaxHighlighter style={dracula} PreTag="div" language={match[1]} {...props}>
+              <SyntaxHighlighter style={dracula} PreTag="div" language={language} {...props}>
                 {codeString}
               </SyntaxHighlighter>
             </div>
