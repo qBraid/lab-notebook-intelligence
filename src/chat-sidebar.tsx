@@ -336,6 +336,8 @@ function SidebarComponent(props: any) {
             setPromptHistory([]);
             setPromptHistoryIndex(0);
             await GitHubCopilot.logoutFromGitHub();
+            GitHubCopilot.sendWebSocketMessage(UUID.uuid4(), RequestDataType.ClearChatHistory, { chatId });
+            setGHLoginStatus(GitHubCopilotLoginStatus.NotLoggedIn);
             setLoginClickCount(loginClickCount + 1);
             return;
         }
