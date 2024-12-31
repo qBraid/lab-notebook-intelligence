@@ -12,7 +12,7 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import web, websocket
 import traitlets
-from jupyter_notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, RequestDataType, ResponseStreamData, ResponseStreamDataType
+from jupyter_notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
 from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
 from jupyter_notebook_intelligence.extension_manager import ExtensionManager
 import jupyter_notebook_intelligence.github_copilot as github_copilot
@@ -291,7 +291,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
 
         self.websocket_handler.write_message({
             "id": self.messageId,
-            "type": "StreamMessage",
+            "type": BackendMessageType.StreamMessage,
             "data": data
         })
 
@@ -300,9 +300,23 @@ class WebsocketChatResponseEmitter(ChatResponse):
         self.streamed_contents = []
         self.websocket_handler.write_message({
             "id": self.messageId,
-            "type": "StreamEnd",
+            "type": BackendMessageType.StreamEnd,
             "data": {}
         })
+
+    async def run_ui_command(self, command: str, args: dict = {}) -> None:
+        callback_id = str(uuid.uuid4())
+        self.websocket_handler.write_message({
+            "id": self.messageId,
+            "type": BackendMessageType.RunUICommand,
+            "data": {
+                "callback_id": callback_id,
+                "commandId": command,
+                "args": args
+            }
+        })
+        response = await ChatResponse.wait_for_run_ui_command_response(self, callback_id)
+        return response
 
 class WebsocketChatHandler(websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
@@ -335,6 +349,11 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             responseEmitter.on_user_input(msg['data'])
         elif messageType == RequestDataType.ClearChatHistory:
             self.chat_history.clear(msg['data']['chatId'])
+        elif messageType == RequestDataType.RunUICommandResponse:
+            responseEmitter = self._responseEmitters.get(messageId)
+            if responseEmitter is None:
+                return
+            responseEmitter.on_run_ui_command_response(msg['data'])
  
     def on_close(self):
         print("WebSocket closed")

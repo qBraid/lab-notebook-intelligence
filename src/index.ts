@@ -11,6 +11,7 @@ import {
 } from '@jupyterlab/docmanager';
 
 import { CodeCell } from '@jupyterlab/cells';
+import { ISharedNotebook} from '@jupyter/ydoc';
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 
@@ -28,6 +29,8 @@ import {
   FileEditorWidget
 } from '@jupyterlab/fileeditor';
 
+import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
+
 import { ContentsManager, KernelSpecManager } from '@jupyterlab/services';
 
 import { LabIcon } from '@jupyterlab/ui-components';
@@ -44,6 +47,8 @@ namespace CommandIDs {
   export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
   export const createNewFile = 'notebook-intelligence:create-new-file';
   export const createNewNotebookFromPython = 'notebook-intelligence:create-new-notebook-from-py';
+  export const addCodeCellToNotebook = 'notebook-intelligence:add-code-cell-to-notebook';
+  export const addMarkdownCellToNotebook = 'notebook-intelligence:add-markdown-cell-to-notebook';
   export const explainThis = 'notebook-intelligence:explain-this';
   export const fixThis = 'notebook-intelligence:fix-this';
 }
@@ -129,9 +134,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: '@mbektas/jupyter-notebook-intelligence:plugin',
   description: 'Jupyter Notebook Intelligence extension',
   autoStart: true,
-  requires: [ICompletionProviderManager, IDocumentManager],
+  requires: [ICompletionProviderManager, IDocumentManager, IDefaultFileBrowser],
   optional: [ISettingRegistry],
-  activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, docManager: IDocumentManager, settingRegistry: ISettingRegistry | null) => {
+  activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, docManager: IDocumentManager, defaultBrowser: IDefaultFileBrowser, settingRegistry: ISettingRegistry | null) => {
     console.log('JupyterLab extension @mbektas/jupyter-notebook-intelligence is activated!');
 
     completionManager.registerInlineProvider(new GitHubInlineCompletionProvider());
@@ -178,9 +183,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       execute: (args) => {
         const currentWidget = app.shell.currentWidget;
         if (currentWidget instanceof NotebookPanel) {
-          const activeCell = currentWidget.content.activeCell;
-
-          let activeCellIndex = currentWidget.content.widgets.findIndex(cell => cell === activeCell);
+          let activeCellIndex = currentWidget.content.activeCellIndex;
           activeCellIndex = activeCellIndex === -1 ? currentWidget.content.widgets.length : activeCellIndex;
 
           currentWidget.model?.sharedModel.insertCell(activeCellIndex, {
@@ -206,7 +209,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     app.commands.addCommand(CommandIDs.createNewFile, {
       execute: async (args) => {
         const contents = new ContentsManager();
-        const newPyFile = await contents.newUntitled({ext: '.py'});
+        const newPyFile = await contents.newUntitled({ext: '.py', path: defaultBrowser?.model.path});
         contents.save(newPyFile.path, { content: args.code, format: 'text', type: 'file' });
         docManager.openOrReveal(newPyFile.path);
       }
@@ -229,7 +232,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         }
 
-        const newPyFile = await contents.newUntitled({ext: '.ipynb'});
+        const newPyFile = await contents.newUntitled({ext: '.ipynb', path: defaultBrowser?.model.path});
         const nbFileContent = structuredClone(emptyNotebookContent);
         if (pythonKernelSpec) {
           nbFileContent.metadata = {
@@ -240,15 +243,62 @@ const plugin: JupyterFrontEndPlugin<void> = {
           };
         }
 
-        // @ts-ignore
-        nbFileContent.cells.push({
-          cell_type: 'code',
-          metadata: { trusted: true },
-          source: [args.code as string],
-          outputs: []
-        });
+        if (args.code) {
+          // @ts-ignore
+          nbFileContent.cells.push({
+            cell_type: 'code',
+            metadata: { trusted: true },
+            source: [args.code as string],
+            outputs: []
+          });
+        }
+
         contents.save(newPyFile.path, { content: nbFileContent, format: 'json', type: 'notebook' });
         docManager.openOrReveal(newPyFile.path);
+
+        return newPyFile;
+      }
+    });
+
+    const isNewEmptyNotebook = (model: ISharedNotebook) => {
+      return model.cells.length === 1 && model.cells[0].cell_type === 'code' && model.cells[0].source === '';
+    };
+
+    const addCellToNotebook = (filePath: string, cellType: 'code' | 'markdown', source: string): boolean => {
+      const currentWidget = app.shell.currentWidget;
+      const notebookOpen = currentWidget instanceof NotebookPanel && currentWidget.sessionContext.path === filePath &&
+        currentWidget.model;
+      if (!notebookOpen) {
+        app.commands.execute('apputils:notify', {
+          "message": `Failed to access the notebook: ${filePath}`,
+          "type": 'error',
+          "options": { "autoClose": true }
+        });
+        return false;
+      }
+      
+      const model = currentWidget.model.sharedModel;
+
+      const newCellIndex = isNewEmptyNotebook(model) ?
+          0 : model.cells.length - 1;
+        model.insertCell(newCellIndex, {
+          cell_type: cellType,
+          metadata: { trusted: true },
+          source
+        });
+
+        return true;
+    };
+
+    app.commands.addCommand(CommandIDs.addCodeCellToNotebook, {
+      execute: (args) => {
+        return addCellToNotebook(args.path as string, 'code', args.code as string);
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.addMarkdownCellToNotebook, {
+      execute: (args) => {
+        return addCellToNotebook(args.path as string, 'markdown', args.markdown as string);
       }
     });
 

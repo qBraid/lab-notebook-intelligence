@@ -12,8 +12,8 @@ from jupyter_notebook_intelligence.github_copilot import completions
 DEFAULT_CHAT_PARTICIPANT_ID = 'default'
 
 class GitHubAIModel(AIModel):
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None) -> None:
-        return completions(messages, tools, response)
+    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, options: dict = {}) -> None:
+        return completions(messages, tools, response, options)
 
 class ExtensionManager(Host):
     def __init__(self, default_chat_participant: ChatParticipant):

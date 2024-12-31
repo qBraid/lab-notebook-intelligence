@@ -15,6 +15,13 @@ export enum RequestDataType {
     ChatRequest = 'chat-request',
     ChatUserInput = 'chat-user-input',
     ClearChatHistory = 'clear-chat-history',
+    RunUICommandResponse = 'run-ui-command-response'
+}
+
+export enum BackendMessageType {
+    StreamMessage = 'stream-message',
+    StreamEnd = 'stream-end',
+    RunUICommand = 'run-ui-command'
 }
 
 export enum ResponseStreamDataType {

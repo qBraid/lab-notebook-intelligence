@@ -7,7 +7,7 @@ from pathlib import Path
 import uuid
 import secrets
 import sseclient
-from jupyter_notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant
+from jupyter_notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, Tool
 from jupyter_notebook_intelligence.config import ContextResponse
 from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
@@ -244,7 +244,7 @@ def inline_completions(prefix, suffix, language, filename, context: ContextRespo
     
     return result
 
-def completions(messages, tools = None, response: ChatResponse = None):
+def completions(messages, tools = None, response: ChatResponse = None, options: dict = {}):
     stream = response is not None
 
     try:
@@ -254,6 +254,7 @@ def completions(messages, tools = None, response: ChatResponse = None):
             json = {
                 'messages': messages,
                 'tools': tools,
+                'tool_choice': options.get('tool_choice', 'auto' if tools is not None else 'none'),
                 'max_tokens': 1000,
                 'temperature': 0,
                 'top_p': 1,
@@ -382,6 +383,92 @@ def new_notebook(prompt, parent_path, context: ContextResponse):
             "notebook_path": os.path.join(parent_path, notebook_name)
         }
 
+class AddMarkdownCellToNotebookTool(Tool):
+    @property
+    def name(self) -> str:
+        return "add_markdown_cell_to_notebook"
+
+    @property
+    def title(self) -> str:
+        return "Add markdown cell to notebook"
+    
+    @property
+    def tags(self) -> list[str]:
+        return ["default-participant-tool"]
+    
+    @property
+    def description(self) -> str:
+        return "This is a tool that adds markdown cell to a notebook"
+    
+    @property
+    def schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "markdown_cell_source": {
+                            "type": "string",
+                            "description": "Markdown to add to the notebook",
+                        }
+                    },
+                    "required": ["markdown_cell_source"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+        markdown = tool_args.get('markdown_cell_source')
+        ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': markdown, 'path': tool_context.get('file_path')})
+        return {}
+
+class AddCodeCellTool(Tool):
+    @property
+    def name(self) -> str:
+        return "add_code_cell_to_notebook"
+
+    @property
+    def title(self) -> str:
+        return "Add code cell to notebook"
+    
+    @property
+    def tags(self) -> list[str]:
+        return ["default-participant-tool"]
+    
+    @property
+    def description(self) -> str:
+        return "This is a tool that adds code cell to a notebook"
+    
+    @property
+    def schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "code_cell_source": {
+                            "type": "string",
+                            "description": "Code to add to the notebook",
+                        }
+                    },
+                    "required": ["code_cell_source"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+        code = tool_args.get('code_cell_source')
+        ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
+        return {}
+
 class GithubCopilotChatParticipant(ChatParticipant):
     @property
     def id(self) -> str:
@@ -390,11 +477,27 @@ class GithubCopilotChatParticipant(ChatParticipant):
     @property
     def commands(self) -> list[ChatCommand]:
         return [
+            ChatCommand(name='newNotebook', description='Create a new notebook'),
             ChatCommand(name='clear', description='Clears chat history'),
-            ChatCommand(name='logout', description='Logs out from GitHub Copilot')
+            ChatCommand(name='logout', description='Logs out from GitHub Copilot'),
         ]
 
+    @property
+    def tools(self) -> list[Tool]:
+        return [AddMarkdownCellToNotebookTool(), AddCodeCellTool()]
+
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
+        if request.command == 'newNotebook':
+            # create a new notebook
+            ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
+            file_path = ui_cmd_response['path']
+            tool_names = [tool.name for tool in self.tools]
+            request.chat_history.insert(0, {"role": "system", "content": f"You are an assistant that creates Jupyter notebooks. Use the functions provided to add markdown or code cells to the notebook. Code cells are written in Python. Markdown cells are written in Markdown. Call the functions with either Python or Markdown content. Do not repeat the code in the code cells with markdown explanations. You have only two functions available to you: '{tool_names[0]}' and '{tool_names[1]}'. Do not assume the availibility of any other tools or functions."})
+            await self.handle_chat_request_with_tools(request, response, tool_context={
+                'file_path': file_path
+            }, tool_choice='required')
+            return
+
         messages = [
             {"role": "system", "content": CopilotPrompts.chat_prompt()},
         ] + request.chat_history

@@ -90,7 +90,7 @@ class ConvertFahrenheitToCelciusTool(Tool):
             confirmationMessage="Are you sure you want to convert the temperature?"
         )
 
-    def handle_tool_call(self, request: ChatRequest, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
         temperature = tool_args.get('temperature')
         return {"celcius": (temperature - 32) * 5/9}
 
@@ -139,7 +139,7 @@ class ConvertCelciusToKelvinTool(Tool):
             # confirmationMessage="Are you sure you want to convert the temperature?"
         )
 
-    def handle_tool_call(self, request: ChatRequest, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
         temperature = tool_args.get('temperature')
         return {"kelvin": temperature + 273.15}
 

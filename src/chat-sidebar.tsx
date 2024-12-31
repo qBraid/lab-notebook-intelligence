@@ -5,7 +5,7 @@ import { ReactWidget } from '@jupyterlab/apputils';
 import { UUID } from '@lumino/coreutils';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
-import { IActiveDocumentInfo, IChatCompletionResponseEmitter, RequestDataType, ResponseStreamDataType } from './tokens';
+import { BackendMessageType, IActiveDocumentInfo, IChatCompletionResponseEmitter, RequestDataType, ResponseStreamDataType } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { requestAPI } from "./handler";
 import {MarkdownRenderer} from './markdown-renderer';
@@ -345,25 +345,23 @@ function SidebarComponent(props: any) {
         setCopilotRequestInProgress(true);
 
         const activeDocInfo: IActiveDocumentInfo = props.getActiveDocumentInfo();
-        const newNotebookPrefix = '/newNotebook ';
-        const isNewNotebook = prompt.startsWith(newNotebookPrefix);
-        const extractedPrompt = isNewNotebook ? prompt.substring(newNotebookPrefix.length) : prompt;
-        const serverRoot = activeDocInfo.serverRoot!;
+        const extractedPrompt = prompt;
         const parentDirectory = activeDocInfo.parentDirectory!;
         const contents: IChatMessageContent[] = [];
+        const app = props.getApp();
 
         submitCompletionRequest({
             chatId,
-            type: isNewNotebook ? RunChatCompletionType.NewNotebook : RunChatCompletionType.Chat,
+            type: RunChatCompletionType.Chat,
             content: extractedPrompt,
             language: activeDocInfo.language,
             filename: activeDocInfo.filename,
             parentDirectory
         }, {
-            emit: (response) => {
+            emit: async (response) => {
                 let responseMessage = '';
                 let notebookPath = undefined;
-                if (isNewNotebook) {
+                /*if (isNewNotebook) {
                     if (response.data.notebook_path) {
                         notebookPath = response.data.notebook_path;
                         if (notebookPath.startsWith(serverRoot)) {
@@ -373,8 +371,8 @@ function SidebarComponent(props: any) {
                     } else {
                         responseMessage = `Failed to generate notebook. Please try again.`;
                     }
-                } else {
-                    if (response.type === 'StreamMessage') {
+                } else*/ {
+                    if (response.type === BackendMessageType.StreamMessage) {
                         const delta = response.data["choices"]?.[0]?.["delta"];
                         if (!delta) {
                             return;
@@ -397,8 +395,16 @@ function SidebarComponent(props: any) {
                                 content: responseMessage
                             });
                         }
-                    } else if (response.type === 'StreamEnd') {
+                    } else if (response.type === BackendMessageType.StreamEnd) {
                         setCopilotRequestInProgress(false);
+                    } else if (response.type === BackendMessageType.RunUICommand) {
+                        const messageId = response.id;
+                        const result = await app.commands.execute(response.data.commandId, response.data.args);
+                        const data = {
+                            callback_id: response.data.callback_id,
+                            result
+                        };
+                        GitHubCopilot.sendWebSocketMessage(messageId, RequestDataType.RunUICommandResponse, data);
                     }
                 }
                 const messageId = UUID.uuid4();
@@ -416,7 +422,6 @@ function SidebarComponent(props: any) {
         });
         setPrompt(promptPrefix);
         filterPrefixSuggestions(promptPrefix);
-
     };
 
     const filterPrefixSuggestions = (prmpt: string) => {
