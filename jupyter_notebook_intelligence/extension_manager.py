@@ -11,7 +11,7 @@ from jupyter_notebook_intelligence.github_copilot import completions
 
 DEFAULT_CHAT_PARTICIPANT_ID = 'default'
 RESERVED_PARTICIPANT_IDS = set([
-    DEFAULT_CHAT_PARTICIPANT_ID, 'test', 'chat', 'copilot', 'jupyter', 'jupyterlab', 'jlab', 'notebook', 'intelligence', 'nb', 'nbi', 'terminal', 'vscode', 'workspace', 'help', 'ai', 'config', 'settings', 'ui', 'cell', 'code', 'file', 'data', 'new', 'run', 'search'
+    'chat', 'copilot', 'jupyter', 'jupyterlab', 'jlab', 'notebook', 'intelligence', 'nb', 'nbi', 'terminal', 'vscode', 'workspace', 'help', 'ai', 'config', 'settings', 'ui', 'cell', 'code', 'file', 'data', 'new', 'run', 'search'
 ])
 
 class GitHubAIModel(AIModel):
