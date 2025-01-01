@@ -10,6 +10,9 @@ from jupyter_notebook_intelligence.github_copilot import completions
 
 
 DEFAULT_CHAT_PARTICIPANT_ID = 'default'
+RESERVED_PARTICIPANT_IDS = set([
+    DEFAULT_CHAT_PARTICIPANT_ID, 'test', 'chat', 'copilot', 'jupyter', 'jupyterlab', 'jlab', 'notebook', 'intelligence', 'nb', 'nbi', 'terminal', 'vscode', 'workspace', 'help', 'ai', 'config', 'settings', 'ui', 'cell', 'code', 'file', 'data', 'new', 'run', 'search'
+])
 
 class GitHubAIModel(AIModel):
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, options: dict = {}) -> None:
@@ -54,11 +57,16 @@ class ExtensionManager(Host):
             pass
 
         return None
-    
+
     def register_chat_participant(self, participant: ChatParticipant):
-        if participant.id not in self.chat_participants:
-            self.chat_participants[participant.id] = participant
-    
+        if participant.id in RESERVED_PARTICIPANT_IDS:
+            print(f"Participant ID '{participant.id}' is reserved!")
+            return
+        if participant.id in self.chat_participants:
+            print(f"Participant ID '{participant.id}' is already in use!")
+            return
+        self.chat_participants[participant.id] = participant
+
     def register_inline_completion_context_provider(self, provider: InlineCompletionContextProvider) -> None:
         pass
 
