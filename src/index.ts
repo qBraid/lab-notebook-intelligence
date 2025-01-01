@@ -56,8 +56,6 @@ namespace CommandIDs {
   export const createNewNotebookFromPython = 'notebook-intelligence:create-new-notebook-from-py';
   export const addCodeCellToNotebook = 'notebook-intelligence:add-code-cell-to-notebook';
   export const addMarkdownCellToNotebook = 'notebook-intelligence:add-markdown-cell-to-notebook';
-  export const explainThis = 'notebook-intelligence:explain-this';
-  export const fixThis = 'notebook-intelligence:fix-this';
   export const editorGenerateCode = 'notebook-intelligence:editor-generate-code';
   export const editorExplainThisCode = 'notebook-intelligence:editor-explain-this-code';
   export const editorFixThisCode = 'notebook-intelligence:editor-fix-this-code';
@@ -329,49 +327,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
       }
     });
 
-    app.commands.addCommand(CommandIDs.explainThis, {
-      execute: (args) => {
-        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
-          return;
-        }
-
-        const np = app.shell.currentWidget as NotebookPanel;
-        const activeCell = np.content.activeCell;
-        const content = activeCell?.model.sharedModel.source || '';
-        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
-          detail: {
-            type: RunChatCompletionType.ExplainThis,
-            content,
-            language: activeDocumentInfo.language,
-            filename: activeDocumentInfo.filename,
-          }
-        }));
-
-        app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
-      }
-    });
-
-    app.commands.addCommand(CommandIDs.fixThis, {
-      execute: (args) => {
-        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
-          return;
-        }
-
-        const np = app.shell.currentWidget as NotebookPanel;
-        const activeCell = np.content.activeCell as CodeCell;
-        const content = activeCell?.model.sharedModel.source || "";
-
-        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
-          detail: {
-            type: RunChatCompletionType.FixThis,
-            content,
-            language: activeDocumentInfo.language,
-            filename: activeDocumentInfo.filename,
-          }
-        }));
-      }
-    });
-
     app.commands.addCommand(CommandIDs.openGitHubCopilotLoginDialog, {
       execute: (args) => {
         const dialogBody = new GitHubCopilotLoginDialogBody();
@@ -385,6 +340,35 @@ const plugin: JupyterFrontEndPlugin<void> = {
         dialog.launch();
       }
     });
+
+    const getPrefixAndSuffixForActiveCell = (): {prefix: string, suffix: string} => {
+      let prefix = '';
+      let suffix = '';
+      const currentWidget = app.shell.currentWidget;
+      if (!(currentWidget instanceof NotebookPanel && currentWidget.content.activeCell)) {
+        return {prefix, suffix};
+      }
+
+      const activeCell = currentWidget.content.activeCell;
+      let activeCellReached = false;
+
+      for (const cell of currentWidget.content.widgets) {
+        const cellModel = cell.model.sharedModel;
+        if (cell === activeCell) {
+          activeCellReached = true;
+        } else if (!activeCellReached) {
+          if (cellModel.cell_type === 'code') {
+            prefix += cellModel.source + '\n';
+          }
+        } else {
+          if (cellModel.cell_type === 'code') {
+            suffix += cellModel.source + '\n';
+          }
+        }
+      }
+
+      return {prefix, suffix};
+    };
 
     const generateCodeCommand: CommandRegistry.ICommandOptions = {
       execute: (args) => {
@@ -411,7 +395,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
           return code || source;
         };
 
+        const {prefix, suffix} = getPrefixAndSuffixForActiveCell();
+
         const inlinePrompt = new InlinePromptWidget(rect, {
+          prefix,
+          suffix,
           onRequestSubmitted: () => {
             inlinePrompt.hide();
           },

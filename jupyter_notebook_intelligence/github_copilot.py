@@ -488,7 +488,6 @@ class GithubCopilotChatParticipant(ChatParticipant):
         return [
             ChatCommand(name='newNotebook', description='Create a new notebook'),
             ChatCommand(name='clear', description='Clears chat history'),
-            ChatCommand(name='logout', description='Logs out from GitHub Copilot'),
         ]
 
     @property

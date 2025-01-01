@@ -26,12 +26,14 @@ export enum RunChatCompletionType {
 }
 
 export interface IRunChatCompletionRequest {
-    chatId: string,
-    type: RunChatCompletionType,
-    content: string,
-    language?: string,
-    filename?: string,
-    parentDirectory?: string,
+    chatId: string;
+    type: RunChatCompletionType;
+    content: string;
+    language?: string;
+    filename?: string;
+    parentDirectory?: string;
+    prefix?: string;
+    suffix?: string;
 }
 
 export interface IChatSidebarOptions {
@@ -60,6 +62,8 @@ export class ChatSidebar extends ReactWidget {
 }
 
 export interface IInlinePromptWidgetOptions {
+    prefix: string;
+    suffix: string;
     onRequestSubmitted: () => void;
     onRequestCancelled: () => void;
     onContentStream: (content: string) => void;
@@ -67,8 +71,6 @@ export interface IInlinePromptWidgetOptions {
 }
 
 export class InlinePromptWidget extends ReactWidget {
-    private _options: IInlinePromptWidgetOptions;
-
     constructor(rect: DOMRect, options: IInlinePromptWidgetOptions) {
         super();
 
@@ -98,8 +100,10 @@ export class InlinePromptWidget extends ReactWidget {
     }
 
     render(): JSX.Element {
-        return <InlinePromptComponent onRequestSubmitted={this._options.onRequestSubmitted} onRequestCancelled={this._options.onRequestCancelled} onResponseEmit={this._onResponse.bind(this)} />;
+        return <InlinePromptComponent onRequestSubmitted={this._options.onRequestSubmitted} onRequestCancelled={this._options.onRequestCancelled} onResponseEmit={this._onResponse.bind(this)} prefix={this._options.prefix} suffix={this._options.suffix} />;
     }
+
+    private _options: IInlinePromptWidgetOptions;
 }
 
 export class GitHubCopilotStatusBarItem extends ReactWidget {
@@ -265,6 +269,8 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest, respo
             return GitHubCopilot.generateCode(
                 request.chatId,
                 request.content,
+                request.prefix || '',
+                request.suffix || '',
                 request.language || 'python',
                 request.filename || 'Untitled.ipynb',
                 responseEmitter
@@ -278,7 +284,7 @@ function SidebarComponent(props: any) {
     const [draftPrompt, setDraftPrompt] = useState<string>('');
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
-    const [loginClickCount, setLoginClickCount] = useState(0);
+    const [loginClickCount, _setLoginClickCount] = useState(0);
     const [copilotRequestInProgress, setCopilotRequestInProgress] = useState(false);
     const [showPopover, setShowPopover] = useState(false);
     const [originalPrefixes, setOriginalPrefixes] = useState<string[]>([]);
@@ -396,18 +402,6 @@ function SidebarComponent(props: any) {
             setPromptHistory([]);
             setPromptHistoryIndex(0);
             GitHubCopilot.sendWebSocketMessage(UUID.uuid4(), RequestDataType.ClearChatHistory, { chatId });
-            return;
-        } else if (prompt.startsWith('/logout')) {
-            setChatMessages([]);
-            setPrompt('');
-            resetChatId();
-            resetPrefixSuggestions();
-            setPromptHistory([]);
-            setPromptHistoryIndex(0);
-            await GitHubCopilot.logoutFromGitHub();
-            GitHubCopilot.sendWebSocketMessage(UUID.uuid4(), RequestDataType.ClearChatHistory, { chatId });
-            setGHLoginStatus(GitHubCopilotLoginStatus.NotLoggedIn);
-            setLoginClickCount(loginClickCount + 1);
             return;
         }
 
@@ -727,7 +721,10 @@ function InlinePromptComponent(props: any) {
             content: prompt,
             language: undefined,
             filename: undefined,
-            parentDirectory: ''
+            parentDirectory: '',
+            prefix: props.prefix,
+            suffix: props.suffix,
+
         }, {
             emit: async (response) => {
                 props.onResponseEmit(response);

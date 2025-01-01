@@ -346,12 +346,18 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             data = msg['data']
             chatId = data['chatId']
             prompt = data['prompt']
+            prefix = data['prefix']
+            suffix = data['suffix']
             language = data['language']
             filename = data['filename']
-            self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
+            if prefix != '':
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"This code section is prior to the code generation request: ```{prefix}```"})
+            if suffix != '':
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"This code section is after the code generation request: ```{suffix}```"})
+            self.chat_history.add_message(chatId, {"role": "user", "content": f"Generate code for: {prompt}"})
             responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             self._responseEmitters[messageId] = responseEmitter
-            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generated code for in '{language}' language. Be concise and return only code as a response."}))
+            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. Be concise and return only code as a response."}))
         elif messageType == RequestDataType.ChatUserInput:
             responseEmitter = self._responseEmitters.get(messageId)
             if responseEmitter is None:
