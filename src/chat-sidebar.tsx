@@ -293,6 +293,7 @@ function SidebarComponent(props: any) {
     const [showPopover, setShowPopover] = useState(false);
     const [originalPrefixes, setOriginalPrefixes] = useState<string[]>([]);
     const [prefixSuggestions, setPrefixSuggestions] = useState<string[]>([]);
+    const [selectedPrefixSuggestionIndex, setSelectedPrefixSuggestionIndex] = useState(0);
     const promptInputRef = useRef<HTMLTextAreaElement>(null);
     const [promptHistory, setPromptHistory] = useState<string[]>([]);
     // position on prompt history stack
@@ -338,6 +339,10 @@ function SidebarComponent(props: any) {
         return () => clearInterval(intervalId);
     }, [loginClickCount]);
 
+    useEffect(() => {
+        setSelectedPrefixSuggestionIndex(0);
+    }, [prefixSuggestions]);
+
     const onPromptChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
         const newPrompt = event.target.value;
         setPrompt(newPrompt);
@@ -352,9 +357,7 @@ function SidebarComponent(props: any) {
         }
     };
 
-    const prefixSuggestionSelected = (event: any) => {
-        const prefix = event.target.dataset['value'];
-
+    const applyPrefixSuggestion = (prefix: string) => {
         if (prefix.includes(prompt)) {
             setPrompt(`${prefix} `);
         } else {
@@ -362,6 +365,12 @@ function SidebarComponent(props: any) {
         }
         setShowPopover(false);
         promptInputRef.current?.focus();
+        setSelectedPrefixSuggestionIndex(0);
+    };
+
+    const prefixSuggestionSelected = (event: any) => {
+        const prefix = event.target.dataset['value'];
+        applyPrefixSuggestion(prefix);
     };
 
     const handleUserInputSubmit = async () => {
@@ -502,6 +511,7 @@ function SidebarComponent(props: any) {
 
     const resetPrefixSuggestions = () => {
         setPrefixSuggestions(originalPrefixes);
+        setSelectedPrefixSuggestionIndex(0);
     };
     const resetChatId = () => {
         setChatId(UUID.uuid4());
@@ -511,14 +521,27 @@ function SidebarComponent(props: any) {
         if (event.key == 'Enter') {
             event.stopPropagation();
             event.preventDefault();
+            if (showPopover) {
+                applyPrefixSuggestion(prefixSuggestions[selectedPrefixSuggestionIndex]);
+                return;
+            }
+
+            setSelectedPrefixSuggestionIndex(0);
             handleUserInputSubmit();
         } else if (event.key == 'Escape') {
             event.stopPropagation();
             event.preventDefault();
             setShowPopover(false);
+            setSelectedPrefixSuggestionIndex(0);
         } else if (event.key == 'ArrowUp') {
             event.stopPropagation();
             event.preventDefault();
+
+            if (showPopover) {
+                setSelectedPrefixSuggestionIndex((selectedPrefixSuggestionIndex - 1 + prefixSuggestions.length) % prefixSuggestions.length);
+                return;
+            }
+
             setShowPopover(false);
             // first time up key press
             if (promptHistory.length > 0 && promptHistoryIndex == promptHistory.length) {
@@ -534,6 +557,12 @@ function SidebarComponent(props: any) {
         } else if (event.key == 'ArrowDown') {
             event.stopPropagation();
             event.preventDefault();
+
+            if (showPopover) {
+                setSelectedPrefixSuggestionIndex((selectedPrefixSuggestionIndex + 1 + prefixSuggestions.length) % prefixSuggestions.length);
+                return;
+            }
+
             setShowPopover(false);
             if (promptHistory.length > 0 && promptHistoryIndex >= 0 && promptHistoryIndex < promptHistory.length) {
                 if (promptHistoryIndex == promptHistory.length - 1) {
@@ -679,14 +708,14 @@ function SidebarComponent(props: any) {
                         {/* <div>Context</div> */}
                     </div>
                     <div className="user-input-footer">
-                        <div><a href='javascript:void(0)' onClick={() => setShowPopover(true)} title='Select chat participant'>@</a></div>
+                        <div><a href='javascript:void(0)' onClick={() => {setShowPopover(true); promptInputRef.current?.focus();}} title='Select chat participant'>@</a></div>
                         <div style={{ flexGrow: 1 }}></div>
                         <div><button className='send-button' onClick={() => handleUserInputSubmit()} disabled={prompt.length == 0}><VscSend></VscSend> Send</button></div>
                     </div>
                     {showPopover && prefixSuggestions.length > 0 && (
                         <div className="user-input-autocomplete">
                             {prefixSuggestions.map((prefix, index) => (
-                                <div key={`key-${index}`} className='user-input-autocomplete-item' data-value={prefix} onClick={(event) => prefixSuggestionSelected(event)}>{prefix}</div>
+                                <div key={`key-${index}`} className={`user-input-autocomplete-item ${index === selectedPrefixSuggestionIndex ? 'selected' : ''}`} data-value={prefix} onClick={(event) => prefixSuggestionSelected(event)}>{prefix}</div>
                             ))}
                         </div>
                     )}
