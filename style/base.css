@@ -111,6 +111,10 @@
     margin-block-end: 5px;
 }
 
+.chat-message-content a {
+    text-decoration: underline;
+}
+
 .chat-message-user {
     background-color: var(--jp-toolbar-active-background);
 }

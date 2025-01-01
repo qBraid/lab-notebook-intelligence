@@ -202,9 +202,9 @@ function ChatResponse(props: any) {
                         case ResponseStreamDataType.HTML:
                             return <div key={`key-${index}`} dangerouslySetInnerHTML={{ __html: item.content }} />;
                         case ResponseStreamDataType.Button:
-                            return <button key={`key-${index}`} onClick={() => runCommand(item.content.commandId, item.content.args)}>{item.content.title}</button>;
+                            return <div><button key={`key-${index}`} onClick={() => runCommand(item.content.commandId, item.content.args)}>{item.content.title}</button></div>;
                         case ResponseStreamDataType.Anchor:
-                            return <a key={`key-${index}`} href={item.content.uri} target="_blank">{item.content.title}</a>;
+                            return <div><a key={`key-${index}`} href={item.content.uri} target="_blank">{item.content.title}</a></div>;
                         case ResponseStreamDataType.Progress:
                             // show only if no more message available
                             return (index === (groupedContents.length - 1)) ? <div key={`key-${index}`}>&#x2713; {item.content}</div> : null;
