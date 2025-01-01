@@ -121,13 +121,17 @@ export class GitHubCopilotStatusBarItem extends ReactWidget {
 }
 
 export class GitHubCopilotLoginDialogBody extends ReactWidget {
-    constructor() {
+    constructor(options: { onLoggedIn: () => void }) {
         super();
+
+        this._onLoggedIn = options.onLoggedIn;
     }
 
     render(): JSX.Element {
-        return <GitHubCopilotLoginDialogBodyComponent />;
+        return <GitHubCopilotLoginDialogBodyComponent onLoggedIn={() => this._onLoggedIn()} />;
     }
+
+    private _onLoggedIn: () => void;
 }
 
 
@@ -774,19 +778,26 @@ function GitHubCopilotStatusComponent(props: any) {
     };
 
     return (
-        <div title={ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn ? 'Logged in' : 'Not logged in'} className='github-copilot-status-bar' onClick={() => onStatusClick()} dangerouslySetInnerHTML={{ __html: ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn? copilotSvgstr : copilotWarningSvgstr }}></div>
+        <div title={`GitHub Copilot: ${ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn ? 'Logged in' : 'Not logged in'}`} className='github-copilot-status-bar' onClick={() => onStatusClick()} dangerouslySetInnerHTML={{ __html: ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn? copilotSvgstr : copilotWarningSvgstr }}></div>
     );
 }
 
-function GitHubCopilotLoginDialogBodyComponent() {
+function GitHubCopilotLoginDialogBodyComponent(props: any) {
     const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
     const [loginClickCount, setLoginClickCount] = useState(0);
+    const [loginClicked, setLoginClicked] = useState(false);
     const [deviceActivationURL, setDeviceActivationURL] = useState('');
     const [deviceActivationCode, setDeviceActivationCode] = useState('');
 
     useEffect(() => {
         const fetchData = () => {
-            setGHLoginStatus(GitHubCopilot.getLoginStatus());
+            const status = GitHubCopilot.getLoginStatus();
+            setGHLoginStatus(status);
+            if (status === GitHubCopilotLoginStatus.LoggedIn && loginClicked) {
+                setTimeout(() => {
+                    props.onLoggedIn();
+                }, 1000);
+            }
         };
 
         fetchData();
@@ -801,6 +812,7 @@ function GitHubCopilotLoginDialogBodyComponent() {
         setDeviceActivationURL((response as any).verificationURI);
         setDeviceActivationCode((response as any).userCode);
         setLoginClickCount(loginClickCount + 1);
+        setLoginClicked(true);
     };
 
     const handleLogoutClick = async () => {
@@ -808,7 +820,7 @@ function GitHubCopilotLoginDialogBodyComponent() {
         setLoginClickCount(loginClickCount + 1);
     };
 
-    const loggedIn =  ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn;
+    const loggedIn = ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn;
 
     return (
         <div className='github-copilot-login-dialog'>

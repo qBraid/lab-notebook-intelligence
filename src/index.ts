@@ -329,8 +329,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.commands.addCommand(CommandIDs.openGitHubCopilotLoginDialog, {
       execute: (args) => {
-        const dialogBody = new GitHubCopilotLoginDialogBody();
-        const dialog = new Dialog({
+        let dialog: Dialog<unknown>;
+        const dialogBody = new GitHubCopilotLoginDialogBody({onLoggedIn: () => dialog.dispose()});
+        dialog = new Dialog({
           title: 'GitHub Copilot Status',
           hasClose: true,
           body: dialogBody,

@@ -33,7 +33,7 @@
     padding-right: 15px;
     display: flex;
     flex-direction: column;
-    background-color: var(--jp-toolbar-active-background);
+    background-color: var(--jp-cell-editor-background);
     border: 1px solid var(--jp-border-color1);
 }
 
@@ -59,15 +59,19 @@
 
 .chat-message {
     padding: 5px;
-    margin-bottom: 5px;
     display: flex;
     flex-direction: column;
 }
 
 .chat-message pre {
-    background-color: var(--jp-layout-color2);
     padding: 3px;
     border-radius: 3px;
+    border: 1px solid var(--jp-border-color1);
+}
+
+pre:has(.code-block-header) {
+    padding: 2px;
+    background-color: var(--jp-layout-color2);
 }
 
 .chat-message-header {
@@ -116,7 +120,11 @@
 }
 
 .chat-message-user {
-    background-color: var(--jp-toolbar-active-background);
+    background-color: var(--jp-cell-editor-background);
+}
+
+.chat-message-copilot {
+    background-color: rgb(90 76 191 / 15%);
 }
 
 .copilot-generated-notebook-link {
@@ -180,6 +188,8 @@
     display: flex;
     align-items: flex-end;
     gap: 5px;
+    padding: 3px;
+    padding-bottom: 0px;
 }
 
 .code-block-header-language {
