@@ -4,5 +4,16 @@
   "description": "@mbektas/jupyter-notebook-intelligence settings.",
   "type": "object",
   "properties": {},
-  "additionalProperties": false
+  "additionalProperties": false,
+  "jupyter.lab.toolbars": {
+    "Cell": [
+      {
+        "name": "notebook-intelligence:editor-generate-code",
+        "command": "notebook-intelligence:editor-generate-code",
+        "icon": "notebook-intelligence:sparkles-icon",
+        "caption": "Generate code",
+        "rank": 0
+      }
+    ]
+  }
 }

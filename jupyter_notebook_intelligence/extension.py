@@ -14,6 +14,7 @@ class RequestDataType(StrEnum):
     ChatUserInput = 'chat-user-input'
     ClearChatHistory = 'clear-chat-history'
     RunUICommandResponse = 'run-ui-command-response'
+    GenerateCode = 'generate-code'
 
 class BackendMessageType(StrEnum):
     StreamMessage = 'stream-message'
@@ -236,10 +237,10 @@ class ChatParticipant:
     def tools(self) -> list[Tool]:
         return []
 
-    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
+    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         raise NotImplemented
     
-    async def handle_chat_request_with_tools(self, request: ChatRequest, response: ChatResponse, tool_context: dict = {}, tool_choice = 'auto') -> None:
+    async def handle_chat_request_with_tools(self, request: ChatRequest, response: ChatResponse, options: dict = {}, tool_context: dict = {}, tool_choice = 'auto') -> None:
         tools = self.tools
 
         messages = request.chat_history.copy()

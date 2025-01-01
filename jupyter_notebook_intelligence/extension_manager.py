@@ -91,10 +91,10 @@ class ExtensionManager(Host):
 
         return [participant, command, input]
 
-    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
+    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         request.host = self
         (participant_name, command, prompt) = ExtensionManager.parse_prompt(request.prompt)
         participant = self.chat_participants.get(participant_name, DEFAULT_CHAT_PARTICIPANT_ID)
         request.command = command
         request.prompt = prompt
-        return await participant.handle_chat_request(request, response)
+        return await participant.handle_chat_request(request, response, options)

@@ -10,6 +10,10 @@ import {
   IDocumentManager
 } from '@jupyterlab/docmanager';
 
+import {
+  Dialog
+} from '@jupyterlab/apputils';
+
 import { CodeCell } from '@jupyterlab/cells';
 import { ISharedNotebook} from '@jupyter/ydoc';
 
@@ -35,12 +39,15 @@ import { ContentsManager, KernelSpecManager } from '@jupyterlab/services';
 
 import { LabIcon } from '@jupyterlab/ui-components';
 
-import { Panel } from '@lumino/widgets';
+import { Menu, Panel, Widget } from '@lumino/widgets';
+import { CommandRegistry } from '@lumino/commands';
+import { IStatusBar } from '@jupyterlab/statusbar';
 
-import { ChatSidebar, RunChatCompletionType } from './chat-sidebar';
+import { ChatSidebar, GitHubCopilotLoginDialogBody, GitHubCopilotStatusBarItem, InlinePromptWidget, RunChatCompletionType } from './chat-sidebar';
 import { GitHubCopilot } from './github-copilot';
 import { IActiveDocumentInfo } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
+import { removeAnsiChars } from './utils';
 
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat_user_input';
@@ -51,6 +58,12 @@ namespace CommandIDs {
   export const addMarkdownCellToNotebook = 'notebook-intelligence:add-markdown-cell-to-notebook';
   export const explainThis = 'notebook-intelligence:explain-this';
   export const fixThis = 'notebook-intelligence:fix-this';
+  export const editorGenerateCode = 'notebook-intelligence:editor-generate-code';
+  export const editorExplainThisCode = 'notebook-intelligence:editor-explain-this-code';
+  export const editorFixThisCode = 'notebook-intelligence:editor-fix-this-code';
+  export const editorExplainThisOutput = 'notebook-intelligence:editor-explain-this-output';
+  export const editorTroubleshootThisOutput = 'notebook-intelligence:editor-troubleshoot-this-output';
+  export const openGitHubCopilotLoginDialog = 'notebook-intelligence:open-github-copilot-login-dialog';
 }
 
 const emptyNotebookContent = {
@@ -135,9 +148,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
   description: 'Jupyter Notebook Intelligence extension',
   autoStart: true,
   requires: [ICompletionProviderManager, IDocumentManager, IDefaultFileBrowser],
-  optional: [ISettingRegistry],
-  activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, docManager: IDocumentManager, defaultBrowser: IDefaultFileBrowser, settingRegistry: ISettingRegistry | null) => {
+  optional: [ISettingRegistry, IStatusBar],
+  activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, docManager: IDocumentManager, defaultBrowser: IDefaultFileBrowser, settingRegistry: ISettingRegistry | null, statusBar: IStatusBar | null) => {
     console.log('JupyterLab extension @mbektas/jupyter-notebook-intelligence is activated!');
+
+    new LabIcon({
+      name: 'notebook-intelligence:sparkles-icon',
+      svgstr: sparklesSvgstr
+    });
 
     completionManager.registerInlineProvider(new GitHubInlineCompletionProvider());
 
@@ -264,6 +282,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return model.cells.length === 1 && model.cells[0].cell_type === 'code' && model.cells[0].source === '';
     };
 
+    const isActiveCellCodeCell = (): boolean => {
+      if (!(app.shell.currentWidget instanceof NotebookPanel)) {
+        return false;
+      }
+      const np = app.shell.currentWidget as NotebookPanel;
+      const activeCell = np.content.activeCell;
+      return activeCell instanceof CodeCell;
+    };
+
     const addCellToNotebook = (filePath: string, cellType: 'code' | 'markdown', source: string): boolean => {
       const currentWidget = app.shell.currentWidget;
       const notebookOpen = currentWidget instanceof NotebookPanel && currentWidget.sessionContext.path === filePath &&
@@ -344,6 +371,227 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }));
       }
     });
+
+    app.commands.addCommand(CommandIDs.openGitHubCopilotLoginDialog, {
+      execute: (args) => {
+        const dialogBody = new GitHubCopilotLoginDialogBody();
+        const dialog = new Dialog({
+          title: 'GitHub Copilot Status',
+          hasClose: true,
+          body: dialogBody,
+          buttons: []
+        });
+
+        dialog.launch();
+      }
+    });
+
+    const generateCodeCommand: CommandRegistry.ICommandOptions = {
+      execute: (args) => {
+        const currentWidget = app.shell.currentWidget;
+        if (!(currentWidget instanceof NotebookPanel && currentWidget.content.activeCell)) {
+          return;
+        }
+        const activeCell = currentWidget.content.activeCell;
+        const input = activeCell.node.querySelector('.jp-InputArea-editor');
+        if (!input) {
+          return;
+        }
+        const rect = input.getBoundingClientRect();
+
+        let generatedContent = '';
+
+        const extractCodeFromMarkdown = (source: string): string => {
+          const codeBlockRegex = /```python([\s\S]*?)```/g;
+          let code = '';
+          let match;
+          while ((match = codeBlockRegex.exec(source)) !== null) {
+            code += match[1] + '\n';
+          }
+          return code || source;
+        };
+
+        const inlinePrompt = new InlinePromptWidget(rect, {
+          onRequestSubmitted: () => {
+            inlinePrompt.hide();
+          },
+          onRequestCancelled: () => {
+            Widget.detach(inlinePrompt);
+          },
+          onContentStream: (content: string) => {
+            generatedContent += content;
+            activeCell.model.sharedModel.source = generatedContent;
+          },
+          onContentStreamEnd: () => {
+            // extract out code desctions from markdown
+            activeCell.model.sharedModel.source = extractCodeFromMarkdown(generatedContent);
+            generatedContent = '';
+            Widget.detach(inlinePrompt);
+          }
+        });
+        Widget.attach(inlinePrompt, document.body);
+      },
+      label: 'Generate code',
+      isEnabled: isActiveCellCodeCell
+    };
+    app.commands.addCommand(CommandIDs.editorGenerateCode, generateCodeCommand);
+
+    const copilotMenuCommands = new CommandRegistry();
+    copilotMenuCommands.addCommand(CommandIDs.editorGenerateCode, generateCodeCommand)
+    copilotMenuCommands.addCommand(CommandIDs.editorExplainThisCode, {
+      execute: () => {
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        const content = activeCell?.model.sharedModel.source || '';
+        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
+          detail: {
+            type: RunChatCompletionType.ExplainThis,
+            content,
+            language: activeDocumentInfo.language,
+            filename: activeDocumentInfo.filename,
+          }
+        }));
+
+        app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
+      },
+      label: 'Explain code',
+      isEnabled: isActiveCellCodeCell
+    });
+    copilotMenuCommands.addCommand(CommandIDs.editorFixThisCode, {
+      execute: () => {
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        const content = activeCell?.model.sharedModel.source || '';
+        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
+          detail: {
+            type: RunChatCompletionType.FixThis,
+            content,
+            language: activeDocumentInfo.language,
+            filename: activeDocumentInfo.filename,
+          }
+        }));
+
+        app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
+      },
+      label: 'Fix code',
+      isEnabled: isActiveCellCodeCell
+    });
+    copilotMenuCommands.addCommand(CommandIDs.editorExplainThisOutput, {
+      execute: () => {
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        let content = '';
+        const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
+        for (const output of outputs) {
+          if (output.output_type == 'execute_result') {
+            // @ts-ignore
+            content += output.data['text/plain'] + '\n';
+          } else if (output.output_type == 'stream') {
+            // @ts-ignore
+            content += output.text + '\n';
+          } else if (output.output_type == 'error') {
+            // @ts-ignore
+            if (Array.isArray(output.traceback)) {
+              content += output.ename + ': ' + output.evalue + '\n';
+              content += output.traceback.map(item => removeAnsiChars(item as string)).join('\n') + '\n';
+            }
+          }
+        }
+        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
+          detail: {
+            type: RunChatCompletionType.ExplainThisOutput,
+            content,
+            language: activeDocumentInfo.language,
+            filename: activeDocumentInfo.filename,
+          }
+        }));
+
+        app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
+      },
+      label: 'Explain output',
+      isEnabled: () => {
+        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
+          return false;
+        }
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        if (!(activeCell instanceof CodeCell)) {
+          return false;
+        }
+        const outputs = activeCell.outputArea.model.toJSON();
+        return Array.isArray(outputs) && outputs.length > 0;
+      }
+    });
+    copilotMenuCommands.addCommand(CommandIDs.editorTroubleshootThisOutput, {
+      execute: () => {
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        let content = '';
+        const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
+        for (const output of outputs) {
+          if (output.output_type == 'error') {
+            // @ts-ignore
+            if (Array.isArray(output.traceback)) {
+              content += output.ename + ': ' + output.evalue + '\n';
+              content += output.traceback.map(item => removeAnsiChars(item as string)).join('\n') + '\n';
+            }
+          }
+        }
+        document.dispatchEvent(new CustomEvent("copilotSidebar:runPrompt", {
+          detail: {
+            type: RunChatCompletionType.TroubleshootThisOutput,
+            content,
+            language: activeDocumentInfo.language,
+            filename: activeDocumentInfo.filename,
+          }
+        }));
+
+        app.commands.execute('tabsmenu:activate-by-id', {"id": panel.id});
+      },
+      label: 'Troubleshoot errors in output',
+      isEnabled: () => {
+        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
+          return false;
+        }
+        const np = app.shell.currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        if (!(activeCell instanceof CodeCell)) {
+          return false;
+        }
+        const outputs = activeCell.outputArea.model.toJSON();
+        return Array.isArray(outputs) && outputs.length > 0 && outputs.some(output => output.output_type === 'error');
+      }
+    });
+
+    const copilotContextMenu = new Menu({ commands: copilotMenuCommands });
+    copilotContextMenu.id = 'notebook-intelligence:editor-context-menu';
+    copilotContextMenu.title.label = 'Copilot';
+    copilotContextMenu.title.icon = sidebarIcon;
+    copilotContextMenu.addItem({ command: CommandIDs.editorGenerateCode });
+    copilotContextMenu.addItem({ command: CommandIDs.editorExplainThisCode });
+    copilotContextMenu.addItem({ command: CommandIDs.editorFixThisCode });
+    copilotContextMenu.addItem({ command: CommandIDs.editorExplainThisOutput });
+    copilotContextMenu.addItem({ command: CommandIDs.editorTroubleshootThisOutput });
+
+    app.contextMenu.addItem({
+      type: 'submenu',
+      submenu: copilotContextMenu,
+      selector: '.jp-Editor',
+      rank: 1
+    });
+
+    if (statusBar) {
+      const githubCopilotStatusBarItem = new GitHubCopilotStatusBarItem({
+        getApp: () => app
+      });
+
+      statusBar.registerStatusItem('notebook-intelligence:github-copilot-status', {
+        item: githubCopilotStatusBarItem,
+        align: 'right',
+        rank: 100,
+        isActive: () => true
+      });
+    }
 
     const jlabApp = (app as JupyterLab);
     activeDocumentInfo.serverRoot = jlabApp.paths.directories.serverRoot;

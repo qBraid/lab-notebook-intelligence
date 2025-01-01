@@ -11,6 +11,8 @@ import { requestAPI } from "./handler";
 import {MarkdownRenderer} from './markdown-renderer';
 
 import copySvgstr from '../style/icons/copy.svg';
+import copilotSvgstr from '../style/icons/copilot.svg';
+import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
 import { VscSend } from 'react-icons/vsc';
 
 export enum RunChatCompletionType {
@@ -18,6 +20,9 @@ export enum RunChatCompletionType {
     ExplainThis,
     FixThis,
     NewNotebook,
+    GenerateCode,
+    ExplainThisOutput,
+    TroubleshootThisOutput,
 }
 
 export interface IRunChatCompletionRequest {
@@ -53,6 +58,74 @@ export class ChatSidebar extends ReactWidget {
     private _openFile: (path: string) => void;
     private _getApp: () => JupyterFrontEnd;
 }
+
+export interface IInlinePromptWidgetOptions {
+    onRequestSubmitted: () => void;
+    onRequestCancelled: () => void;
+    onContentStream: (content: string) => void;
+    onContentStreamEnd: () => void;
+}
+
+export class InlinePromptWidget extends ReactWidget {
+    private _options: IInlinePromptWidgetOptions;
+
+    constructor(rect: DOMRect, options: IInlinePromptWidgetOptions) {
+        super();
+
+        this.node.style.boxShadow = '0px 0px 4px 4px rgba(1, 1, 1, 0.1)';
+        this.node.style.top = `${rect.top + 32}px`;
+        this.node.style.left = `${rect.left}px`;
+        this.node.style.zIndex = '1000';
+        this.node.style.width = rect.width + 'px';
+        this.node.style.height ='60px';
+        this._options = options;
+    }
+
+    _onResponse(response: any) {
+        if (response.type === BackendMessageType.StreamMessage) {
+            const delta = response.data["choices"]?.[0]?.["delta"];
+            if (!delta) {
+                return;
+            }
+            const responseMessage = response.data["choices"]?.[0]?.["delta"]?.["content"];
+            if (!responseMessage) {
+                return;
+            }
+            this._options.onContentStream(responseMessage);
+        } else if (response.type === BackendMessageType.StreamEnd) {
+            this._options.onContentStreamEnd();
+        }
+    }
+
+    render(): JSX.Element {
+        return <InlinePromptComponent onRequestSubmitted={this._options.onRequestSubmitted} onRequestCancelled={this._options.onRequestCancelled} onResponseEmit={this._onResponse.bind(this)} />;
+    }
+}
+
+export class GitHubCopilotStatusBarItem extends ReactWidget {
+    constructor(options: { getApp: () => JupyterFrontEnd }) {
+        super();
+
+        this._getApp = options.getApp;
+    }
+
+    render(): JSX.Element {
+        return <GitHubCopilotStatusComponent getApp={this._getApp} />;
+    }
+
+    private _getApp: () => JupyterFrontEnd;
+}
+
+export class GitHubCopilotLoginDialogBody extends ReactWidget {
+    constructor() {
+        super();
+    }
+
+    render(): JSX.Element {
+        return <GitHubCopilotLoginDialogBodyComponent />;
+    }
+}
+
 
 interface IChatMessageContent {
     id: string;
@@ -169,21 +242,16 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest, respo
                 responseEmitter
             );
         case RunChatCompletionType.ExplainThis:
-            {
-                const filename = request.filename || 'Untitled.ipynb';
-                return GitHubCopilot.explainThisRequest(
-                    request.content,
-                    request.language || 'python',
-                    filename
-                );
-            }
         case RunChatCompletionType.FixThis:
+        case RunChatCompletionType.ExplainThisOutput:
+        case RunChatCompletionType.TroubleshootThisOutput:
             {
-                const filename = request.filename || 'Untitled.ipynb';
-                return GitHubCopilot.fixThisRequest(
+                return GitHubCopilot.chatRequest(
+                    request.chatId,
                     request.content,
                     request.language || 'python',
-                    filename
+                    request.filename || 'Untitled.ipynb',
+                    responseEmitter
                 );
             }
         case RunChatCompletionType.NewNotebook:
@@ -193,6 +261,14 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest, respo
                     request.parentDirectory!
                 );
             }
+        case RunChatCompletionType.GenerateCode:
+            return GitHubCopilot.generateCode(
+                request.chatId,
+                request.content,
+                request.language || 'python',
+                request.filename || 'Untitled.ipynb',
+                responseEmitter
+            );
     }
 }
 
@@ -203,8 +279,6 @@ function SidebarComponent(props: any) {
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
     const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
     const [loginClickCount, setLoginClickCount] = useState(0);
-    const [deviceActivationURL, setDeviceActivationURL] = useState('');
-    const [deviceActivationCode, setDeviceActivationCode] = useState('');
     const [copilotRequestInProgress, setCopilotRequestInProgress] = useState(false);
     const [showPopover, setShowPopover] = useState(false);
     const [originalPrefixes, setOriginalPrefixes] = useState<string[]>([]);
@@ -245,11 +319,6 @@ function SidebarComponent(props: any) {
     useEffect(() => {
         const fetchData = () => {
             setGHLoginStatus(GitHubCopilot.getLoginStatus());
-            const info = GitHubCopilot.getDeviceVerificationInfo();
-            if (info.verificationURI && info.userCode) {
-                setDeviceActivationURL(info.verificationURI);
-                setDeviceActivationCode(info.userCode);
-            }
         };
 
         fetchData();
@@ -487,16 +556,8 @@ function SidebarComponent(props: any) {
     };
 
     const handleLoginClick = async () => {
-        const response = await GitHubCopilot.loginToGitHub();
-        setDeviceActivationURL((response as any).verificationURI);
-        setDeviceActivationCode((response as any).userCode);
-        setLoginClickCount(loginClickCount + 1);
+        props.getApp().commands.execute('notebook-intelligence:open-github-copilot-login-dialog');
     };
-
-    // const handleLogoutClick = () => {
-    //     // GitHubCopilot.logoutFromGitHub();
-    //     setLoginClickCount(loginClickCount + 1);
-    // };
 
     useEffect(() => {
         scrollMessagesToBottom();
@@ -504,9 +565,22 @@ function SidebarComponent(props: any) {
 
     const promptRequestHandler = useCallback((eventData: any) => {
         const request: IRunChatCompletionRequest = eventData.detail;
-        const message = request.type === RunChatCompletionType.ExplainThis ?
-            `Explain this code:\n\`\`\`\n${request.content}\n\`\`\`\n` :
-            `Fix this code:\n\`\`\`\n${request.content}\n\`\`\`\n`;
+        request.chatId = chatId;
+        let message = '';
+        switch (request.type) {
+            case RunChatCompletionType.ExplainThis:
+                message = `Explain this code:\n\`\`\`\n${request.content}\n\`\`\`\n`;
+                break;
+            case RunChatCompletionType.FixThis:
+                message = `Fix this code:\n\`\`\`\n${request.content}\n\`\`\`\n`;
+                break;
+            case RunChatCompletionType.ExplainThisOutput:
+                message = `Explain this notebook cell output: \n\`\`\`\n${request.content}\n\`\`\`\n`;
+                break;
+            case RunChatCompletionType.TroubleshootThisOutput:
+                message = `Troubleshoot errors reported in the notebook cell output: \n\`\`\`\n${request.content}\n\`\`\`\n`;
+                break;
+        }
         const messageId = UUID.uuid4();
         const newList = [
             ...chatMessages,
@@ -524,8 +598,31 @@ function SidebarComponent(props: any) {
         setChatMessages(newList);
 
         setCopilotRequestInProgress(true);
+
+        const contents: IChatMessageContent[] = [];
+
         submitCompletionRequest(request, {
             emit: (response) => {
+                let notebookPath = undefined;
+
+                if (response.type === BackendMessageType.StreamMessage) {
+                    const delta = response.data["choices"]?.[0]?.["delta"];
+                    if (!delta) {
+                        return;
+                    }
+                    
+                    const responseMessage = response.data["choices"]?.[0]?.["delta"]?.["content"];
+                    if (!responseMessage) {
+                        return;
+                    }
+                    contents.push({
+                        id: response.id,
+                        type: ResponseStreamDataType.MarkdownPart,
+                        content: responseMessage
+                    });
+                } else if (response.type === BackendMessageType.StreamEnd) {
+                    setCopilotRequestInProgress(false);
+                }
                 const messageId = UUID.uuid4();
                 setChatMessages([
                     ...newList,
@@ -533,14 +630,10 @@ function SidebarComponent(props: any) {
                         id: messageId,
                         date: new Date(),
                         from: 'copilot',
-                        contents: [{
-                            id: messageId,
-                            type: ResponseStreamDataType.Markdown,
-                            content: response.data.message
-                        }]
+                        contents: contents,
+                        notebookLink: notebookPath
                     }
                 ]);
-                setCopilotRequestInProgress(false);
             }
         });
     }, [chatMessages]);
@@ -558,33 +651,14 @@ function SidebarComponent(props: any) {
         <div className="sidebar">
             <div className="sidebar-header">
                 <div className='sidebar-title'>Copilot Chat</div>
-                <div className='sidebar-copilot-status'>
-                    {ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ?
-                        (<div>Activating device...</div>) :
-                        ghLoginStatus === GitHubCopilotLoginStatus.LoggingIn ?
-                            (<div>Logging in...</div>) : null
-                    }
-                </div>
             </div>
             {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn && (
                 <div className='sidebar-login-info'>
-                    <div>
-                        Your GitHub tokens, code and data is directly transferred to GitHub Copilot as needed without storing any copies other than keeping in the process memory.</div>
-                    <div>GitHub Copilot requires a subscription and it is free for some users.
-                        GitHub Copilot is subject to the <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features" target="_blank">GitHub Terms for Additional Products and Features</a>.</div>
-                    <div>
-                        <h3>Privacy and terms</h3>
-
-                        By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide" target='_blank'>GitHub Copilot chat terms</a>. Review the terms to understand about usage, limitations and ways to improve Copilot Chat. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank">Privacy Statement</a> to ensure that your code snippets will not be used as suggested code for other users of GitHub Copilot.</div>
-                    <div>Activate this app for access to GitHub Copilot service</div>
-                    <div><button onClick={handleLoginClick}>Activate using GitHub account</button></div>
+                    <div>You are not logged in to GitHub Copilot. Please login now to activate chat.</div>
+                    <div><button onClick={handleLoginClick}>Login to GitHub Copilot</button></div>
                 </div>
             )}
-            {
-                (ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && deviceActivationURL && deviceActivationCode) &&
-                (<div className='copilot-activation-message'>Please visit <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <span className="user-code-span" onClick={() => { navigator.clipboard.writeText(deviceActivationCode); return true; }}><b>{deviceActivationCode} <span className='copy-icon' dangerouslySetInnerHTML={{ __html: copySvgstr }}></span>
-            </b></span> to allow access to GitHub Copilot from this app.</div>)
-            }
+
             {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn && chatMessages.length == 0 ?
                 (
                     <div className="sidebar-messages">
@@ -621,6 +695,163 @@ function SidebarComponent(props: any) {
                 </div>
             )}
 
+        </div>
+    );
+}
+
+function InlinePromptComponent(props: any) {
+    const [prompt, setPrompt] = useState<string>('');
+
+    const onPromptChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+        const newPrompt = event.target.value;
+        setPrompt(newPrompt);
+    };
+
+    const handleUserInputSubmit = async () => {
+        const promptPrefixParts = [];
+        const promptParts = prompt.split(' ');
+        if (promptParts.length > 1) {
+            for (let i = 0; i < Math.min(promptParts.length, 2); i++) {
+                const part = promptParts[i];
+                if (part.startsWith('@') || part.startsWith('/')) {
+                    promptPrefixParts.push(part);
+                }
+            }
+        }
+
+        const promptPrefix = promptPrefixParts.length > 0 ? (promptPrefixParts.join(' ') + ' ') : '';
+
+        submitCompletionRequest({
+            chatId: UUID.uuid4(),
+            type: RunChatCompletionType.GenerateCode,
+            content: prompt,
+            language: undefined,
+            filename: undefined,
+            parentDirectory: ''
+        }, {
+            emit: async (response) => {
+                props.onResponseEmit(response);
+            }
+        });
+        setPrompt(promptPrefix);
+    };
+
+    const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        if (event.key == 'Enter') {
+            event.stopPropagation();
+            event.preventDefault();
+            props.onRequestSubmitted();
+            handleUserInputSubmit();
+        } else if (event.key == 'Escape') {
+            event.stopPropagation();
+            event.preventDefault();
+            props.onRequestCancelled();
+        }
+    };
+
+    return (
+        <div className='inline-prompt-container'>
+            <textarea autoFocus={true} rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} onBlur={props.onRequestCancelled} placeholder='Ask Copilot to generate Python code...' spellCheck={false} value={prompt} />
+        </div>
+    );
+}
+
+function GitHubCopilotStatusComponent(props: any) {
+    const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
+    const [loginClickCount, _setLoginClickCount] = useState(0);
+
+    useEffect(() => {
+        const fetchData = () => {
+            setGHLoginStatus(GitHubCopilot.getLoginStatus());
+        };
+
+        fetchData();
+
+        const intervalId = setInterval(fetchData, 3000);
+
+        return () => clearInterval(intervalId);
+    }, [loginClickCount]);
+
+    const onStatusClick = () => {
+        props.getApp().commands.execute('notebook-intelligence:open-github-copilot-login-dialog');
+    };
+
+    return (
+        <div title={ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn ? 'Logged in' : 'Not logged in'} className='github-copilot-status-bar' onClick={() => onStatusClick()} dangerouslySetInnerHTML={{ __html: ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn? copilotSvgstr : copilotWarningSvgstr }}></div>
+    );
+}
+
+function GitHubCopilotLoginDialogBodyComponent() {
+    const [ghLoginStatus, setGHLoginStatus] = useState(GitHubCopilotLoginStatus.NotLoggedIn);
+    const [loginClickCount, setLoginClickCount] = useState(0);
+    const [deviceActivationURL, setDeviceActivationURL] = useState('');
+    const [deviceActivationCode, setDeviceActivationCode] = useState('');
+
+    useEffect(() => {
+        const fetchData = () => {
+            setGHLoginStatus(GitHubCopilot.getLoginStatus());
+        };
+
+        fetchData();
+
+        const intervalId = setInterval(fetchData, 3000);
+
+        return () => clearInterval(intervalId);
+    }, [loginClickCount]);
+
+    const handleLoginClick = async () => {
+        const response = await GitHubCopilot.loginToGitHub();
+        setDeviceActivationURL((response as any).verificationURI);
+        setDeviceActivationCode((response as any).userCode);
+        setLoginClickCount(loginClickCount + 1);
+    };
+
+    const handleLogoutClick = async () => {
+        await GitHubCopilot.logoutFromGitHub();
+        setLoginClickCount(loginClickCount + 1);
+    };
+
+    const loggedIn =  ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn;
+
+    return (
+        <div className='github-copilot-login-dialog'>
+            <div className='github-copilot-login-status'><h4>Login status: <span className={`github-copilot-login-status-text ${loggedIn ? 'logged-in' : ''}`}>{
+                loggedIn ? 'Logged in' : 
+                ghLoginStatus === GitHubCopilotLoginStatus.LoggingIn ? 'Logging in...' : 
+                ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice ? 'Activating device...' : 
+                ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn ? 'Not logged in' : 'Unknown'
+            }</span></h4></div>
+            
+            {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn &&
+            <>
+            <div>
+            Your GitHub tokens, code and data is directly transferred to GitHub Copilot as needed without storing any copies other than keeping in the process memory for chat context use.</div>
+        <div>GitHub Copilot requires a subscription and it has a free tier.
+            GitHub Copilot is subject to the <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features" target="_blank">GitHub Terms for Additional Products and Features</a>.</div>
+        <div>
+            <h4>Privacy and terms</h4>
+
+            By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide" target='_blank'>GitHub Copilot chat terms</a>. Review the terms to understand about usage, limitations and ways to improve Copilot Chat. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank">Privacy Statement</a> to ensure that your code snippets will not be used as suggested code for other users of GitHub Copilot.</div>
+            <div><button onClick={handleLoginClick}>Login using your GitHub account</button></div>
+            </>
+            }
+
+            {loggedIn &&
+            <div><button onClick={handleLogoutClick}>Logout</button></div>
+            }
+
+            {(ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && deviceActivationURL && deviceActivationCode) &&
+                (
+                <div>
+                    <div className='copilot-activation-message'>Please go to <a href={deviceActivationURL} target='_blank'>{deviceActivationURL}</a> and use code <span className="user-code-span" onClick={() => { navigator.clipboard.writeText(deviceActivationCode); return true; }}><b>{deviceActivationCode} <span className='copy-icon' dangerouslySetInnerHTML={{ __html: copySvgstr }}></span>
+            </b></span> to allow access to GitHub Copilot from this app.</div>
+                </div>
+            )
+            }
+
+            {ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice &&
+            <div><button onClick={handleLogoutClick}>Cancel activation</button></div>
+            }
         </div>
     );
 }

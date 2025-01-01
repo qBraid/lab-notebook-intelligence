@@ -21,7 +21,7 @@ class TestChatParticipant(ChatParticipant):
     def tools(self) -> list[Tool]:
         return [ConvertFahrenheitToCelciusTool(), ConvertCelciusToKelvinTool()]
 
-    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
+    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         if (request.command == 'repeat'):
             response.stream(MarkdownData(f"repeating: {request.prompt}"))
             response.finish()
@@ -42,7 +42,7 @@ class TestChatParticipant(ChatParticipant):
             response.finish()
             return
 
-        await self.handle_chat_request_with_tools(request, response)
+        await self.handle_chat_request_with_tools(request, response, options)
         
 
 class ConvertFahrenheitToCelciusTool(Tool):

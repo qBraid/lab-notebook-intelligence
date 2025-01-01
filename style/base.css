@@ -21,13 +21,6 @@
     font-weight: bold;
     flex-grow: 1;
 }
-.copilot-activation-message {
-    padding: 5px;
-    line-height: 20px;
-}
-.copilot-activation-message a {
-    text-decoration: underline;
-}
 
 .sidebar-messages {
     flex-grow: 1;
@@ -220,3 +213,42 @@
 .send-button:hover:enabled {
     background-color: var(--jp-layout-color1);
 }
+
+.inline-prompt-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    background-color: var(--jp-toolbar-active-background);
+}
+
+.inline-prompt-container textarea {
+    width: calc(100% - 6px);
+    height: calc(100% - 6px);
+    font-family: var(--jp-ui-font-family);
+    color: var(--jp-ui-font-color1);
+    resize: none;
+    background: none;
+    outline-color: #5a4cbf;
+}
+
+.github-copilot-status-bar {
+    color: var(--jp-inverse-layout-color2);
+}
+
+.github-copilot-status-bar svg {
+    margin-top: 4px;
+}
+
+.github-copilot-login-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    width: 500px;
+    line-height: 20px;
+}
+
+.github-copilot-login-status-text.logged-in {
+    color: var(--jp-brand-color1);
+}
+

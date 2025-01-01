@@ -32,6 +32,7 @@ github_auth = {
     "token": None
 }
 
+get_access_code_thread = None
 get_token_thread = None
 
 def get_login_status():
@@ -63,6 +64,8 @@ def logout():
         "status" : LoginStatus.NOT_LOGGED_IN,
         "token": None
     })
+    # if get_access_code_thread is not None:
+    #     get_access_code_thread.join()
     return {
         "status": github_auth["status"].name
     }
@@ -99,10 +102,11 @@ def get_device_verification_info():
     }
 
 def wait_for_user_access_token_thread_func():
-    global github_auth
+    global github_auth, get_access_code_thread
 
     while True:
-        if github_auth["access_token"] is not None:
+        if github_auth["access_token"] is not None or github_auth["device_code"] is None:
+            get_access_code_thread = None
             break
         time.sleep(5)
         data = {
@@ -167,9 +171,10 @@ def get_token_thread_func():
         time.sleep(wait_time)
 
 def wait_for_tokens():
-    global get_token_thread
-    if github_auth["access_token"] is None:
-        threading.Thread(target=wait_for_user_access_token_thread_func).start()
+    global get_access_code_thread, get_token_thread
+    if get_access_code_thread is None:
+        get_access_code_thread = threading.Thread(target=wait_for_user_access_token_thread_func)
+        get_access_code_thread.start()
 
     if get_token_thread is None:
         get_token_thread = threading.Thread(target=get_token_thread_func)
@@ -248,21 +253,25 @@ def completions(messages, tools = None, response: ChatResponse = None, options: 
     stream = response is not None
 
     try:
+        data = {
+            'messages': messages,
+            'tools': tools,
+            'max_tokens': 1000,
+            'temperature': 0,
+            'top_p': 1,
+            'n': 1,
+            'stop': ['<END>'],
+            'nwo': 'NotebookIntelligence',
+            'stream': stream
+        }
+
+        if 'tool_choice' in options:
+            data['tool_choice'] = options['tool_choice']
+
         request = requests.post(
             f"{API_ENDPOINT}/chat/completions",
             headers = _generate_copilot_headers(),
-            json = {
-                'messages': messages,
-                'tools': tools,
-                'tool_choice': options.get('tool_choice', 'auto' if tools is not None else 'none'),
-                'max_tokens': 1000,
-                'temperature': 0,
-                'top_p': 1,
-                'n': 1,
-                'stop': ['<END>'],
-                'nwo': 'NotebookIntelligence',
-                'stream': stream
-            },
+            json = data,
             stream = stream
         )
 
@@ -486,20 +495,20 @@ class GithubCopilotChatParticipant(ChatParticipant):
     def tools(self) -> list[Tool]:
         return [AddMarkdownCellToNotebookTool(), AddCodeCellTool()]
 
-    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse) -> None:
+    async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         if request.command == 'newNotebook':
             # create a new notebook
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
             file_path = ui_cmd_response['path']
             tool_names = [tool.name for tool in self.tools]
             request.chat_history.insert(0, {"role": "system", "content": f"You are an assistant that creates Jupyter notebooks. Use the functions provided to add markdown or code cells to the notebook. Code cells are written in Python. Markdown cells are written in Markdown. Call the functions with either Python or Markdown content. Do not repeat the code in the code cells with markdown explanations. You have only two functions available to you: '{tool_names[0]}' and '{tool_names[1]}'. Do not assume the availibility of any other tools or functions."})
-            await self.handle_chat_request_with_tools(request, response, tool_context={
+            await self.handle_chat_request_with_tools(request, response, options, tool_context={
                 'file_path': file_path
             }, tool_choice='required')
             return
 
         messages = [
-            {"role": "system", "content": CopilotPrompts.chat_prompt()},
+            {"role": "system", "content": options.get("system_prompt", CopilotPrompts.chat_prompt())},
         ] + request.chat_history
 
         completions(messages, response=response)

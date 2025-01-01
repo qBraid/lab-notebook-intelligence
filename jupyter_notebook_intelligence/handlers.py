@@ -342,6 +342,16 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             self._responseEmitters[messageId] = responseEmitter
             asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter))
+        elif messageType == RequestDataType.GenerateCode:
+            data = msg['data']
+            chatId = data['chatId']
+            prompt = data['prompt']
+            language = data['language']
+            filename = data['filename']
+            self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
+            responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
+            self._responseEmitters[messageId] = responseEmitter
+            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generated code for in '{language}' language. Be concise and return only code as a response."}))
         elif messageType == RequestDataType.ChatUserInput:
             responseEmitter = self._responseEmitters.get(messageId)
             if responseEmitter is None:

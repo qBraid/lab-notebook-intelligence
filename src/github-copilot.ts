@@ -131,6 +131,17 @@ export class GitHubCopilot {
         this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatRequest, data: { chatId, prompt, language, filename }}));
     }
 
+    static async generateCode(chatId: string, prompt: string, language: string, filename: string, responseEmitter: IChatCompletionResponseEmitter) {
+        const messageId = UUID.uuid4();
+        this._messageReceived.connect((_, msg) => {
+            msg = JSON.parse(msg);
+            if (msg.id === messageId) {
+                responseEmitter.emit(msg);
+            }
+        });
+        this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.GenerateCode, data: { chatId, prompt, language, filename }}));
+    }
+
     static async sendChatUserInput(messageId: string, data: any) {
         this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatUserInput, data}));
     }
