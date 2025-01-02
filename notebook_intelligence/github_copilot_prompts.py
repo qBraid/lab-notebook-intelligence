@@ -1,4 +1,5 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+# Prompts modified from GitHub Copilot's system prompts. Copyright (c) GitHub
 
 IDE_NAME = "JupyterLab"
 OS_TYPE = "Linux"
@@ -130,7 +131,6 @@ Please make sure that the new code is syntactically valid Python code. It can be
 For example, it should pass the validation through builtin module codeop \`codeop.compile_command(statement)\`.
 """
 
-
 class CopilotPrompts:
     def chat_prompt():
         return CHAT_SYSTEM_PROMPT
@@ -143,4 +143,3 @@ class CopilotPrompts:
     
     def new_notebook_prompt():
         return NEW_NOTEBOOK_SYSTEM_PROMPT
-
