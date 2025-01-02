@@ -177,6 +177,8 @@ pre:has(.code-block-header) {
     bottom: 72px;
     left: 4px;
     gap: 2px;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .user-input-autocomplete-item {
