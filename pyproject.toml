@@ -13,7 +13,7 @@ classifiers = [
     "Framework :: Jupyter :: JupyterLab :: 4",
     "Framework :: Jupyter :: JupyterLab :: Extensions",
     "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
-    "License :: OSI Approved :: BSD License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -39,8 +39,8 @@ artifacts = ["notebook_intelligence/labextension"]
 exclude = [".github", "binder", "src", "style"]
 
 [tool.hatch.build.targets.wheel.shared-data]
-"notebook_intelligence/labextension" = "share/jupyter/labextensions/@mbektas/jupyter-notebook-intelligence"
-"install.json" = "share/jupyter/labextensions/@mbektas/jupyter-notebook-intelligence/install.json"
+"notebook_intelligence/labextension" = "share/jupyter/labextensions/@mbektas/notebook-intelligence"
+"install.json" = "share/jupyter/labextensions/@mbektas/notebook-intelligence/install.json"
 "jupyter-config/server-config" = "etc/jupyter/jupyter_server_config.d"
 
 [tool.hatch.build.hooks.version]

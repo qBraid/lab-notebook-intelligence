@@ -5,8 +5,8 @@ from os import path
 import os
 import sys
 from typing import Dict
-from jupyter_notebook_intelligence.extension import AIModel, ChatParticipant, ChatRequest, ChatResponse, Host, InlineCompletionContextProvider, NotebookIntelligenceExtension, Tool
-from jupyter_notebook_intelligence.github_copilot import completions
+from notebook_intelligence.extension import AIModel, ChatParticipant, ChatRequest, ChatResponse, Host, InlineCompletionContextProvider, NotebookIntelligenceExtension, Tool
+from notebook_intelligence.github_copilot import completions
 
 
 DEFAULT_CHAT_PARTICIPANT_ID = 'default'

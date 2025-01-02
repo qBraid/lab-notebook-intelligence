@@ -1,7 +1,7 @@
 {
   "jupyter.lab.shortcuts": [],
-  "title": "@mbektas/jupyter-notebook-intelligence",
-  "description": "@mbektas/jupyter-notebook-intelligence settings.",
+  "title": "@mbektas/notebook-intelligence",
+  "description": "@mbektas/notebook-intelligence settings.",
   "type": "object",
   "properties": {},
   "additionalProperties": false,

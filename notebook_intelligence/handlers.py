@@ -12,11 +12,11 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import web, websocket
 import traitlets
-from jupyter_notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
-from jupyter_notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
-from jupyter_notebook_intelligence.extension_manager import ExtensionManager
-import jupyter_notebook_intelligence.github_copilot as github_copilot
-from jupyter_notebook_intelligence.test_extension import TestExtension
+from notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
+from notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
+from notebook_intelligence.extension_manager import ExtensionManager
+import notebook_intelligence.github_copilot as github_copilot
+from notebook_intelligence.test_extension import TestExtension
 
 extension_manager: ExtensionManager = None
 

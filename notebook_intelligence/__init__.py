@@ -16,7 +16,7 @@ from .extension import NotebookIntelligenceExtension, Host, ChatParticipant, Cha
 def _jupyter_labextension_paths():
     return [{
         "src": "labextension",
-        "dest": "@mbektas/jupyter-notebook-intelligence"
+        "dest": "@mbektas/notebook-intelligence"
     }]
 
 

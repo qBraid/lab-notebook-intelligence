@@ -7,9 +7,9 @@ from pathlib import Path
 import uuid
 import secrets
 import sseclient
-from jupyter_notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, Tool
-from jupyter_notebook_intelligence.config import ContextResponse
-from jupyter_notebook_intelligence.github_copilot_prompts import CopilotPrompts
+from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, Tool
+from notebook_intelligence.config import ContextResponse
+from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 EDITOR_VERSION = "NotebookIntelligence/4.2.5"
 EDITOR_PLUGIN_VERSION = "NotebookIntelligence/4.2.5"

@@ -139,7 +139,7 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
 }
 
 /**
- * Initialization data for the @mbektas/jupyter-notebook-intelligence extension.
+ * Initialization data for the @mbektas/notebook-intelligence extension.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
   id: '@mbektas/notebook-intelligence:plugin',
@@ -148,7 +148,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
   requires: [ICompletionProviderManager, IDocumentManager, IDefaultFileBrowser],
   optional: [ISettingRegistry, IStatusBar],
   activate: (app: JupyterFrontEnd, completionManager: ICompletionProviderManager, docManager: IDocumentManager, defaultBrowser: IDefaultFileBrowser, settingRegistry: ISettingRegistry | null, statusBar: IStatusBar | null) => {
-    console.log('JupyterLab extension @mbektas/jupyter-notebook-intelligence is activated!');
+    console.log('JupyterLab extension @mbektas/notebook-intelligence is activated!');
 
     new LabIcon({
       name: 'notebook-intelligence:sparkles-icon',
@@ -161,10 +161,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
       settingRegistry
         .load(plugin.id)
         .then(settings => {
-          console.log('@mbektas/jupyter-notebook-intelligence settings loaded:', settings.composite);
+          console.log('@mbektas/notebook-intelligence settings loaded:', settings.composite);
         })
         .catch(reason => {
-          console.error('Failed to load settings for @mbektas/jupyter-notebook-intelligence.', reason);
+          console.error('Failed to load settings for @mbektas/notebook-intelligence.', reason);
         });
     }
 
