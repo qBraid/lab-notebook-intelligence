@@ -206,7 +206,7 @@ function ChatResponse(props: any) {
                         case ResponseStreamDataType.HTML:
                             return <div key={`key-${index}`} dangerouslySetInnerHTML={{ __html: item.content }} />;
                         case ResponseStreamDataType.Button:
-                            return <div><button key={`key-${index}`} onClick={() => runCommand(item.content.commandId, item.content.args)}>{item.content.title}</button></div>;
+                            return <div><button key={`key-${index}`} className='jp-Dialog-button jp-mod-accept jp-mod-styled' onClick={() => runCommand(item.content.commandId, item.content.args)}><div className="jp-Dialog-buttonLabel">{item.content.title}</div></button></div>;
                         case ResponseStreamDataType.Anchor:
                             return <div><a key={`key-${index}`} href={item.content.uri} target="_blank">{item.content.title}</a></div>;
                         case ResponseStreamDataType.Progress:
@@ -218,14 +218,14 @@ function ChatResponse(props: any) {
                                     <div className='chat-confirmation-form' key={`key-${index}`}>
                                         {item.content.title ? <div><b>{item.content.title}</b></div> : null}
                                         {item.content.message ? <div>{item.content.message}</div> : null}
-                                        <button onClick={() => {
+                                        <button className='jp-Dialog-button jp-mod-accept jp-mod-styled' onClick={() => {
                                             markFormConfirmed(item.id);
                                             runCommand('notebook-intelligence:chat_user_input', item.content.confirmArgs)
-                                        }}>Proceed</button>
-                                        <button onClick={() => {
+                                        }}><div className="jp-Dialog-buttonLabel">Proceed</div></button>
+                                        <button className='jp-Dialog-button jp-mod-reject jp-mod-styled' onClick={() => {
                                             markFormCanceled(item.id);
                                             runCommand('notebook-intelligence:chat_user_input', item.content.cancelArgs);
-                                        }}>Cancel</button>
+                                        }}><div className="jp-Dialog-buttonLabel">Cancel</div></button>
                                     </div>;
                     }
                     return null;
@@ -682,7 +682,7 @@ function SidebarComponent(props: any) {
             {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn && (
                 <div className='sidebar-login-info'>
                     <div>You are not logged in to GitHub Copilot. Please login now to activate chat.</div>
-                    <div><button onClick={handleLoginClick}>Login to GitHub Copilot</button></div>
+                    <div><button className='jp-Dialog-button jp-mod-accept jp-mod-styled' onClick={handleLoginClick}><div className="jp-Dialog-buttonLabel">Login to GitHub Copilot</div></button></div>
                 </div>
             )}
 
@@ -710,7 +710,7 @@ function SidebarComponent(props: any) {
                     <div className="user-input-footer">
                         <div><a href='javascript:void(0)' onClick={() => {setShowPopover(true); promptInputRef.current?.focus();}} title='Select chat participant'>@</a></div>
                         <div style={{ flexGrow: 1 }}></div>
-                        <div><button className='send-button' onClick={() => handleUserInputSubmit()} disabled={prompt.length == 0}><VscSend></VscSend> Send</button></div>
+                        <div><button className='jp-Dialog-button jp-mod-accept jp-mod-styled send-button' onClick={() => handleUserInputSubmit()} disabled={prompt.length == 0}><VscSend></VscSend> Send</button></div>
                     </div>
                     {showPopover && prefixSuggestions.length > 0 && (
                         <div className="user-input-autocomplete">
@@ -870,12 +870,12 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
             <h4>Privacy and terms</h4>
 
             By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide" target='_blank'>GitHub Copilot chat terms</a>. Review the terms to understand about usage, limitations and ways to improve Copilot Chat. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank">Privacy Statement</a> to ensure that your code snippets will not be used as suggested code for other users of GitHub Copilot.</div>
-            <div><button onClick={handleLoginClick}>Login using your GitHub account</button></div>
+            <div><button className='jp-Dialog-button jp-mod-accept jp-mod-reject jp-mod-styled' onClick={handleLoginClick}><div className="jp-Dialog-buttonLabel">Login using your GitHub account</div></button></div>
             </>
             }
 
             {loggedIn &&
-            <div><button onClick={handleLogoutClick}>Logout</button></div>
+            <div><button className='jp-Dialog-button jp-mod-reject jp-mod-styled' onClick={handleLogoutClick}><div className="jp-Dialog-buttonLabel">Logout</div></button></div>
             }
 
             {(ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice && deviceActivationURL && deviceActivationCode) &&
@@ -888,7 +888,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
             }
 
             {ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice &&
-            <div><button onClick={handleLogoutClick}>Cancel activation</button></div>
+            <div><button className='jp-Dialog-button jp-mod-reject jp-mod-styled' onClick={handleLogoutClick}><div className="jp-Dialog-buttonLabel">Cancel activation</div></button></div>
             }
         </div>
     );
