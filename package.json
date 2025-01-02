@@ -1,8 +1,11 @@
 {
     "name": "@mbektas/jupyter-notebook-intelligence",
     "version": "0.1.0",
-    "description": "Jupyter Notebook Intelligence extension",
-    "keywords": [
+    "description": "Notebook Intelligence extension for JupyterLab",
+    "keywords": [  
+        "AI",
+        "notebook",
+        "intelligence",
         "jupyter",
         "jupyterlab",
         "jupyterlab-extension"
@@ -11,10 +14,10 @@
     "bugs": {
         "url": "https://github.com/mbektas/notebook-intelligence/issues"
     },
-    "license": "BSD-3-Clause",
+    "license": "GPL-3.0",
     "author": {
         "name": "Mehmet Bektas",
-        "email": "mbektas@outlook.com"
+        "email": "mbektasgh@outlook.com"
     },
     "files": [
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
@@ -39,7 +42,7 @@
         "clean": "jlpm clean:lib",
         "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
         "clean:lintcache": "rimraf .eslintcache .stylelintcache",
-        "clean:labextension": "rimraf jupyter_notebook_intelligence/labextension jupyter_notebook_intelligence/_version.py",
+        "clean:labextension": "rimraf notebook_intelligence/labextension notebook_intelligence/_version.py",
         "clean:all": "jlpm clean:lib && jlpm clean:labextension && jlpm clean:lintcache",
         "eslint": "jlpm eslint:check --fix",
         "eslint:check": "eslint . --cache --ext .ts,.tsx",
@@ -109,12 +112,12 @@
                     "pip"
                 ],
                 "base": {
-                    "name": "jupyter_notebook_intelligence"
+                    "name": "notebook_intelligence"
                 }
             }
         },
         "extension": true,
-        "outputDir": "jupyter_notebook_intelligence/labextension",
+        "outputDir": "notebook_intelligence/labextension",
         "schemaDir": "schema"
     },
     "eslintIgnore": [

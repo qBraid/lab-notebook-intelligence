@@ -7,7 +7,7 @@ except ImportError:
     # in editable mode with pip. It is highly recommended to install
     # the package from a stable release or in editable mode: https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs
     import warnings
-    warnings.warn("Importing 'jupyter_notebook_intelligence' outside a proper installation.")
+    warnings.warn("Importing 'notebook_intelligence' outside a proper installation.")
     __version__ = "dev"
 from .handlers import initialize_extensions, setup_handlers
 from .extension import NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse
@@ -22,7 +22,7 @@ def _jupyter_labextension_paths():
 
 def _jupyter_server_extension_points():
     return [{
-        "module": "jupyter_notebook_intelligence"
+        "module": "notebook_intelligence"
     }]
 
 
@@ -36,5 +36,5 @@ def _load_jupyter_server_extension(server_app):
     """
     initialize_extensions()
     setup_handlers(server_app.web_app)
-    name = "jupyter_notebook_intelligence"
+    name = "notebook_intelligence"
     server_app.log.info(f"Registered {name} server extension")

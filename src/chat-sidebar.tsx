@@ -322,7 +322,7 @@ function SidebarComponent(props: any) {
             })
             .catch(reason => {
                 console.error(
-                    `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+                    `The notebook_intelligence server extension appears to be missing.\n${reason}`
                 );
             });
     }, []);

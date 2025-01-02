@@ -1,7 +1,7 @@
 {
   "ServerApp": {
     "jpserver_extensions": {
-      "jupyter_notebook_intelligence": true
+      "notebook_intelligence": true
     }
   }
 }

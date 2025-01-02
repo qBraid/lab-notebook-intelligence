@@ -123,7 +123,7 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
       })
       .catch(reason => {
         console.error(
-          `The jupyter_notebook_intelligence server extension appears to be missing.\n${reason}`
+          `The notebook_intelligence server extension appears to be missing.\n${reason}`
         );
       });
     });
@@ -134,7 +134,7 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
   }
 
   get identifier(): string {
-    return '@mbektas/jupyter-notebook-intelligence';
+    return '@mbektas/notebook-intelligence';
   }
 }
 
@@ -142,8 +142,8 @@ class GitHubInlineCompletionProvider implements IInlineCompletionProvider<IInlin
  * Initialization data for the @mbektas/jupyter-notebook-intelligence extension.
  */
 const plugin: JupyterFrontEndPlugin<void> = {
-  id: '@mbektas/jupyter-notebook-intelligence:plugin',
-  description: 'Jupyter Notebook Intelligence extension',
+  id: '@mbektas/notebook-intelligence:plugin',
+  description: 'Notebook Intelligence',
   autoStart: true,
   requires: [ICompletionProviderManager, IDocumentManager, IDefaultFileBrowser],
   optional: [ISettingRegistry, IStatusBar],

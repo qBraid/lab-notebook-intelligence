@@ -36,7 +36,7 @@ jobs:
         python -m pip install .[test]
 
         jupyter server extension list
-        jupyter server extension list 2>&1 | grep -ie "jupyter_notebook_intelligence.*OK"
+        jupyter server extension list 2>&1 | grep -ie "notebook_intelligence.*OK"
 
         jupyter labextension list
         jupyter labextension list 2>&1 | grep -ie "@mbektas/jupyter-notebook-intelligence.*OK"
@@ -48,13 +48,13 @@ jobs:
 
         pip install build
         python -m build
-        pip uninstall -y "jupyter_notebook_intelligence" jupyterlab
+        pip uninstall -y "notebook_intelligence" jupyterlab
 
     - name: Upload extension packages
       uses: actions/upload-artifact@v4
       with:
         name: extension-artifacts
-        path: dist/jupyter_notebook_intelligence*
+        path: dist/notebook_intelligence*
         if-no-files-found: error
 
   test_isolated:
@@ -77,11 +77,11 @@ jobs:
         sudo rm -rf $(which node)
         sudo rm -rf $(which node)
 
-        pip install "jupyterlab>=4.0.0,<5" jupyter_notebook_intelligence*.whl
+        pip install "jupyterlab>=4.0.0,<5" notebook_intelligence*.whl
 
 
         jupyter server extension list
-        jupyter server extension list 2>&1 | grep -ie "jupyter_notebook_intelligence.*OK"
+        jupyter server extension list 2>&1 | grep -ie "notebook_intelligence.*OK"
 
         jupyter labextension list
         jupyter labextension list 2>&1 | grep -ie "@mbektas/jupyter-notebook-intelligence.*OK"

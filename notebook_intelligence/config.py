@@ -6,8 +6,8 @@ from enum import Enum
 import traitlets
 from traitlets.config import Configurable
 
-# from jupyter_notebook_intelligence.agents import AgentManager
-# from jupyter_notebook_intelligence.github_copilot import GithubCopilotChatAgent
+# from notebook_intelligence.agents import AgentManager
+# from notebook_intelligence.github_copilot import GithubCopilotChatAgent
 
 
 class ContextType(Enum):
