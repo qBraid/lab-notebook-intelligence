@@ -20,6 +20,7 @@ MACHINE_ID = secrets.token_hex(33)[0:65]
 API_ENDPOINT = "https://api.githubcopilot.com"
 PROXY_ENDPOINT = "https://copilot-proxy.githubusercontent.com"
 TOKEN_REFRESH_INTERVAL = 1500
+NL = '\n'
 
 LoginStatus = Enum('LoginStatus', ['NOT_LOGGED_IN', 'ACTIVATING_DEVICE', 'LOGGING_IN', 'LOGGED_IN'])
 
@@ -206,10 +207,10 @@ def inline_completions(prefix, suffix, language, filename, context: ContextRespo
 
     if context is not None:
         for item in context.items:
-            context_file = f"Compare this snippet from {item.file_path}:\n{item.content}\n"
+            context_file = f"Compare this snippet from {item.file_path}:{NL}{item.content}{NL}"
             prompt += "\n# " + "\n# ".join(context_file.split('\n'))
 
-    prompt += f"\n{prefix}"
+    prompt += f"{NL}{prefix}"
 
     try:
         resp = requests.post(f"{PROXY_ENDPOINT}/v1/engines/copilot-codex/completions",
@@ -298,7 +299,7 @@ def chat(prompt, language, filename, context: ContextResponse):
         context_lines = [item.content for item in context.items]
         messages += [{
             "role": "user",
-            "content": f"Here is some additional context to help answer this question: \n{"\n".join(context_lines)}"
+            "content": f"Here is some additional context to help answer this question: {NL}{NL.join(context_lines)}"
         }]
 
     messages += [{"role": "user", "content": prompt}]
@@ -308,7 +309,7 @@ def chat(prompt, language, filename, context: ContextResponse):
 def explain_this(selection, language, filename):
     messages = [
         {"role": "system", "content": CopilotPrompts.explain_this_prompt()},
-        {"role": "user", "content": f"Active document is {filename}, written in {language}.\nActive selection is \n{selection}\n"},
+        {"role": "user", "content": f"Active document is {filename}, written in {language}.{NL}Active selection is {NL}{selection}{NL}"},
         {"role": "user", "content": "Can you explain this code?"}
     ]
     return completions(messages)
@@ -316,7 +317,7 @@ def explain_this(selection, language, filename):
 def fix_this(selection, language, filename):
     messages = [
         {"role": "system", "content": CopilotPrompts.fix_this_prompt()},
-        {"role": "user", "content": f"Active document is {filename}, written in {language}.\nActive selection is: \n{selection}\n"},
+        {"role": "user", "content": f"Active document is {filename}, written in {language}.{NL}Active selection is: {NL}{selection}{NL}"},
         {"role": "user", "content": "Can you fix this code?"}
     ]
     return completions(messages)
@@ -341,7 +342,7 @@ def new_notebook(prompt, parent_path, context: ContextResponse):
         context_lines = [item.content for item in context.items]
         messages += [{
             "role": "user",
-            "content": f"Here is some additional context to help answer this question: \n{"\n".join(context_lines)}"
+            "content": f"Here is some additional context to help answer this question: {NL}{NL.join(context_lines)}"
         }]
 
     messages += [
