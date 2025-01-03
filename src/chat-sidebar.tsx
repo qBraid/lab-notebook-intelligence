@@ -528,6 +528,13 @@ function SidebarComponent(props: any) {
 
             setSelectedPrefixSuggestionIndex(0);
             handleUserInputSubmit();
+        } else if (event.key == 'Tab') {
+            if (showPopover) {
+                event.stopPropagation();
+                event.preventDefault();
+                applyPrefixSuggestion(prefixSuggestions[selectedPrefixSuggestionIndex]);
+                return;
+            }
         } else if (event.key == 'Escape') {
             event.stopPropagation();
             event.preventDefault();
