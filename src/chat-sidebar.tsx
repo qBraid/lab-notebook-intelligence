@@ -883,13 +883,13 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
             {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn &&
             <>
             <div>
-            Your GitHub tokens, code and data is directly transferred to GitHub Copilot as needed without storing any copies other than keeping in the process memory.</div>
+            Your GitHub tokens, code and data are directly transferred to GitHub Copilot as needed without storing any copies other than keeping in the process memory.</div>
         <div><a href="https://github.com/features/copilot" target="_blank">GitHub Copilot</a> requires a subscription and it has a free tier.
             GitHub Copilot is subject to the <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features" target="_blank">GitHub Terms for Additional Products and Features</a>.</div>
         <div>
             <h4>Privacy and terms</h4>
 
-            By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide" target='_blank'>GitHub Copilot chat terms</a>. Review the terms to understand about usage, limitations and ways to improve Copilot Chat. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank">Privacy Statement</a> to ensure that your code snippets will not be used as suggested code for other users of GitHub Copilot.</div>
+            By using Copilot Chat you agree to <a href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide" target='_blank'>GitHub Copilot chat terms</a>. Review the terms to understand about usage, limitations and ways to improve Copilot Chat. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank">Privacy Statement</a>.</div>
             <div><button className='jp-Dialog-button jp-mod-accept jp-mod-reject jp-mod-styled' onClick={handleLoginClick}><div className="jp-Dialog-buttonLabel">Login using your GitHub account</div></button></div>
             </>
             }

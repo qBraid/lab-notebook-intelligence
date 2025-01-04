@@ -439,7 +439,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
           for (const line of existingLines) {
             if (line.length > 3 && line.startsWith('```')) {
               newLines.push('```');
-              const remaining = line.substring(3);
+              let remaining = line.substring(3);
+              if (remaining.startsWith('python')) {
+                if (remaining.length === 6) {
+                  continue;
+                }
+                remaining = remaining.substring(6);
+              }
               if (remaining.endsWith('```')) {
                 newLines.push(remaining.substring(0, remaining.length - 3));
                 newLines.push('```');
