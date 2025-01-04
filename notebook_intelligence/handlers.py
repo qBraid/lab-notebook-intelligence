@@ -13,7 +13,6 @@ import tornado
 from tornado import web, websocket
 import traitlets
 from notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
-from notebook_intelligence.config import ContextInputFileInfo, ContextRequest, ContextType, NotebookIntelligenceConfig
 from notebook_intelligence.extension_manager import ExtensionManager
 import notebook_intelligence.github_copilot as github_copilot
 from notebook_intelligence.test_extension import TestExtension
@@ -56,7 +55,6 @@ class GetGitHubLogoutHandler(APIHandler):
 class PostInlineCompletionsHandler(APIHandler):
     @tornado.web.authenticated
     async def post(self):
-        cfg = NotebookIntelligenceConfig(config=self.config)
         data = self.get_json_body()
         prefix = data['prefix']
         suffix = data['suffix']
@@ -64,17 +62,6 @@ class PostInlineCompletionsHandler(APIHandler):
         filename = data['filename']
 
         context = None
-        if cfg.has_context_provider:
-            context = cfg.context_provider.get_context(ContextRequest(
-                type=ContextType.InlineCompletion,
-                file_info=ContextInputFileInfo(
-                    file_name=filename       
-                ),
-                language=language,
-                prefix=prefix,
-                suffix=suffix
-            ))
-
         completions = github_copilot.inline_completions(prefix, suffix, language, filename, context)
         self.finish(json.dumps({
             "data": completions

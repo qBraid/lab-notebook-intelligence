@@ -346,6 +346,15 @@ class Host:
     def model(self) -> AIModel:
         raise NotImplemented
 
+@dataclass
+class Context:
+    content: str
+    file_path: str = None
+
+@dataclass
+class ContextResponse:
+    items: list[Context]
+
 
 class NotebookIntelligenceExtension:
     @property

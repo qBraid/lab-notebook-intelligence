@@ -1,5 +1,6 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+from dataclasses import dataclass
 from enum import Enum
 import os, json, time, requests, threading
 import nbformat as nbf
@@ -7,8 +8,7 @@ from pathlib import Path
 import uuid
 import secrets
 import sseclient
-from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, Tool
-from notebook_intelligence.config import ContextResponse
+from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, ContextResponse, Tool
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 EDITOR_VERSION = "NotebookIntelligence/4.2.5"
