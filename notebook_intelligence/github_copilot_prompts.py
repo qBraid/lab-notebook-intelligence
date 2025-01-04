@@ -1,5 +1,5 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
-# Prompts modified from GitHub Copilot's system prompts. Copyright (c) GitHub
+# Some prompts modified from GitHub Copilot's system prompts. Copyright (c) GitHub
 
 IDE_NAME = "JupyterLab"
 OS_TYPE = "Linux"

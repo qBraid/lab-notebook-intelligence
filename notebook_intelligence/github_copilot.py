@@ -8,7 +8,7 @@ from pathlib import Path
 import uuid
 import secrets
 import sseclient
-from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, ContextResponse, Tool
+from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, ContextResponse, MarkdownData, Tool
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 EDITOR_VERSION = "NotebookIntelligence/4.2.5"
@@ -398,6 +398,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
     def commands(self) -> list[ChatCommand]:
         return [
             ChatCommand(name='newNotebook', description='Create a new notebook'),
+            ChatCommand(name='newPythonFile', description='Create a new Python file'),
             ChatCommand(name='clear', description='Clears chat history'),
         ]
 
@@ -415,6 +416,18 @@ class GithubCopilotChatParticipant(ChatParticipant):
             await self.handle_chat_request_with_tools(request, response, options, tool_context={
                 'file_path': file_path
             }, tool_choice='required')
+            return
+        elif request.command == 'newPythonFile':
+            # create a new notebook
+            messages = [
+                {"role": "system", "content": f"You are an assistant that creates Python code. You should return the code directly without any explantion. You should not print message to explain the code or purpose of the code. You should return the code directly, without wrapping it inside ```."},
+                {"role": "user", "content": f"Generate code for: {request.prompt}"}
+            ]
+            generated = completions(messages)
+            code = generated['choices'][0]['message']['content']
+            ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
+            response.stream(MarkdownData(f"File '{ui_cmd_response["path"]}' created successfully"))
+            response.finish()
             return
 
         messages = [

@@ -255,6 +255,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const newPyFile = await contents.newUntitled({ext: '.py', path: defaultBrowser?.model.path});
         contents.save(newPyFile.path, { content: args.code, format: 'text', type: 'file' });
         docManager.openOrReveal(newPyFile.path);
+
+        await waitForFileToBeActive(newPyFile.path);
+
+        return newPyFile;
       }
     });
 
@@ -275,7 +279,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         }
 
-        const newPyFile = await contents.newUntitled({ext: '.ipynb', path: defaultBrowser?.model.path});
+        const newNBFile = await contents.newUntitled({ext: '.ipynb', path: defaultBrowser?.model.path});
         const nbFileContent = structuredClone(emptyNotebookContent);
         if (pythonKernelSpec) {
           nbFileContent.metadata = {
@@ -296,12 +300,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
           });
         }
 
-        contents.save(newPyFile.path, { content: nbFileContent, format: 'json', type: 'notebook' });
-        docManager.openOrReveal(newPyFile.path);
+        contents.save(newNBFile.path, { content: nbFileContent, format: 'json', type: 'notebook' });
+        docManager.openOrReveal(newNBFile.path);
 
-        await waitForFileToBeActive(newPyFile.path);
+        await waitForFileToBeActive(newNBFile.path);
 
-        return newPyFile;
+        return newNBFile;
       }
     });
 
