@@ -50,7 +50,6 @@ export class GitHubCopilot {
 
         this._webSocket = new WebSocket(wsUrl);
         this._webSocket.onmessage = msg => {
-            console.log(msg.data);
             this._messageReceived.emit(msg.data);
         };
     }
@@ -73,7 +72,6 @@ export class GitHubCopilot {
                     userCode: data.user_code
                 });
                 this.updateGitHubLoginStatus();
-                console.log(`Login to GitHub Copilot using ${data.verification_uri} and device code ${data.user_code}`);
             })
             .catch(reason => {
                 console.error(

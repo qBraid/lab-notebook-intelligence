@@ -299,7 +299,6 @@ function SidebarComponent(props: any) {
     useEffect(() => {
         requestAPI<any>('capabilities', { method: 'GET' })
             .then(data => {
-                console.log(data);
                 const prefixes: string[] = [];
                 for (const participant of data.chat_participants) {
                     const id = participant.id;
