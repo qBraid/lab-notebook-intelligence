@@ -143,20 +143,20 @@ class ConvertCelciusToKelvinTool(Tool):
         temperature = tool_args.get('temperature')
         return {"kelvin": temperature + 273.15}
 
-class TestInlineCompletionContextProvider:
+class TestCompletionContextProvider:
     @property
     def id(self) -> str:
-        return "test-inline-completion-context-provider"
+        return "test-completion-context-provider"
 
     def handle_completion_context_request(self, request: ChatRequest, response: ChatResponse) -> None:
-        response.stream(MarkdownData("Hello from inline completion context provider!"))
+        response.stream(MarkdownData("Hello from completion context provider!"))
         response.finish()
 
 class TestExtension(NotebookIntelligenceExtension):
     def __init__(self):
         self.participant = TestChatParticipant()
         self.tool = ConvertFahrenheitToCelciusTool()
-        self.inline_completion_context_provider = TestInlineCompletionContextProvider()
+        self.completion_context_provider = TestCompletionContextProvider()
 
     @property
     def id(self) -> str:
@@ -168,4 +168,4 @@ class TestExtension(NotebookIntelligenceExtension):
 
     def activate(self, host: Host) -> None:
         host.register_chat_participant(self.participant)
-        host.register_inline_completion_context_provider(self.inline_completion_context_provider)
+        host.register_completion_context_provider(self.completion_context_provider)

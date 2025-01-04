@@ -5,7 +5,7 @@ from os import path
 import os
 import sys
 from typing import Dict
-from notebook_intelligence.extension import AIModel, ChatParticipant, ChatRequest, ChatResponse, Host, InlineCompletionContextProvider, NotebookIntelligenceExtension, Tool
+from notebook_intelligence.extension import AIModel, ChatParticipant, ChatRequest, ChatResponse, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
 from notebook_intelligence.github_copilot import completions
 
 
@@ -67,7 +67,7 @@ class ExtensionManager(Host):
             return
         self.chat_participants[participant.id] = participant
 
-    def register_inline_completion_context_provider(self, provider: InlineCompletionContextProvider) -> None:
+    def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         pass
 
     @property

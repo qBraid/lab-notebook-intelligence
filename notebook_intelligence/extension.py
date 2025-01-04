@@ -323,7 +323,7 @@ class ChatParticipant:
                 return tool
         return None
 
-class InlineCompletionContextProvider:
+class CompletionContextProvider:
     @property
     def id(self) -> str:
         raise NotImplemented
@@ -339,7 +339,7 @@ class Host:
     def register_chat_participant(self, participant: ChatParticipant) -> None:
         raise NotImplemented
     
-    def register_inline_completion_context_provider(self, provider: InlineCompletionContextProvider) -> None:
+    def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         raise NotImplemented
     
     @property
