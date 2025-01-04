@@ -348,16 +348,19 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             prompt = data['prompt']
             prefix = data['prefix']
             suffix = data['suffix']
+            existing_code = data['existingCode']
             language = data['language']
             filename = data['filename']
             if prefix != '':
-                self.chat_history.add_message(chatId, {"role": "user", "content": f"This code section is prior to the code generation request: ```{prefix}```"})
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"This prefix code section comes before the code section you will generate: ```{prefix}```"})
             if suffix != '':
-                self.chat_history.add_message(chatId, {"role": "user", "content": f"This code section is after the code generation request: ```{suffix}```"})
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"This suffix code section comes after the code section  you will generate: ```{suffix}```"})
+            if existing_code != '':
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"You are asked to generate updates for or a replacement for the existing code. This is the existing code. : ```{existing_code}```"})
             self.chat_history.add_message(chatId, {"role": "user", "content": f"Generate code for: {prompt}"})
             responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             self._responseEmitters[messageId] = responseEmitter
-            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. Be concise and return only code as a response."}))
+            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing prefix and suffix code sections. You update or replace an existing code section. Prefix, suffix and existing code are all optional. If the request is relevant to the existing code, assume an update is requested. If updates to existing code are requested, update it with the requested changes. If updates are requested, update the existing code and return the existing code section with the updates applied, do not just return the update as your response will be replacing the existing code. Be concise and return only code as a response."}))
         elif messageType == RequestDataType.ChatUserInput:
             responseEmitter = self._responseEmitters.get(messageId)
             if responseEmitter is None:

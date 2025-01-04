@@ -131,7 +131,7 @@ export class GitHubCopilot {
         this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.ChatRequest, data: { chatId, prompt, language, filename }}));
     }
 
-    static async generateCode(chatId: string, prompt: string, prefix: string, suffix: string, language: string, filename: string, responseEmitter: IChatCompletionResponseEmitter) {
+    static async generateCode(chatId: string, prompt: string, prefix: string, suffix: string, existingCode: string, language: string, filename: string, responseEmitter: IChatCompletionResponseEmitter) {
         const messageId = UUID.uuid4();
         this._messageReceived.connect((_, msg) => {
             msg = JSON.parse(msg);
@@ -139,7 +139,7 @@ export class GitHubCopilot {
                 responseEmitter.emit(msg);
             }
         });
-        this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.GenerateCode, data: { chatId, prompt, prefix, suffix, language, filename }}));
+        this._webSocket.send(JSON.stringify({id: messageId, type: RequestDataType.GenerateCode, data: { chatId, prompt, prefix, suffix, existingCode, language, filename }}));
     }
 
     static async sendChatUserInput(messageId: string, data: any) {

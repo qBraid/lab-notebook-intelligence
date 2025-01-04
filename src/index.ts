@@ -14,6 +14,8 @@ import {
   Dialog
 } from '@jupyterlab/apputils';
 
+import { URLExt } from '@jupyterlab/coreutils';
+
 import { CodeCell } from '@jupyterlab/cells';
 import { ISharedNotebook} from '@jupyter/ydoc';
 
@@ -47,7 +49,7 @@ import { ChatSidebar, GitHubCopilotLoginDialogBody, GitHubCopilotStatusBarItem, 
 import { GitHubCopilot } from './github-copilot';
 import { IActiveDocumentInfo } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
-import { removeAnsiChars } from './utils';
+import { removeAnsiChars, waitForDuration } from './utils';
 
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat_user_input';
@@ -168,6 +170,31 @@ const plugin: JupyterFrontEndPlugin<void> = {
         });
     }
 
+    const waitForFileToBeActive = async (filePath: string): Promise<boolean> => {
+      const isNotebook = filePath.endsWith('.ipynb');
+
+      return new Promise<boolean>((resolve, reject) => {
+        const checkIfActive = () => {
+          const activeFilePath = URLExt.join(activeDocumentInfo.parentDirectory || '', activeDocumentInfo.filename);
+          const filePathToCheck = URLExt.join(activeDocumentInfo.serverRoot || '', filePath);
+          const currentWidget = app.shell.currentWidget;
+          if (activeFilePath === filePathToCheck && (
+            (isNotebook && currentWidget instanceof NotebookPanel && currentWidget.content.activeCell && currentWidget.content.activeCell.node.contains(document.activeElement)) ||
+            (!isNotebook && currentWidget instanceof FileEditorWidget && currentWidget.content.editor.hasFocus())
+          )) {
+            resolve(true);
+          } else {
+            setTimeout(checkIfActive, 200);
+          }
+        };
+        checkIfActive();
+
+        waitForDuration(10000).then(() => {
+          resolve(false);
+        });
+      });
+    };
+
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
     panel.title.caption = 'Copilot Chat';
@@ -271,6 +298,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         contents.save(newPyFile.path, { content: nbFileContent, format: 'json', type: 'notebook' });
         docManager.openOrReveal(newPyFile.path);
+
+        await waitForFileToBeActive(newPyFile.path);
 
         return newPyFile;
       }
@@ -384,24 +413,70 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }
         const rect = input.getBoundingClientRect();
 
+        const NBI_PROMPT_PREFIX = '# nbi-prompt:';
+        let userPrompt = '';
         let generatedContent = '';
 
+        let existingCode = activeCell.model.sharedModel.source.trim();
+        const existingLines = existingCode.split('\n');
+        if (existingLines.length > 0) {
+          if (existingLines[0].startsWith(NBI_PROMPT_PREFIX)) {
+            userPrompt = existingLines[0].substring(NBI_PROMPT_PREFIX.length).trim();
+            existingCode = existingLines.length > 1 ? existingLines.slice(1).join('\n') : '';
+          }
+        }
+
+        const removePromptComments = (source: string): string => {
+          source = source.trim();
+          const existingLines = source.split('\n');
+          const newLines = existingLines.filter(line => !line.startsWith(NBI_PROMPT_PREFIX));
+          return newLines.join('\n');
+        };
+
+        const moveCodeSectionBoundaryMarkersToNewLine = (source: string): string => {
+          const existingLines = source.split('\n');
+          const newLines = [];
+          for (const line of existingLines) {
+            if (line.length > 3 && line.startsWith('```')) {
+              newLines.push('```');
+              const remaining = line.substring(3);
+              if (remaining.endsWith('```')) {
+                newLines.push(remaining.substring(0, remaining.length - 3));
+                newLines.push('```');
+              } else {
+                newLines.push(remaining);
+              }
+            } else if (line.length > 3 && line.endsWith('```')) {
+              newLines.push(line.substring(0, line.length - 3));
+              newLines.push('```');
+            } else {
+              newLines.push(line);
+            }
+          }
+          return newLines.join('\n');
+        };
+
         const extractCodeFromMarkdown = (source: string): string => {
-          const codeBlockRegex = /```python([\s\S]*?)```/g;
+          // make sure end of code block is in new line
+          source = moveCodeSectionBoundaryMarkersToNewLine(source);
+          const codeBlockRegex = /^```(?:\w+)?\s*\n(.*?)(?=^```)```/gms;
           let code = '';
           let match;
           while ((match = codeBlockRegex.exec(source)) !== null) {
             code += match[1] + '\n';
           }
-          return code || source;
+          return code.trim() || source;
         };
 
         const {prefix, suffix} = getPrefixAndSuffixForActiveCell();
 
         const inlinePrompt = new InlinePromptWidget(rect, {
-          prefix,
-          suffix,
-          onRequestSubmitted: () => {
+          prompt: userPrompt,
+          existingCode,
+          prefix: removePromptComments(prefix),
+          suffix: removePromptComments(suffix),
+          onRequestSubmitted: (prompt: string) => {
+            userPrompt = prompt;
             inlinePrompt.hide();
           },
           onRequestCancelled: () => {
@@ -412,8 +487,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
             activeCell.model.sharedModel.source = generatedContent;
           },
           onContentStreamEnd: () => {
-            // extract out code desctions from markdown
-            activeCell.model.sharedModel.source = extractCodeFromMarkdown(generatedContent);
+            // extract out code sections from markdown
+            generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
+            activeCell.model.sharedModel.source = generatedContent;
             generatedContent = '';
             Widget.detach(inlinePrompt);
           }
@@ -593,6 +669,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
         activeDocumentInfo.language = np.model?.sharedModel?.metadata?.kernelspec?.language as string || 'python';
         const lastSlashIndex = np.sessionContext.path.lastIndexOf('/');
         const nbFolder = lastSlashIndex === -1 ? '' : np.sessionContext.path.substring(0, lastSlashIndex);
+        activeDocumentInfo.parentDirectory = activeDocumentInfo.serverRoot + '/' + nbFolder;
+      } else if (args.newValue instanceof FileEditorWidget)  {
+        const fe = args.newValue as FileEditorWidget;
+        activeDocumentInfo.filename = fe.context.path;
+        activeDocumentInfo.language = 'python';
+        const lastSlashIndex = fe.context.path.lastIndexOf('/');
+        const nbFolder = lastSlashIndex === -1 ? '' : fe.context.path.substring(0, lastSlashIndex);
         activeDocumentInfo.parentDirectory = activeDocumentInfo.serverRoot + '/' + nbFolder;
       }
     });

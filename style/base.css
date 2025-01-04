@@ -113,6 +113,7 @@ pre:has(.code-block-header) {
 .chat-message-content p {
     margin-block-start: 5px;
     margin-block-end: 5px;
+    line-height: 18px;
 }
 
 .chat-message-content a {
@@ -153,6 +154,7 @@ pre:has(.code-block-header) {
 
 .user-code-span {
     cursor: pointer;
+    color: var(--jp-content-link-color);
 }
 .user-code-span:hover {
     text-shadow: 1px 1px var(--jp-border-color1);

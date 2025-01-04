@@ -1,5 +1,4 @@
 {
-  "jupyter.lab.shortcuts": [],
   "title": "@mbektas/notebook-intelligence",
   "description": "@mbektas/notebook-intelligence settings.",
   "type": "object",
@@ -15,5 +14,13 @@
         "rank": 0
       }
     ]
-  }
+  },
+  "jupyter.lab.shortcuts": [
+    {
+      "command": "notebook-intelligence:editor-generate-code",
+      "keys": ["Accel G"],
+      "selector": ".jp-Editor",
+      "preventDefault": true
+    }
+  ]
 }

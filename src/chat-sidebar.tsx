@@ -34,6 +34,7 @@ export interface IRunChatCompletionRequest {
     parentDirectory?: string;
     prefix?: string;
     suffix?: string;
+    existingCode?: string;
 }
 
 export interface IChatSidebarOptions {
@@ -62,9 +63,11 @@ export class ChatSidebar extends ReactWidget {
 }
 
 export interface IInlinePromptWidgetOptions {
+    prompt: string;
+    existingCode: string;
     prefix: string;
     suffix: string;
-    onRequestSubmitted: () => void;
+    onRequestSubmitted: (prompt: string) => void;
     onRequestCancelled: () => void;
     onContentStream: (content: string) => void;
     onContentStreamEnd: () => void;
@@ -100,7 +103,7 @@ export class InlinePromptWidget extends ReactWidget {
     }
 
     render(): JSX.Element {
-        return <InlinePromptComponent onRequestSubmitted={this._options.onRequestSubmitted} onRequestCancelled={this._options.onRequestCancelled} onResponseEmit={this._onResponse.bind(this)} prefix={this._options.prefix} suffix={this._options.suffix} />;
+        return <InlinePromptComponent prompt={this._options.prompt} existingCode={this._options.existingCode} onRequestSubmitted={this._options.onRequestSubmitted} onRequestCancelled={this._options.onRequestCancelled} onResponseEmit={this._onResponse.bind(this)} prefix={this._options.prefix} suffix={this._options.suffix} />;
     }
 
     private _options: IInlinePromptWidgetOptions;
@@ -275,6 +278,7 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest, respo
                 request.content,
                 request.prefix || '',
                 request.suffix || '',
+                request.existingCode || '',
                 request.language || 'python',
                 request.filename || 'Untitled.ipynb',
                 responseEmitter
@@ -734,7 +738,8 @@ function SidebarComponent(props: any) {
 }
 
 function InlinePromptComponent(props: any) {
-    const [prompt, setPrompt] = useState<string>('');
+    const [prompt, setPrompt] = useState<string>(props.prompt);
+    const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
     const onPromptChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
         const newPrompt = event.target.value;
@@ -764,7 +769,7 @@ function InlinePromptComponent(props: any) {
             parentDirectory: '',
             prefix: props.prefix,
             suffix: props.suffix,
-
+            existingCode: props.existingCode
         }, {
             emit: async (response) => {
                 props.onResponseEmit(response);
@@ -777,7 +782,7 @@ function InlinePromptComponent(props: any) {
         if (event.key == 'Enter') {
             event.stopPropagation();
             event.preventDefault();
-            props.onRequestSubmitted();
+            props.onRequestSubmitted(prompt);
             handleUserInputSubmit();
         } else if (event.key == 'Escape') {
             event.stopPropagation();
@@ -786,9 +791,17 @@ function InlinePromptComponent(props: any) {
         }
     };
 
+    useEffect(() => {
+        const input = promptInputRef.current;
+        if (input) {
+            input.select();
+            promptInputRef.current?.focus();
+        }
+    }, []);
+
     return (
         <div className='inline-prompt-container'>
-            <textarea autoFocus={true} rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} onBlur={props.onRequestCancelled} placeholder='Ask Copilot to generate Python code...' spellCheck={false} value={prompt} />
+            <textarea ref={promptInputRef} rows={3} onChange={onPromptChange} onKeyDown={onPromptKeyDown} onBlur={props.onRequestCancelled} placeholder='Ask Copilot to generate Python code...' spellCheck={false} value={prompt} />
         </div>
     );
 }
@@ -895,7 +908,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
             }
 
             {ghLoginStatus === GitHubCopilotLoginStatus.ActivatingDevice &&
-            <div><button className='jp-Dialog-button jp-mod-reject jp-mod-styled' onClick={handleLogoutClick}><div className="jp-Dialog-buttonLabel">Cancel activation</div></button></div>
+            <div style={{marginTop: '10px'}}><button className='jp-Dialog-button jp-mod-reject jp-mod-styled' onClick={handleLogoutClick}><div className="jp-Dialog-buttonLabel">Cancel activation</div></button></div>
             }
         </div>
     );

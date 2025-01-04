@@ -501,7 +501,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
             file_path = ui_cmd_response['path']
             tool_names = [tool.name for tool in self.tools]
-            request.chat_history.insert(0, {"role": "system", "content": f"You are an assistant that creates Jupyter notebooks. Use the functions provided to add markdown or code cells to the notebook. Code cells are written in Python. Markdown cells are written in Markdown. Call the functions with either Python or Markdown content. Do not repeat the code in the code cells with markdown explanations. You have only two functions available to you: '{tool_names[0]}' and '{tool_names[1]}'. Do not assume the availibility of any other tools or functions."})
+            request.chat_history.insert(0, {"role": "system", "content": f"You are an assistant that creates Jupyter notebooks. Use the functions provided to add markdown or code cells to the notebook. Code cells are written in Python. Markdown cells are written in Markdown. Call the functions with either Python or Markdown content. Do not repeat the code in the code cells with markdown explanations. You have only two functions available to you: '{tool_names[0]}' and '{tool_names[1]}'. Do not assume the availibility of any other tools or functions. Make sure to generate at least one code cell and one markdown cell."})
             await self.handle_chat_request_with_tools(request, response, options, tool_context={
                 'file_path': file_path
             }, tool_choice='required')
