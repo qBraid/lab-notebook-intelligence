@@ -289,39 +289,6 @@ def completions(messages, tools = None, response: ChatResponse = None, options: 
     except requests.exceptions.ConnectionError:
         raise Exception("Connection error")
 
-def chat(prompt, language, filename, context: ContextResponse):
-    messages = [
-        {"role": "system", "content": CopilotPrompts.chat_prompt()},
-        {"role": "user", "content": f"Active document is {filename}, written in {language}"}
-    ]
-
-    if context is not None:
-        context_lines = [item.content for item in context.items]
-        messages += [{
-            "role": "user",
-            "content": f"Here is some additional context to help answer this question: {NL}{NL.join(context_lines)}"
-        }]
-
-    messages += [{"role": "user", "content": prompt}]
-
-    return completions(messages)
-
-def explain_this(selection, language, filename):
-    messages = [
-        {"role": "system", "content": CopilotPrompts.explain_this_prompt()},
-        {"role": "user", "content": f"Active document is {filename}, written in {language}.{NL}Active selection is {NL}{selection}{NL}"},
-        {"role": "user", "content": "Can you explain this code?"}
-    ]
-    return completions(messages)
-
-def fix_this(selection, language, filename):
-    messages = [
-        {"role": "system", "content": CopilotPrompts.fix_this_prompt()},
-        {"role": "user", "content": f"Active document is {filename}, written in {language}.{NL}Active selection is: {NL}{selection}{NL}"},
-        {"role": "user", "content": "Can you fix this code?"}
-    ]
-    return completions(messages)
-
 def _get_unique_notebook_name(parent_path, name):
     if parent_path.startswith("~"):
         parent_path = os.path.expanduser(parent_path)
@@ -335,63 +302,6 @@ def _get_unique_notebook_name(parent_path, name):
         if not file_path.exists():
             return notebook_name
         tried += 1
-
-def new_notebook(prompt, parent_path, context: ContextResponse):
-    messages = [{"role": "system", "content": CopilotPrompts.new_notebook_prompt()}]
-    if context is not None:
-        context_lines = [item.content for item in context.items]
-        messages += [{
-            "role": "user",
-            "content": f"Here is some additional context to help answer this question: {NL}{NL.join(context_lines)}"
-        }]
-
-    messages += [
-        {"role": "user", "content": "Can you create a notebook based on this information:"},
-        {"role": "user", "content": prompt}
-    ]
-    copilot_response = completions(messages)
-
-    if "message" in copilot_response:
-        notebook_content = copilot_response["message"]
-        response_lines = notebook_content.split("\n")
-        content_lines = []
-        section_start_found = False
-        for line in response_lines:
-            if line.startswith("```"):
-                if not section_start_found:
-                    section_start_found = True
-                    continue
-                else:
-                    break
-            if section_start_found:
-                content_lines.append(line)
-
-        if len(content_lines) == 0:
-            return None
-        
-        notebook_name = _get_unique_notebook_name(parent_path, "copilot_generated")
-
-        output_path = os.path.join(parent_path, notebook_name)
-        save_path = output_path
-        if output_path.startswith("~"):
-            save_path = os.path.expanduser(output_path)
-
-        content = "\n".join(content_lines)
-        nb = nbf.v4.new_notebook()
-        nb['metadata'] = {
-            "kernelspec": {
-                "display_name": "Python 3 (ipykernel)",
-                "language": "python",
-                "name": "python3"
-            }
-        }
-        nb['cells'] = []
-        nb['cells'].append(nbf.v4.new_code_cell(content))
-        nbf.write(nb, save_path)
-
-        return {
-            "notebook_path": os.path.join(parent_path, notebook_name)
-        }
 
 class AddMarkdownCellToNotebookTool(Tool):
     @property

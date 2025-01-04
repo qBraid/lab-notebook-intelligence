@@ -19,7 +19,6 @@ export enum RunChatCompletionType {
     Chat,
     ExplainThis,
     FixThis,
-    NewNotebook,
     GenerateCode,
     ExplainThisOutput,
     TroubleshootThisOutput,
@@ -263,13 +262,6 @@ async function submitCompletionRequest(request: IRunChatCompletionRequest, respo
                     request.language || 'python',
                     request.filename || 'Untitled.ipynb',
                     responseEmitter
-                );
-            }
-        case RunChatCompletionType.NewNotebook:
-            {
-                return GitHubCopilot.newNotebookRequest(
-                    request.content,
-                    request.parentDirectory!
                 );
             }
         case RunChatCompletionType.GenerateCode:

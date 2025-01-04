@@ -161,27 +161,4 @@ export class GitHubCopilot {
             })}
         );
     }
-
-    static async explainThisRequest(code: string, language: string, filename: string) {
-        return requestAPI<any>('explain-this', { method: 'POST', body: JSON.stringify({
-            "selection": code,
-            language,
-            filename
-        })});
-    }
-
-    static async fixThisRequest(code: string, language: string, filename: string) {
-        return requestAPI<any>('fix-this', { method: 'POST', body: JSON.stringify({
-            "selection": code,
-            language,
-            filename
-        })});
-    }
-
-    static async newNotebookRequest(prompt: string, parentDirectory: string) {
-        return requestAPI<any>('new-notebook', { method: 'POST', body: JSON.stringify({
-            "prompt": prompt,
-            "parent-path": parentDirectory
-        })});
-    }
 }

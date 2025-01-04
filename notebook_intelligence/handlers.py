@@ -80,43 +80,6 @@ class PostInlineCompletionsHandler(APIHandler):
             "data": completions
         }))
 
-class PostCompletionsHandler(APIHandler):
-    @tornado.web.authenticated
-    async def post(self):
-        data = self.get_json_body()
-        messages = data['messages']
-
-        response = github_copilot.completions(messages)
-        self.finish(json.dumps(response))
-
-class PostChatHandler(APIHandler):
-    @tornado.web.authenticated
-    async def post(self):
-        cfg = NotebookIntelligenceConfig(config=self.config)
-        data = self.get_json_body()
-        prompt = data['prompt']
-        language = data['language']
-        filename = data['filename']
-
-        response = extension_manager.handle_chat_request(ChatRequest(prompt=prompt))
-        # data = {"message": response["choices"][0]["message"]["content"]}
-    
-        self.finish(json.dumps(response))
-
-        # context = None
-        # if cfg.has_context_provider:
-        #     context = cfg.context_provider.get_context(ContextRequest(
-        #         type=ContextType.Chat,
-        #         file_info=ContextInputFileInfo(file_name=filename),
-        #         language=language,
-        #         prefix=prompt
-        #     ))
-
-        # response = github_copilot.chat(prompt, language, filename, context)
-        # self.finish(json.dumps({
-        #     "data": response
-        # }))
-
 class ChatHistory:
     """
     History of chat messages, key is chat id, value is list of messages
@@ -176,7 +139,6 @@ class WebsocketChatResponseEmitter(ChatResponse):
     def message_id(self) -> str:
         return self.messageId
 
-    # data: OpenAIResponse, MarkdownResponse, etc.
     def stream(self, data: ResponseStreamData | dict):
         data_type = ResponseStreamDataType.LLMRaw if type(data) is dict else data.data_type
 
@@ -377,44 +339,6 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
     def on_close(self):
         print("WebSocket closed")
 
-class PostExplainThisHandler(APIHandler):
-    @tornado.web.authenticated
-    async def post(self):
-        data = self.get_json_body()
-        selection = data['selection']
-        language = data['language']
-        filename = data['filename']
-        response = github_copilot.explain_this(selection, language, filename)
-        self.finish(json.dumps(response))
-
-class PostFixThisHandler(APIHandler):
-    @tornado.web.authenticated
-    async def post(self):
-        data = self.get_json_body()
-        selection = data['selection']
-        language = data['language']
-        filename = data['filename']
-        response = github_copilot.fix_this(selection, language, filename)
-        self.finish(json.dumps(response))
-
-class PostNewNotebookHandler(APIHandler):
-    @tornado.web.authenticated
-    async def post(self):
-        cfg = NotebookIntelligenceConfig(config=self.config)
-        data = self.get_json_body()
-        prompt = data['prompt']
-        parent_path = data['parent-path']
-
-        context = None
-        if cfg.has_context_provider:
-            context = cfg.context_provider.get_context(ContextRequest(
-                type=ContextType.NewNotebook,
-                prefix=prompt
-            ))
-
-        response = github_copilot.new_notebook(prompt, parent_path, context)
-        self.finish(json.dumps(response))
-
 def initialize_extensions():
     global extension_manager
     default_chat_participant = github_copilot.GithubCopilotChatParticipant()
@@ -431,22 +355,13 @@ def setup_handlers(web_app):
     route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
     route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
     route_pattern_inline_completions = url_path_join(base_url, "notebook-intelligence", "inline-completions")
-    route_pattern_completions = url_path_join(base_url, "notebook-intelligence", "completions")
     route_pattern_chat = url_path_join(base_url, "notebook-intelligence", "chat")
-    route_pattern_explain_this = url_path_join(base_url, "notebook-intelligence", "explain-this")
-    route_pattern_fix_this = url_path_join(base_url, "notebook-intelligence", "fix-this")
-    route_pattern_new_notebook = url_path_join(base_url, "notebook-intelligence", "new-notebook")
     handlers = [
         (route_pattern_capabilities, GetCapabilitiesHandler),
         (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
         (route_pattern_github_login, PostGitHubLoginHandler),
         (route_pattern_github_logout, GetGitHubLogoutHandler),
         (route_pattern_inline_completions, PostInlineCompletionsHandler),
-        (route_pattern_completions, PostCompletionsHandler),
-        # (route_pattern_chat, PostChatHandler),
         (route_pattern_chat, WebsocketChatHandler),
-        (route_pattern_explain_this, PostExplainThisHandler),
-        (route_pattern_fix_this, PostFixThisHandler),
-        (route_pattern_new_notebook, PostNewNotebookHandler),
     ]
     web_app.add_handlers(host_pattern, handlers)
