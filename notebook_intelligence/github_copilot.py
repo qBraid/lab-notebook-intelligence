@@ -11,9 +11,11 @@ import sseclient
 from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, ContextResponse, MarkdownData, Tool
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
-EDITOR_VERSION = "NotebookIntelligence/4.2.5"
-EDITOR_PLUGIN_VERSION = "NotebookIntelligence/4.2.5"
-USER_AGENT = "NotebookIntelligence/4.2.5"
+from ._version import __version__ as NBI_VERSION
+
+EDITOR_VERSION = f"NotebookIntelligence/{NBI_VERSION}"
+EDITOR_PLUGIN_VERSION = f"NotebookIntelligence/{NBI_VERSION}"
+USER_AGENT = f"NotebookIntelligence/{NBI_VERSION}"
 CLIENT_ID = "Iv1.b507a08c87ecfe98"
 MACHINE_ID = secrets.token_hex(33)[0:65]
 
@@ -106,7 +108,8 @@ def wait_for_user_access_token_thread_func():
     global github_auth, get_access_code_thread
 
     while True:
-        if github_auth["access_token"] is not None or github_auth["device_code"] is None:
+        # terminate thread if logged out
+        if github_auth["access_token"] is not None or github_auth["device_code"] is None or github_auth["status"] == LoginStatus.NOT_LOGGED_IN:
             get_access_code_thread = None
             break
         time.sleep(5)
@@ -164,11 +167,16 @@ def get_token():
     TOKEN_REFRESH_INTERVAL = resp_json.get('refresh_in', TOKEN_REFRESH_INTERVAL)
 
 def get_token_thread_func():
-    global github_auth
+    global github_auth, get_token_thread
     while True:
+        # terminate thread if logged out
+        if github_auth["status"] == LoginStatus.NOT_LOGGED_IN:
+            get_token_thread = None
+            return
         get_token()
         token = github_auth["token"]
         wait_time = 15 if token is None else TOKEN_REFRESH_INTERVAL
+        # TODO: handle logout
         time.sleep(wait_time)
 
 def wait_for_tokens():
