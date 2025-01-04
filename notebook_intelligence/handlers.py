@@ -287,7 +287,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
         self.chat_history = ChatHistory()
 
     def open(self):
-        print("WebSocket opened")
+        pass
 
     def on_message(self, message):
         msg = json.loads(message)
@@ -337,7 +337,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             responseEmitter.on_run_ui_command_response(msg['data'])
  
     def on_close(self):
-        print("WebSocket closed")
+        pass
 
 def initialize_extensions():
     global extension_manager
