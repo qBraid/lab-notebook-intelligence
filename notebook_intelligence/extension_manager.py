@@ -5,7 +5,7 @@ from os import path
 import os
 import sys
 from typing import Dict
-from notebook_intelligence.extension import AIModel, ChatParticipant, ChatRequest, ChatResponse, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
+from notebook_intelligence.extension import AIModel, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
 from notebook_intelligence.github_copilot import completions
 
 
@@ -21,6 +21,7 @@ class GitHubAIModel(AIModel):
 class ExtensionManager(Host):
     def __init__(self, default_chat_participant: ChatParticipant):
         self.chat_participants: Dict[str, ChatParticipant] = {}
+        self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
         self.default_chat_participant = default_chat_participant
         self.initialize()
 
@@ -68,7 +69,10 @@ class ExtensionManager(Host):
         self.chat_participants[participant.id] = participant
 
     def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
-        pass
+        if provider.id in self.completion_context_providers:
+            print(f"Completion Context Provider ID '{provider.id}' is already in use!")
+            return
+        self.completion_context_providers[provider.id] = provider
 
     @property
     def model(self) -> AIModel:
@@ -98,11 +102,30 @@ class ExtensionManager(Host):
             input = " ".join(parts)
 
         return [participant, command, input]
+    
+    def get_chat_participant(self, prompt: str) -> ChatParticipant:
+        (participant_id, command, input) = ExtensionManager.parse_prompt(prompt)
+        return self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         request.host = self
-        (participant_name, command, prompt) = ExtensionManager.parse_prompt(request.prompt)
-        participant = self.chat_participants.get(participant_name, DEFAULT_CHAT_PARTICIPANT_ID)
+        (participant_id, command, prompt) = ExtensionManager.parse_prompt(request.prompt)
+        participant = self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)
         request.command = command
         request.prompt = prompt
         return await participant.handle_chat_request(request, response, options)
+
+    async def get_completion_context(self, request: ContextRequest) -> CompletionContext:
+        context = CompletionContext([])
+
+        allowed_context_providers = request.participant.allowed_context_providers
+
+        for provider in self.completion_context_providers:
+            provider = self.completion_context_providers.get(provider)
+            if provider.id not in allowed_context_providers and '*' not in allowed_context_providers:
+                continue
+            provider_context = provider.handle_completion_context_request(request)
+            if provider_context.items:
+                context.items += provider_context.items
+
+        return context

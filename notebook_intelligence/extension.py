@@ -7,7 +7,7 @@ import os
 import sys
 from typing import Callable, Dict
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum, StrEnum
 
 class RequestDataType(StrEnum):
     ChatRequest = 'chat-request'
@@ -63,7 +63,6 @@ class MarkdownPartData(ResponseStreamData):
     def data_type(self) -> ResponseStreamDataType:
         return ResponseStreamDataType.MarkdownPart
 
-
 @dataclass
 class HTMLData(ResponseStreamData):
     content: str = ''
@@ -109,6 +108,36 @@ class ConfirmationData(ResponseStreamData):
     @property
     def data_type(self) -> ResponseStreamDataType:
         return ResponseStreamDataType.Confirmation
+
+class ContextType(Enum):
+    InlineCompletion = 'inline-completion'
+    NewPythonFile = 'new-python-file'
+    NewNotebook = 'new-notebook'
+
+@dataclass
+class ContextInputFileInfo:
+    file_name: str = ''
+    parent_dir: str = ''
+    server_root: str = ''
+
+@dataclass
+class ContextRequest:
+    type: ContextType
+    prompt: str = ''
+    file_info: ContextInputFileInfo = None
+    language: str = ''
+    prefix: str = ''
+    suffix: str = ''
+    participant: 'ChatParticipant' = None
+
+@dataclass
+class ContextItem:
+    content: str
+    file_path: str = None
+
+@dataclass
+class CompletionContext:
+    items: list[ContextItem]
 
 class ChatResponse:
     def __init__(self):
@@ -237,6 +266,11 @@ class ChatParticipant:
     def tools(self) -> list[Tool]:
         return []
 
+    @property
+    def allowed_context_providers(self) -> set[str]:
+        # any context provider can be used
+        return set(["*"])
+
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         raise NotImplemented
     
@@ -328,7 +362,7 @@ class CompletionContextProvider:
     def id(self) -> str:
         raise NotImplemented
 
-    def handle_completion_context_request(self, request: ChatRequest, response: ChatResponse) -> None:
+    def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
         raise NotImplemented
 
 class AIModel:
@@ -346,16 +380,6 @@ class Host:
     def model(self) -> AIModel:
         raise NotImplemented
 
-@dataclass
-class Context:
-    content: str
-    file_path: str = None
-
-@dataclass
-class ContextResponse:
-    items: list[Context]
-
-
 class NotebookIntelligenceExtension:
     @property
     def id(self) -> str:
@@ -371,4 +395,3 @@ class NotebookIntelligenceExtension:
 
     def activate(self, host: Host) -> None:
         raise NotImplemented
-

@@ -1,5 +1,6 @@
 from time import sleep
-from .extension import AnchorData, ButtonData, ChatCommand, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolPreInvokeResponse
+
+from .extension import AnchorData, ButtonData, ChatCommand, CompletionContext, CompletionContextProvider, ContextItem, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolPreInvokeResponse, ContextRequest
 
 class TestChatParticipant(ChatParticipant):
     @property
@@ -20,6 +21,11 @@ class TestChatParticipant(ChatParticipant):
     @property
     def tools(self) -> list[Tool]:
         return [ConvertFahrenheitToCelciusTool(), ConvertCelciusToKelvinTool()]
+
+    @property
+    def allowed_context_providers(self) -> set[str]:
+        # any context provider can be used
+        return set(["*"])
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         if (request.command == 'repeat'):
@@ -143,14 +149,26 @@ class ConvertCelciusToKelvinTool(Tool):
         temperature = tool_args.get('temperature')
         return {"kelvin": temperature + 273.15}
 
-class TestCompletionContextProvider:
+class TestCompletionContextProvider(CompletionContextProvider):
     @property
     def id(self) -> str:
         return "test-completion-context-provider"
 
-    def handle_completion_context_request(self, request: ChatRequest, response: ChatResponse) -> None:
-        response.stream(MarkdownData("Hello from completion context provider!"))
-        response.finish()
+    @property
+    def participants(self) -> set[str]:
+        return set(["*"])
+
+    def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
+        return CompletionContext([
+            ContextItem("""
+def add_numbers(a, b):
+    return a + b
+""", "add.py")
+        , ContextItem("""
+def multiply_numbers(a, b):
+    return a * b
+""", "multiply.py")
+        ])
 
 class TestExtension(NotebookIntelligenceExtension):
     def __init__(self):

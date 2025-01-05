@@ -8,7 +8,7 @@ from pathlib import Path
 import uuid
 import secrets
 import sseclient
-from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, ContextResponse, MarkdownData, Tool
+from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, CompletionContext, MarkdownData, Tool
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 from ._version import __version__ as NBI_VERSION
@@ -106,6 +106,14 @@ def get_device_verification_info():
 
 def wait_for_user_access_token_thread_func():
     global github_auth, get_access_code_thread
+
+    token_from_env = os.environ.get("GITHUB_ACCESS_TOKEN", None)
+
+    if token_from_env is not None:
+        print("Setting GitHub access token from environment variable")
+        github_auth["access_token"] = token_from_env
+        get_access_code_thread = None
+        return
 
     while True:
         # terminate thread if logged out
@@ -207,7 +215,7 @@ def _generate_copilot_headers():
         'vscode-machineid': MACHINE_ID,
     }
 
-def inline_completions(prefix, suffix, language, filename, context: ContextResponse):
+def inline_completions(prefix, suffix, language, filename, context: CompletionContext):
     global github_auth
     token = github_auth['token']
 
@@ -215,7 +223,7 @@ def inline_completions(prefix, suffix, language, filename, context: ContextRespo
 
     if context is not None:
         for item in context.items:
-            context_file = f"Compare this snippet from {item.file_path}:{NL}{item.content}{NL}"
+            context_file = f"Compare this snippet from {item.file_path if item.file_path is not None else 'undefined'}:{NL}{item.content}{NL}"
             prompt += "\n# " + "\n# ".join(context_file.split('\n'))
 
     prompt += f"{NL}{prefix}"
@@ -413,6 +421,11 @@ class GithubCopilotChatParticipant(ChatParticipant):
     @property
     def tools(self) -> list[Tool]:
         return [AddMarkdownCellToNotebookTool(), AddCodeCellTool()]
+
+    @property
+    def allowed_context_providers(self) -> set[str]:
+        # any context provider can be used
+        return set(["*"])
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         if request.command == 'newNotebook':

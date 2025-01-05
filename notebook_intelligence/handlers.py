@@ -11,8 +11,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import web, websocket
-import traitlets
-from notebook_intelligence.extension import AnchorData, ButtonData, ChatResponse, ChatRequest, ChatParticipant, HTMLData, MarkdownData, NotebookIntelligenceExtension, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
+from notebook_intelligence.extension import ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
 from notebook_intelligence.extension_manager import ExtensionManager
 import notebook_intelligence.github_copilot as github_copilot
 from notebook_intelligence.test_extension import TestExtension
@@ -61,7 +60,7 @@ class PostInlineCompletionsHandler(APIHandler):
         language = data['language']
         filename = data['filename']
 
-        context = None
+        context = await extension_manager.get_completion_context(ContextRequest(ContextType.InlineCompletion, prefix, suffix, language, filename, participant=extension_manager.get_chat_participant(prefix)))
         completions = github_copilot.inline_completions(prefix, suffix, language, filename, context)
         self.finish(json.dumps({
             "data": completions
