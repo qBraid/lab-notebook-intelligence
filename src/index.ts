@@ -56,7 +56,7 @@ import {
 } from './utils';
 
 namespace CommandIDs {
-  export const chatuserInput = 'notebook-intelligence:chat_user_input';
+  export const chatuserInput = 'notebook-intelligence:chat-user-input';
   export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
   export const createNewFile = 'notebook-intelligence:create-new-file';
   export const createNewNotebookFromPython =
@@ -268,8 +268,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.commands.addCommand(CommandIDs.chatuserInput, {
       execute: args => {
-        // @ts-ignore
-        GitHubCopilot.sendChatUserInput(args.id, args.data);
+        GitHubCopilot.sendChatUserInput(args.id as string, args.data);
       }
     });
 
@@ -355,7 +354,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }
 
         if (args.code) {
-          // @ts-ignore
+          // @ts-expect-error - code is valid
           nbFileContent.cells.push({
             cell_type: 'code',
             metadata: { trusted: true },
@@ -449,9 +448,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.commands.addCommand(CommandIDs.openGitHubCopilotLoginDialog, {
       execute: args => {
-        let dialog: Dialog<unknown>;
+        let dialog: Dialog<unknown> | null = null;
         const dialogBody = new GitHubCopilotLoginDialogBody({
-          onLoggedIn: () => dialog.dispose()
+          onLoggedIn: () => dialog?.dispose()
         });
         dialog = new Dialog({
           title: 'GitHub Copilot Status',
@@ -631,14 +630,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
         let content = '';
         const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
         for (const output of outputs) {
-          if (output.output_type == 'execute_result') {
-            // @ts-ignore
+          if (output.output_type === 'execute_result') {
             content += output.data['text/plain'] + '\n';
-          } else if (output.output_type == 'stream') {
-            // @ts-ignore
+          } else if (output.output_type === 'stream') {
             content += output.text + '\n';
-          } else if (output.output_type == 'error') {
-            // @ts-ignore
+          } else if (output.output_type === 'error') {
             if (Array.isArray(output.traceback)) {
               content += output.ename + ': ' + output.evalue + '\n';
               content +=
@@ -682,8 +678,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         let content = '';
         const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
         for (const output of outputs) {
-          if (output.output_type == 'error') {
-            // @ts-ignore
+          if (output.output_type === 'error') {
             if (Array.isArray(output.traceback)) {
               content += output.ename + ': ' + output.evalue + '\n';
               content +=

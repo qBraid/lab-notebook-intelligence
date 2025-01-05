@@ -311,7 +311,7 @@ function ChatResponse(props: any) {
                     onClick={() => {
                       markFormConfirmed(item.id);
                       runCommand(
-                        'notebook-intelligence:chat_user_input',
+                        'notebook-intelligence:chat-user-input',
                         item.content.confirmArgs
                       );
                     }}
@@ -323,7 +323,7 @@ function ChatResponse(props: any) {
                     onClick={() => {
                       markFormCanceled(item.id);
                       runCommand(
-                        'notebook-intelligence:chat_user_input',
+                        'notebook-intelligence:chat-user-input',
                         item.content.cancelArgs
                       );
                     }}
@@ -653,7 +653,7 @@ function SidebarComponent(props: any) {
   };
 
   const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key == 'Enter') {
+    if (event.key === 'Enter') {
       event.stopPropagation();
       event.preventDefault();
       if (showPopover) {
@@ -663,19 +663,19 @@ function SidebarComponent(props: any) {
 
       setSelectedPrefixSuggestionIndex(0);
       handleUserInputSubmit();
-    } else if (event.key == 'Tab') {
+    } else if (event.key === 'Tab') {
       if (showPopover) {
         event.stopPropagation();
         event.preventDefault();
         applyPrefixSuggestion(prefixSuggestions[selectedPrefixSuggestionIndex]);
         return;
       }
-    } else if (event.key == 'Escape') {
+    } else if (event.key === 'Escape') {
       event.stopPropagation();
       event.preventDefault();
       setShowPopover(false);
       setSelectedPrefixSuggestionIndex(0);
-    } else if (event.key == 'ArrowUp') {
+    } else if (event.key === 'ArrowUp') {
       event.stopPropagation();
       event.preventDefault();
 
@@ -691,7 +691,7 @@ function SidebarComponent(props: any) {
       // first time up key press
       if (
         promptHistory.length > 0 &&
-        promptHistoryIndex == promptHistory.length
+        promptHistoryIndex === promptHistory.length
       ) {
         setDraftPrompt(prompt);
       }
@@ -706,7 +706,7 @@ function SidebarComponent(props: any) {
         setPrompt(prevPrompt);
         setPromptHistoryIndex(newIndex);
       }
-    } else if (event.key == 'ArrowDown') {
+    } else if (event.key === 'ArrowDown') {
       event.stopPropagation();
       event.preventDefault();
 
@@ -724,7 +724,7 @@ function SidebarComponent(props: any) {
         promptHistoryIndex >= 0 &&
         promptHistoryIndex < promptHistory.length
       ) {
-        if (promptHistoryIndex == promptHistory.length - 1) {
+        if (promptHistoryIndex === promptHistory.length - 1) {
           setPrompt(draftPrompt);
           setPromptHistoryIndex(promptHistory.length);
           return;
@@ -870,7 +870,7 @@ function SidebarComponent(props: any) {
       )}
 
       {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&
-      chatMessages.length == 0 ? (
+      chatMessages.length === 0 ? (
         <div className="sidebar-messages">
           <div className="sidebar-greeting">
             Welcome! How can I assist you today?
@@ -926,7 +926,7 @@ function SidebarComponent(props: any) {
               <button
                 className="jp-Dialog-button jp-mod-accept jp-mod-styled send-button"
                 onClick={() => handleUserInputSubmit()}
-                disabled={prompt.length == 0}
+                disabled={prompt.length === 0}
               >
                 <VscSend></VscSend> Send
               </button>
@@ -998,12 +998,12 @@ function InlinePromptComponent(props: any) {
   };
 
   const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key == 'Enter') {
+    if (event.key === 'Enter') {
       event.stopPropagation();
       event.preventDefault();
       props.onRequestSubmitted(prompt);
       handleUserInputSubmit();
-    } else if (event.key == 'Escape') {
+    } else if (event.key === 'Escape') {
       event.stopPropagation();
       event.preventDefault();
       props.onRequestCancelled();
