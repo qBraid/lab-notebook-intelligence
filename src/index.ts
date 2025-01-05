@@ -94,6 +94,14 @@ const activeDocumentInfo: IActiveDocumentInfo = {
 class GitHubInlineCompletionProvider
   implements IInlineCompletionProvider<IInlineCompletionItem>
 {
+  get schema(): ISettingRegistry.IProperty {
+    return {
+      default: {
+        debouncerDelay: 200
+      }
+    };
+  }
+
   fetch(
     request: CompletionHandler.IRequest,
     context: IInlineCompletionContext
