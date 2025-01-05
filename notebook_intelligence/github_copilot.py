@@ -1,4 +1,6 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+#
+# GitHub auth and inline completion sections are derivative of https://github.com/B00TK1D/copilot-api
 
 from dataclasses import dataclass
 from enum import Enum
