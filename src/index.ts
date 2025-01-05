@@ -296,7 +296,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           activeCellIndex =
             activeCellIndex === -1
               ? currentWidget.content.widgets.length
-              : activeCellIndex;
+              : activeCellIndex + 1;
 
           currentWidget.model?.sharedModel.insertCell(activeCellIndex, {
             cell_type: 'code',

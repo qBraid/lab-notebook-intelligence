@@ -1,5 +1,7 @@
 # Notebook Intelligence
 
+AI coding assistant for JupyterLab, powered by GitHub Copilot
+
 [![Github Actions Status](https://github.com/mbektas/notebook-intelligence/workflows/Build/badge.svg)](https://github.com/mbektas/notebook-intelligence/actions/workflows/build.yml)
 
 Notebook Intelligence extension for JupyterLab
