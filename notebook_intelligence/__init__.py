@@ -10,8 +10,7 @@ except ImportError:
     warnings.warn("Importing 'notebook_intelligence' outside a proper installation.")
     __version__ = "dev"
 from .handlers import initialize_extensions, setup_handlers
-from .extension import NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse
-
+from .extension import *
 
 def _jupyter_labextension_paths():
     return [{

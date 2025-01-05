@@ -28,6 +28,7 @@ class ExtensionManager(Host):
     def initialize(self):
         self.chat_participants = {}
         self.register_chat_participant(self.default_chat_participant)
+        self.initialize_extensions()
 
     def initialize_extensions(self):
         extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbi_extensions")
@@ -44,7 +45,7 @@ class ExtensionManager(Host):
                     if extension:
                         extension.activate(self)
     
-    def load_extension(extension_class: str) -> NotebookIntelligenceExtension:
+    def load_extension(self, extension_class: str) -> NotebookIntelligenceExtension:
         import importlib
         try:
             parts = extension_class.split(".")

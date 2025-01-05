@@ -328,7 +328,8 @@ class ChatParticipant:
 
                 tool_call_response = await tool_to_call.handle_tool_call(request, response, tool_context, args)
 
-                tool_call_args_resp = args.update(tool_call_response)
+                tool_call_args_resp = args.copy()
+                tool_call_args_resp.update(tool_call_response)
 
                 function_call_result_message = {
                     "role": "tool",
