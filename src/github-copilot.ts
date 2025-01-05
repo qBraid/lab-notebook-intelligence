@@ -7,7 +7,7 @@ import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import { IChatCompletionResponseEmitter, RequestDataType } from "./tokens";
 
-const LOGIN_STATUS_UPDATE_INTERVAL = 3000;
+const LOGIN_STATUS_UPDATE_INTERVAL = 2000;
 
 export enum GitHubCopilotLoginStatus {
     NotLoggedIn = 'NOT_LOGGED_IN',

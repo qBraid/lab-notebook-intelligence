@@ -49,7 +49,7 @@ import { ChatSidebar, GitHubCopilotLoginDialogBody, GitHubCopilotStatusBarItem, 
 import { GitHubCopilot } from './github-copilot';
 import { IActiveDocumentInfo } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
-import { removeAnsiChars, waitForDuration } from './utils';
+import { extractCodeFromMarkdown, removeAnsiChars, waitForDuration } from './utils';
 
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat_user_input';
@@ -253,7 +253,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       execute: async (args) => {
         const contents = new ContentsManager();
         const newPyFile = await contents.newUntitled({ext: '.py', path: defaultBrowser?.model.path});
-        contents.save(newPyFile.path, { content: args.code, format: 'text', type: 'file' });
+        contents.save(newPyFile.path, { content: extractCodeFromMarkdown(args.code as string), format: 'text', type: 'file' });
         docManager.openOrReveal(newPyFile.path);
 
         await waitForFileToBeActive(newPyFile.path);
@@ -435,47 +435,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
           const existingLines = source.split('\n');
           const newLines = existingLines.filter(line => !line.startsWith(NBI_PROMPT_PREFIX));
           return newLines.join('\n');
-        };
-
-        const moveCodeSectionBoundaryMarkersToNewLine = (source: string): string => {
-          const existingLines = source.split('\n');
-          const newLines = [];
-          for (const line of existingLines) {
-            if (line.length > 3 && line.startsWith('```')) {
-              newLines.push('```');
-              let remaining = line.substring(3);
-              if (remaining.startsWith('python')) {
-                if (remaining.length === 6) {
-                  continue;
-                }
-                remaining = remaining.substring(6);
-              }
-              if (remaining.endsWith('```')) {
-                newLines.push(remaining.substring(0, remaining.length - 3));
-                newLines.push('```');
-              } else {
-                newLines.push(remaining);
-              }
-            } else if (line.length > 3 && line.endsWith('```')) {
-              newLines.push(line.substring(0, line.length - 3));
-              newLines.push('```');
-            } else {
-              newLines.push(line);
-            }
-          }
-          return newLines.join('\n');
-        };
-
-        const extractCodeFromMarkdown = (source: string): string => {
-          // make sure end of code block is in new line
-          source = moveCodeSectionBoundaryMarkersToNewLine(source);
-          const codeBlockRegex = /^```(?:\w+)?\s*\n(.*?)(?=^```)```/gms;
-          let code = '';
-          let match;
-          while ((match = codeBlockRegex.exec(source)) !== null) {
-            code += match[1] + '\n';
-          }
-          return code.trim() || source;
         };
 
         const {prefix, suffix} = getPrefixAndSuffixForActiveCell();

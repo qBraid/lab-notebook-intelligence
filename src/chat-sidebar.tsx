@@ -329,7 +329,7 @@ function SidebarComponent(props: any) {
 
         fetchData();
 
-        const intervalId = setInterval(fetchData, 3000);
+        const intervalId = setInterval(fetchData, 1000);
 
         return () => clearInterval(intervalId);
     }, [loginClickCount]);
@@ -808,7 +808,7 @@ function GitHubCopilotStatusComponent(props: any) {
 
         fetchData();
 
-        const intervalId = setInterval(fetchData, 3000);
+        const intervalId = setInterval(fetchData, 1000);
 
         return () => clearInterval(intervalId);
     }, [loginClickCount]);
@@ -842,7 +842,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
 
         fetchData();
 
-        const intervalId = setInterval(fetchData, 3000);
+        const intervalId = setInterval(fetchData, 1000);
 
         return () => clearInterval(intervalId);
     }, [loginClickCount]);
