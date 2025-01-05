@@ -30,7 +30,7 @@ class ExtensionManager(Host):
         self.register_chat_participant(self.default_chat_participant)
 
     def initialize_extensions(self):
-        extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbiextensions")
+        extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbi_extensions")
         if not path.exists(extensions_dir):
             return
         subfolders = [f.path for f in os.scandir(extensions_dir) if f.is_dir()]

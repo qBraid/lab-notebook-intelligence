@@ -15,7 +15,6 @@ from tornado import web, websocket
 from notebook_intelligence.extension import ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
 from notebook_intelligence.extension_manager import ExtensionManager
 import notebook_intelligence.github_copilot as github_copilot
-from notebook_intelligence.test_extension import TestExtension
 
 extension_manager: ExtensionManager = None
 
@@ -330,8 +329,6 @@ def initialize_extensions():
     global extension_manager
     default_chat_participant = github_copilot.GithubCopilotChatParticipant()
     extension_manager = ExtensionManager(default_chat_participant)
-    test_extension = TestExtension()
-    test_extension.activate(extension_manager)
 
 def setup_handlers(web_app):
     host_pattern = ".*$"
