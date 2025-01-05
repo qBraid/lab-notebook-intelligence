@@ -36,6 +36,7 @@ import { ContentsManager, KernelSpecManager } from '@jupyterlab/services';
 import { LabIcon } from '@jupyterlab/ui-components';
 
 import { Menu, Panel, Widget } from '@lumino/widgets';
+import { PartialJSONObject } from '@lumino/coreutils';
 import { CommandRegistry } from '@lumino/commands';
 import { IStatusBar } from '@jupyterlab/statusbar';
 
@@ -631,7 +632,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
         for (const output of outputs) {
           if (output.output_type === 'execute_result') {
-            content += output.data['text/plain'] + '\n';
+            content += (typeof output.data === 'object' && output.data !== null) ? (output.data as PartialJSONObject)['text/plain'] : '' + '\n';
           } else if (output.output_type === 'stream') {
             content += output.text + '\n';
           } else if (output.output_type === 'error') {
