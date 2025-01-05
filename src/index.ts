@@ -47,7 +47,7 @@ import {
   InlinePromptWidget,
   RunChatCompletionType
 } from './chat-sidebar';
-import { GitHubCopilot } from './github-copilot';
+import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 import { IActiveDocumentInfo } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
 import {
@@ -125,6 +125,13 @@ class GitHubInlineCompletionProvider
 
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
+
+      if (
+        GitHubCopilot.getLoginStatus() !== GitHubCopilotLoginStatus.LoggedIn
+      ) {
+        resolve({ items });
+        return;
+      }
 
       GitHubCopilot.inlineCompletionsRequest(
         preContent + preCursor,
@@ -384,6 +391,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
       );
     };
 
+    const loggedInToGitHubCopilot = (): boolean => {
+      return (
+        GitHubCopilot.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
+      );
+    };
+
     const isActiveCellCodeCell = (): boolean => {
       if (!(app.shell.currentWidget instanceof NotebookPanel)) {
         return false;
@@ -572,7 +585,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         Widget.attach(inlinePrompt, document.body);
       },
       label: 'Generate code',
-      isEnabled: isActiveCellCodeCell
+      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
     };
     app.commands.addCommand(CommandIDs.editorGenerateCode, generateCodeCommand);
 
@@ -600,7 +613,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
       },
       label: 'Explain code',
-      isEnabled: isActiveCellCodeCell
+      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
     });
     copilotMenuCommands.addCommand(CommandIDs.editorFixThisCode, {
       execute: () => {
@@ -621,7 +634,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
       },
       label: 'Fix code',
-      isEnabled: isActiveCellCodeCell
+      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
     });
     copilotMenuCommands.addCommand(CommandIDs.editorExplainThisOutput, {
       execute: () => {
@@ -662,7 +675,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       label: 'Explain output',
       isEnabled: () => {
-        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
+        if (
+          !(
+            loggedInToGitHubCopilot() &&
+            app.shell.currentWidget instanceof NotebookPanel
+          )
+        ) {
           return false;
         }
         const np = app.shell.currentWidget as NotebookPanel;
@@ -706,7 +724,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       label: 'Troubleshoot errors in output',
       isEnabled: () => {
-        if (!(app.shell.currentWidget instanceof NotebookPanel)) {
+        if (
+          !(
+            loggedInToGitHubCopilot() &&
+            app.shell.currentWidget instanceof NotebookPanel
+          )
+        ) {
           return false;
         }
         const np = app.shell.currentWidget as NotebookPanel;
