@@ -7,21 +7,21 @@ import os
 import sys
 from typing import Callable, Dict
 from dataclasses import dataclass
-from enum import Enum, StrEnum
+from enum import Enum
 
-class RequestDataType(StrEnum):
+class RequestDataType(str, Enum):
     ChatRequest = 'chat-request'
     ChatUserInput = 'chat-user-input'
     ClearChatHistory = 'clear-chat-history'
     RunUICommandResponse = 'run-ui-command-response'
     GenerateCode = 'generate-code'
 
-class BackendMessageType(StrEnum):
+class BackendMessageType(str, Enum):
     StreamMessage = 'stream-message'
     StreamEnd = 'stream-end'
     RunUICommand = 'run-ui-command'
 
-class ResponseStreamDataType(StrEnum):
+class ResponseStreamDataType(str, Enum):
     LLMRaw = 'llm-raw'
     Markdown = 'markdown'
     MarkdownPart = 'markdown-part'

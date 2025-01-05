@@ -853,30 +853,30 @@ function SidebarComponent(props: any) {
       )}
 
       {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&
-      chatMessages.length === 0 ? (
-        <div className="sidebar-messages">
-          <div className="sidebar-greeting">
-            Welcome! How can I assist you today?
+        (chatMessages.length === 0 ? (
+          <div className="sidebar-messages">
+            <div className="sidebar-greeting">
+              Welcome! How can I assist you today?
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="sidebar-messages">
-          {chatMessages.map((msg, index) => (
-            <ChatResponse
-              key={`key-${index}`}
-              message={msg}
-              openFile={props.openFile}
-              getApp={props.getApp}
-              showGenerating={
-                index === chatMessages.length - 1 &&
-                msg.from === 'copilot' &&
-                copilotRequestInProgress
-              }
-            />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
+        ) : (
+          <div className="sidebar-messages">
+            {chatMessages.map((msg, index) => (
+              <ChatResponse
+                key={`key-${index}`}
+                message={msg}
+                openFile={props.openFile}
+                getApp={props.getApp}
+                showGenerating={
+                  index === chatMessages.length - 1 &&
+                  msg.from === 'copilot' &&
+                  copilotRequestInProgress
+                }
+              />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        ))}
       {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn && (
         <div className="sidebar-user-input">
           <textarea
