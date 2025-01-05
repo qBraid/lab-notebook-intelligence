@@ -1,4 +1,5 @@
 from time import sleep
+from typing import Union
 
 from .extension import AnchorData, ButtonData, ChatCommand, CompletionContext, CompletionContextProvider, ContextItem, HTMLData, MarkdownData, NotebookIntelligenceExtension, Host, ChatParticipant, ChatRequest, ChatResponse, ProgressData, ResponseStreamDataType, Tool, ToolPreInvokeResponse, ContextRequest
 
@@ -89,7 +90,7 @@ class ConvertFahrenheitToCelciusTool(Tool):
             },
         }
 
-    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> ToolPreInvokeResponse | None:
+    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> Union[ToolPreInvokeResponse, None]:
         return ToolPreInvokeResponse(
             message="Converting fahrenheit to celcius",
             confirmationTitle="Confirm conversion",
@@ -138,7 +139,7 @@ class ConvertCelciusToKelvinTool(Tool):
             },
         }
 
-    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> ToolPreInvokeResponse | None:
+    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> Union[ToolPreInvokeResponse, None]:
         return ToolPreInvokeResponse(
             message="Converting celcius to kelvin",
             # confirmationTitle="Confirm",

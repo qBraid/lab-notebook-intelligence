@@ -5,7 +5,7 @@ import json
 from os import path
 import os
 import sys
-from typing import Callable, Dict
+from typing import Callable, Dict, Union
 from dataclasses import dataclass
 from enum import Enum
 
@@ -239,7 +239,7 @@ class Tool:
     def schema(self) -> dict:
         raise NotImplemented
 
-    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> ToolPreInvokeResponse | None:
+    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> Union[ToolPreInvokeResponse, None]:
         return None
 
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
