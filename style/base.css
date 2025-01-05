@@ -6,270 +6,279 @@
 */
 
 .sidebar {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .sidebar-header {
-    height: 25px;
-    padding: 5px;
-    display: flex;
+  height: 25px;
+  padding: 5px;
+  display: flex;
 }
 .sidebar-title {
-    font-size: 14px;
-    font-weight: bold;
-    flex-grow: 1;
+  font-size: 14px;
+  font-weight: bold;
+  flex-grow: 1;
 }
 
 .sidebar-messages {
-    flex-grow: 1;
-    overflow-y: auto;
+  flex-grow: 1;
+  overflow-y: auto;
 }
 
 .sidebar-user-input {
-    height: 60px;
-    padding: 5px;
-    padding-right: 15px;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--jp-cell-editor-background);
-    border: 1px solid var(--jp-border-color1);
+  height: 60px;
+  padding: 5px;
+  padding-right: 15px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--jp-cell-editor-background);
+  border: 1px solid var(--jp-border-color1);
 }
 
 .sidebar-user-input textarea {
-    width: 100%;
-    font-family: var(--jp-ui-font-family);
-    color: var(--jp-ui-font-color1);
-    outline: none;
-    border: none;
-    resize: none;
-    background: none;
+  width: 100%;
+  font-family: var(--jp-ui-font-family);
+  color: var(--jp-ui-font-color1);
+  outline: none;
+  border: none;
+  resize: none;
+  background: none;
 }
 .sidebar-user-input .user-input-context-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 .sidebar-user-input .user-input-footer {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 
 .chat-message {
-    padding: 5px;
-    display: flex;
-    flex-direction: column;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-message pre {
-    padding: 3px;
-    border-radius: 3px;
-    border: 1px solid var(--jp-border-color1);
+  padding: 3px;
+  border-radius: 3px;
+  border: 1px solid var(--jp-border-color1);
 }
 
 pre:has(.code-block-header) {
-    padding: 2px;
-    background-color: var(--jp-layout-color2);
+  padding: 2px;
+  background-color: var(--jp-layout-color2);
 }
 
 .chat-message-header {
-    display: flex;
+  display: flex;
 }
 
 .chat-message-from {
-    display: flex;
-    flex-grow: 1;
+  display: flex;
+  flex-grow: 1;
 }
 .chat-message-from-title {
-    font-weight: bold;
+  font-weight: bold;
 }
 .chat-message-from-progress {
-    padding-left: 10px;
-    flex-grow: 1;
-    font-size: 12px;
+  padding-left: 10px;
+  flex-grow: 1;
+  font-size: 12px;
 }
 
 .loading-ellipsis::after {
-    display: inline-block;
-    animation: animated-ellipsis steps(1,end) 1s infinite;
-    content: '';
+  display: inline-block;
+  animation: animated-ellipsis steps(1, end) 1s infinite;
+  content: '';
 }
-  
+
 @keyframes animated-ellipsis {
-    0%   { content: ''; }
-    25%  { content: '.'; }
-    50%  { content: '..'; }
-    75%  { content: '...'; }
-    100% { content: ''; }
+  0% {
+    content: '';
+  }
+  25% {
+    content: '.';
+  }
+  50% {
+    content: '..';
+  }
+  75% {
+    content: '...';
+  }
+  100% {
+    content: '';
+  }
 }
 
 .chat-message-timestamp {
-    padding-left: 10px;
-    font-size: 11px;
+  padding-left: 10px;
+  font-size: 11px;
 }
 
 .chat-message-content p {
-    margin-block-start: 5px;
-    margin-block-end: 5px;
-    line-height: 18px;
+  margin-block-start: 5px;
+  margin-block-end: 5px;
+  line-height: 18px;
 }
 
 .chat-message-content a {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
 .chat-message-user {
-    background-color: var(--jp-cell-editor-background);
+  background-color: var(--jp-cell-editor-background);
 }
 
 .chat-message-copilot {
-    background-color: rgb(90 76 191 / 15%);
+  background-color: rgb(90 76 191 / 15%);
 }
 
 .copilot-generated-notebook-link {
-    text-decoration: underline;
-    cursor: pointer;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .sidebar-login-info {
-    padding: 5px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    line-height: 20px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  line-height: 20px;
 }
 
 .sidebar-login-info a {
-    text-decoration: underline;
+  text-decoration: underline;
 }
 
 .sidebar-greeting {
-    padding: 5px;
-    font-size: 14px;
-    line-height: 20px;
+  padding: 5px;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .user-code-span {
-    cursor: pointer;
-    color: var(--jp-content-link-color);
+  cursor: pointer;
+  color: var(--jp-content-link-color);
 }
 .user-code-span:hover {
-    text-shadow: 1px 1px var(--jp-border-color1);
+  text-shadow: 1px 1px var(--jp-border-color1);
 }
 
 .user-code-span:active {
-    color: var(--jp-ui-font-color2);
+  color: var(--jp-ui-font-color2);
 }
 
 .chat-confirmation-form {
-    border: 1px solid var(--jp-border-color1);
-    padding: 5px;
-    line-height: 20px;
+  border: 1px solid var(--jp-border-color1);
+  padding: 5px;
+  line-height: 20px;
 }
 
 .user-input-autocomplete {
-    display: flex;
-    background-color: var(--jp-layout-color2);
-    border: 1px solid var(--jp-border-color1);
-    flex-direction: column;
-    position: absolute;
-    bottom: 72px;
-    left: 4px;
-    gap: 2px;
-    max-height: 300px;
-    overflow-y: auto;
+  display: flex;
+  background-color: var(--jp-layout-color2);
+  border: 1px solid var(--jp-border-color1);
+  flex-direction: column;
+  position: absolute;
+  bottom: 72px;
+  left: 4px;
+  gap: 2px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .user-input-autocomplete-item {
-    cursor: pointer;
-    padding: 4px;
+  cursor: pointer;
+  padding: 4px;
 }
 .user-input-autocomplete-item.selected {
-    background-color: var(--jp-layout-color1);
+  background-color: var(--jp-layout-color1);
 }
 
 .code-block-header {
-    display: flex;
-    align-items: flex-end;
-    gap: 5px;
-    padding: 3px;
-    padding-bottom: 0px;
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  padding: 3px;
+  padding-bottom: 0px;
 }
 
 .code-block-header-language {
-    flex-grow: 1;
+  flex-grow: 1;
 }
 
 .code-block-header-button {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    cursor: pointer;
-    padding: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 2px;
 }
 
 .code-block-header-button:hover {
-    background-color: var(--jp-layout-color1);
+  background-color: var(--jp-layout-color1);
 }
 .code-block-header-button:active {
-    background-color: var(--jp-layout-color3);
+  background-color: var(--jp-layout-color3);
 }
 
 .copy-icon svg {
-    width: 12px;
-    height: 12px;
+  width: 12px;
+  height: 12px;
 }
 
 .send-button {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    gap: 5px;
-    border: 1px solid var(--jp-border-color1);
-    padding: 3px 5px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 5px;
+  border: 1px solid var(--jp-border-color1);
+  padding: 3px 5px;
 }
 .send-button:hover:enabled {
-    background-color: var(--jp-layout-color1);
+  background-color: var(--jp-layout-color1);
 }
 
 .inline-prompt-container {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    background-color: var(--jp-toolbar-active-background);
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background-color: var(--jp-toolbar-active-background);
 }
 
 .inline-prompt-container textarea {
-    width: calc(100% - 6px);
-    height: calc(100% - 6px);
-    font-family: var(--jp-ui-font-family);
-    color: var(--jp-ui-font-color1);
-    resize: none;
-    background: none;
-    outline-color: #5a4cbf;
+  width: calc(100% - 6px);
+  height: calc(100% - 6px);
+  font-family: var(--jp-ui-font-family);
+  color: var(--jp-ui-font-color1);
+  resize: none;
+  background: none;
+  outline-color: #5a4cbf;
 }
 
 .github-copilot-status-bar {
-    color: var(--jp-inverse-layout-color2);
+  color: var(--jp-inverse-layout-color2);
 }
 
 .github-copilot-status-bar svg {
-    margin-top: 4px;
+  margin-top: 4px;
 }
 
 .github-copilot-login-dialog {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px;
-    width: 500px;
-    line-height: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  width: 500px;
+  line-height: 20px;
 }
 
 .github-copilot-login-status-text.logged-in {
-    color: var(--jp-brand-color1);
+  color: var(--jp-brand-color1);
 }
-

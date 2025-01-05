@@ -5,7 +5,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dracula } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { VscNewFile, VscInsert, VscCopy, VscNotebook } from "react-icons/vsc";
+import { VscNewFile, VscInsert, VscCopy, VscNotebook } from 'react-icons/vsc';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 
 type MarkdownRendererProps = {
@@ -13,7 +13,10 @@ type MarkdownRendererProps = {
   getApp: () => JupyterFrontEnd;
 };
 
-export function MarkdownRenderer({ children: markdown, getApp }: MarkdownRendererProps) {
+export function MarkdownRenderer({
+  children: markdown,
+  getApp
+}: MarkdownRendererProps) {
   const app = getApp();
 
   return (
@@ -28,17 +31,26 @@ export function MarkdownRenderer({ children: markdown, getApp }: MarkdownRendere
           const handleCopyClick = () => {
             navigator.clipboard.writeText(codeString);
           };
-        
+
           const handleInsertAtCursorClick = () => {
-            app.commands.execute('notebook-intelligence:insert-at-cursor', { language, code: codeString });
+            app.commands.execute('notebook-intelligence:insert-at-cursor', {
+              language,
+              code: codeString
+            });
           };
-        
+
           const handleCreateNewFileClick = () => {
-            app.commands.execute('notebook-intelligence:create-new-file', { language, code: codeString });
+            app.commands.execute('notebook-intelligence:create-new-file', {
+              language,
+              code: codeString
+            });
           };
 
           const handleCreateNewNotebookClick = () => {
-            app.commands.execute('notebook-intelligence:create-new-notebook-from-py', { language, code: codeString });
+            app.commands.execute(
+              'notebook-intelligence:create-new-notebook-from-py',
+              { language, code: codeString }
+            );
           };
 
           return !inline && match ? (
@@ -47,22 +59,40 @@ export function MarkdownRenderer({ children: markdown, getApp }: MarkdownRendere
                 <div className="code-block-header-language">
                   <span>{language}</span>
                 </div>
-                <div className="code-block-header-button" onClick={() => handleCopyClick()}>
-                  <VscCopy size={16} title='Copy to clipboard' />
+                <div
+                  className="code-block-header-button"
+                  onClick={() => handleCopyClick()}
+                >
+                  <VscCopy size={16} title="Copy to clipboard" />
                   <span>Copy</span>
                 </div>
-                <div className="code-block-header-button" onClick={() => handleInsertAtCursorClick()}>
-                  <VscInsert size={16} title='Insert at cursor' />
+                <div
+                  className="code-block-header-button"
+                  onClick={() => handleInsertAtCursorClick()}
+                >
+                  <VscInsert size={16} title="Insert at cursor" />
                 </div>
-                <div className="code-block-header-button" onClick={() => handleCreateNewFileClick()}>
-                  <VscNewFile size={16} title='New file' />
+                <div
+                  className="code-block-header-button"
+                  onClick={() => handleCreateNewFileClick()}
+                >
+                  <VscNewFile size={16} title="New file" />
                 </div>
                 {language === 'python' && (
-                <div className="code-block-header-button" onClick={() => handleCreateNewNotebookClick()}>
-                  <VscNotebook size={16} title='New notebook' />
-                </div>)}
+                  <div
+                    className="code-block-header-button"
+                    onClick={() => handleCreateNewNotebookClick()}
+                  >
+                    <VscNotebook size={16} title="New notebook" />
+                  </div>
+                )}
               </div>
-              <SyntaxHighlighter style={dracula} PreTag="div" language={language} {...props}>
+              <SyntaxHighlighter
+                style={dracula}
+                PreTag="div"
+                language={language}
+                {...props}
+              >
                 {codeString}
               </SyntaxHighlighter>
             </div>
@@ -71,7 +101,7 @@ export function MarkdownRenderer({ children: markdown, getApp }: MarkdownRendere
               {children}
             </code>
           );
-        },
+        }
       }}
     >
       {markdown}
