@@ -126,7 +126,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
     def message_id(self) -> str:
         return self.messageId
 
-    def stream(self, data: Union[ResponseStreamData | dict]):
+    def stream(self, data: Union[ResponseStreamData, dict]):
         data_type = ResponseStreamDataType.LLMRaw if type(data) is dict else data.data_type
 
         if data_type == ResponseStreamDataType.Markdown:
