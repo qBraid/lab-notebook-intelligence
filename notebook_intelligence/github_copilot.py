@@ -447,7 +447,8 @@ class GithubCopilotChatParticipant(ChatParticipant):
             generated = completions(messages)
             code = generated['choices'][0]['message']['content']
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
-            response.stream(MarkdownData(f"File '{ui_cmd_response["path"]}' created successfully"))
+            file_path = ui_cmd_response['path']
+            response.stream(MarkdownData(f"File '{file_path}' created successfully"))
             response.finish()
             return
 
