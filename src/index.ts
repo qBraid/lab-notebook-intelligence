@@ -632,7 +632,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
         for (const output of outputs) {
           if (output.output_type === 'execute_result') {
-            content += (typeof output.data === 'object' && output.data !== null) ? (output.data as PartialJSONObject)['text/plain'] : '' + '\n';
+            content +=
+              typeof output.data === 'object' && output.data !== null
+                ? (output.data as PartialJSONObject)['text/plain']
+                : '' + '\n';
           } else if (output.output_type === 'stream') {
             content += output.text + '\n';
           } else if (output.output_type === 'error') {
