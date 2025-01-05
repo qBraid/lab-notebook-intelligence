@@ -79,7 +79,7 @@ namespace CommandIDs {
     'notebook-intelligence:open-github-copilot-login-dialog';
 }
 
-const emptyNotebookContent = {
+const emptyNotebookContent: any = {
   cells: [],
   metadata: {},
   nbformat: 4,
@@ -355,7 +355,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }
 
         if (args.code) {
-          // @ts-expect-error - code is valid
           nbFileContent.cells.push({
             cell_type: 'code',
             metadata: { trusted: true },

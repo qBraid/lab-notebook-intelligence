@@ -560,60 +560,47 @@ function SidebarComponent(props: any) {
       {
         emit: async response => {
           let responseMessage = '';
-          const notebookPath = undefined;
-          /*if (isNewNotebook) {
-                    if (response.data.notebook_path) {
-                        notebookPath = response.data.notebook_path;
-                        if (notebookPath.startsWith(serverRoot)) {
-                            notebookPath = notebookPath.substring(serverRoot.length + 1);
-                        }
-                        responseMessage = `Notebook saved to **${notebookPath}**`;
-                    } else {
-                        responseMessage = `Failed to generate notebook. Please try again.`;
-                    }
-                } else*/ {
-            if (response.type === BackendMessageType.StreamMessage) {
-              const delta = response.data['choices']?.[0]?.['delta'];
-              if (!delta) {
+          if (response.type === BackendMessageType.StreamMessage) {
+            const delta = response.data['choices']?.[0]?.['delta'];
+            if (!delta) {
+              return;
+            }
+            if (delta['nbiContent']) {
+              const nbiContent = delta['nbiContent'];
+              contents.push({
+                id: response.id,
+                type: nbiContent.type,
+                content: nbiContent.content
+              });
+            } else {
+              responseMessage =
+                response.data['choices']?.[0]?.['delta']?.['content'];
+              if (!responseMessage) {
                 return;
               }
-              if (delta['nbiContent']) {
-                const nbiContent = delta['nbiContent'];
-                contents.push({
-                  id: response.id,
-                  type: nbiContent.type,
-                  content: nbiContent.content
-                });
-              } else {
-                responseMessage =
-                  response.data['choices']?.[0]?.['delta']?.['content'];
-                if (!responseMessage) {
-                  return;
-                }
-                contents.push({
-                  id: response.id,
-                  type: ResponseStreamDataType.MarkdownPart,
-                  content: responseMessage
-                });
-              }
-            } else if (response.type === BackendMessageType.StreamEnd) {
-              setCopilotRequestInProgress(false);
-            } else if (response.type === BackendMessageType.RunUICommand) {
-              const messageId = response.id;
-              const result = await app.commands.execute(
-                response.data.commandId,
-                response.data.args
-              );
-              const data = {
-                callback_id: response.data.callback_id,
-                result
-              };
-              GitHubCopilot.sendWebSocketMessage(
-                messageId,
-                RequestDataType.RunUICommandResponse,
-                data
-              );
+              contents.push({
+                id: response.id,
+                type: ResponseStreamDataType.MarkdownPart,
+                content: responseMessage
+              });
             }
+          } else if (response.type === BackendMessageType.StreamEnd) {
+            setCopilotRequestInProgress(false);
+          } else if (response.type === BackendMessageType.RunUICommand) {
+            const messageId = response.id;
+            const result = await app.commands.execute(
+              response.data.commandId,
+              response.data.args
+            );
+            const data = {
+              callback_id: response.data.callback_id,
+              result
+            };
+            GitHubCopilot.sendWebSocketMessage(
+              messageId,
+              RequestDataType.RunUICommandResponse,
+              data
+            );
           }
           const messageId = UUID.uuid4();
           setChatMessages([
@@ -622,8 +609,7 @@ function SidebarComponent(props: any) {
               id: messageId,
               date: new Date(),
               from: 'copilot',
-              contents: contents,
-              notebookLink: notebookPath
+              contents: contents
             }
           ]);
         }
@@ -796,8 +782,6 @@ function SidebarComponent(props: any) {
 
       submitCompletionRequest(request, {
         emit: response => {
-          const notebookPath = undefined;
-
           if (response.type === BackendMessageType.StreamMessage) {
             const delta = response.data['choices']?.[0]?.['delta'];
             if (!delta) {
@@ -824,8 +808,7 @@ function SidebarComponent(props: any) {
               id: messageId,
               date: new Date(),
               from: 'copilot',
-              contents: contents,
-              notebookLink: notebookPath
+              contents: contents
             }
           ]);
         }
