@@ -11,7 +11,7 @@ import React, {
 import { ReactWidget } from '@jupyterlab/apputils';
 import { UUID } from '@lumino/coreutils';
 
-import * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 import {
@@ -1139,7 +1139,6 @@ function InlinePromptComponent(props: any) {
         rows={3}
         onChange={onPromptChange}
         onKeyDown={onPromptKeyDown}
-        onBlur={props.onRequestCancelled}
         placeholder="Ask Copilot to generate Python code..."
         spellCheck={false}
         value={prompt}
