@@ -303,6 +303,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
             metadata: { trusted: true },
             source: args.code as string
           });
+          currentWidget.content.activeCellIndex = activeCellIndex;
         } else if (currentWidget instanceof FileEditorWidget) {
           const editor = currentWidget.content.editor;
           const cursor = editor.getCursorPosition();

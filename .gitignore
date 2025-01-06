@@ -120,4 +120,3 @@ dmypy.json
 # Yarn cache
 .yarn/
 
-**/**/*.ipynb
