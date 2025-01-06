@@ -1996,6 +1996,8 @@ __metadata:
     eslint-config-prettier: ^8.8.0
     eslint-plugin-prettier: ^5.0.0
     mkdirp: ^1.0.3
+    monaco-editor: 0.21.3
+    monaco-editor-webpack-plugin: ^2.0.0
     npm-run-all: ^4.1.5
     prettier: ^3.0.0
     react-icons: ^5.4.0
@@ -5937,6 +5939,25 @@ __metadata:
   bin:
     mkdirp: bin/cmd.js
   checksum: a96865108c6c3b1b8e1d5e9f11843de1e077e57737602de1b82030815f311be11f96f09cce59bd5b903d0b29834733e5313f9301e3ed6d6f6fba2eae0df4298f
+  languageName: node
+  linkType: hard
+
+"monaco-editor-webpack-plugin@npm:^2.0.0":
+  version: 2.1.0
+  resolution: "monaco-editor-webpack-plugin@npm:2.1.0"
+  dependencies:
+    loader-utils: ^2.0.0
+  peerDependencies:
+    monaco-editor: 0.21.x
+    webpack: ^4.5.0 || 5.x
+  checksum: d99b73261ba1e6ae07e1641e7d96b477658518de5340756f4774212f6231c7ed8bc8fffe4f6f027d788487c1648af6f1b14c679936884f516855ccd6d66a9138
+  languageName: node
+  linkType: hard
+
+"monaco-editor@npm:0.21.3":
+  version: 0.21.3
+  resolution: "monaco-editor@npm:0.21.3"
+  checksum: 449ffcffd668bb19dd68aba07d26f9d2f63cbcedddfbbecff691648c8d31188f492c0abf492970d942f7d3d648c7ad22b281a52721fdcfb8cc943c7a08f42077
   languageName: node
   linkType: hard
 

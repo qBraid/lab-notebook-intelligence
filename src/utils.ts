@@ -58,3 +58,7 @@ export function extractCodeFromMarkdown(source: string): string {
   }
   return code.trim() || source;
 }
+
+export function isDarkTheme(): boolean {
+  return document.body.getAttribute('data-jp-theme-light') === 'false';
+}

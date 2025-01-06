@@ -11,6 +11,8 @@ import React, {
 import { ReactWidget } from '@jupyterlab/apputils';
 import { UUID } from '@lumino/coreutils';
 
+import * as monaco from 'monaco-editor';
+
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 import {
   BackendMessageType,
@@ -27,6 +29,7 @@ import copySvgstr from '../style/icons/copy.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
 import { VscSend } from 'react-icons/vsc';
+import { extractCodeFromMarkdown, isDarkTheme } from './utils';
 
 export enum RunChatCompletionType {
   Chat,
@@ -89,18 +92,21 @@ export interface IInlinePromptWidgetOptions {
   onRequestCancelled: () => void;
   onContentStream: (content: string) => void;
   onContentStreamEnd: () => void;
+  onUpdatedCodeChange: (content: string) => void;
+  onUpdatedCodeAccepted: () => void;
 }
 
 export class InlinePromptWidget extends ReactWidget {
   constructor(rect: DOMRect, options: IInlinePromptWidgetOptions) {
     super();
 
-    this.node.style.boxShadow = '0px 0px 4px 4px rgba(1, 1, 1, 0.1)';
+    this.node.style.boxShadow = 'rgba(90, 76, 191, 0.8) 0px 0px 4px 4px';
     this.node.style.top = `${rect.top + 32}px`;
     this.node.style.left = `${rect.left}px`;
     this.node.style.zIndex = '1000';
     this.node.style.width = rect.width + 'px';
-    this.node.style.height = '60px';
+    this.node.style.height = '42px';
+    this.node.style.border = '1px solid var(--jp-border-color0)';
     this._options = options;
   }
 
@@ -121,16 +127,28 @@ export class InlinePromptWidget extends ReactWidget {
     }
   }
 
+  _onRequestSubmitted(prompt: string) {
+    // code update
+    if (this._options.existingCode !== '') {
+      this.node.style.height = '300px';
+    }
+    // save the prompt in case of a rerender
+    this._options.prompt = prompt;
+    this._options.onRequestSubmitted(prompt);
+  }
+
   render(): JSX.Element {
     return (
-      <InlinePromptComponent
+      <InlinePopoverComponent
         prompt={this._options.prompt}
         existingCode={this._options.existingCode}
-        onRequestSubmitted={this._options.onRequestSubmitted}
+        onRequestSubmitted={this._onRequestSubmitted.bind(this)}
         onRequestCancelled={this._options.onRequestCancelled}
         onResponseEmit={this._onResponse.bind(this)}
         prefix={this._options.prefix}
         suffix={this._options.suffix}
+        onUpdatedCodeChange={this._options.onUpdatedCodeChange}
+        onUpdatedCodeAccepted={this._options.onUpdatedCodeAccepted}
       />
     );
   }
@@ -935,6 +953,116 @@ function SidebarComponent(props: any) {
   );
 }
 
+function InlinePopoverComponent(props: any) {
+  const [modifiedCode, setModifiedCode] = useState<string>('');
+  const [promptSubmitted, setPromptSubmitted] = useState(false);
+  const originalOnRequestSubmitted = props.onRequestSubmitted;
+  const originalOnResponseEmit = props.onResponseEmit;
+
+  const onRequestSubmitted = (prompt: string) => {
+    setModifiedCode('');
+    setPromptSubmitted(true);
+    originalOnRequestSubmitted(prompt);
+  };
+
+  const onResponseEmit = (response: any) => {
+    if (response.type === BackendMessageType.StreamMessage) {
+      const delta = response.data['choices']?.[0]?.['delta'];
+      if (!delta) {
+        return;
+      }
+      const responseMessage =
+        response.data['choices']?.[0]?.['delta']?.['content'];
+      if (!responseMessage) {
+        return;
+      }
+      setModifiedCode((modifiedCode: string) => modifiedCode + responseMessage);
+    } else if (response.type === BackendMessageType.StreamEnd) {
+      setModifiedCode((modifiedCode: string) =>
+        extractCodeFromMarkdown(modifiedCode)
+      );
+    }
+
+    originalOnResponseEmit(response);
+  };
+
+  return (
+    <div className="inline-popover">
+      <InlinePromptComponent
+        {...props}
+        onRequestSubmitted={onRequestSubmitted}
+        onResponseEmit={onResponseEmit}
+        limitHeight={props.existingCode !== '' && promptSubmitted}
+      />
+      {props.existingCode !== '' && promptSubmitted && (
+        <>
+          <InlineDiffViewerComponent {...props} modifiedCode={modifiedCode} />
+          <div className="inline-popover-footer">
+            <div>
+              <button
+                className="jp-Button jp-mod-accept jp-mod-styled jp-mod-small"
+                onClick={() => props.onUpdatedCodeAccepted()}
+              >
+                Accept
+              </button>
+            </div>
+            <div>
+              <button
+                className="jp-Button jp-mod-reject jp-mod-styled jp-mod-small"
+                onClick={() => props.onRequestCancelled()}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function InlineDiffViewerComponent(props: any) {
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [diffEditor, setDiffEditor] =
+    useState<monaco.editor.IStandaloneDiffEditor>(null);
+
+  useEffect(() => {
+    const editorEl = editorContainerRef.current;
+    editorEl.className = 'monaco-editor-container';
+
+    const existingModel = monaco.editor.createModel(
+      props.existingCode,
+      'text/plain'
+    );
+    const modifiedModel = monaco.editor.createModel(
+      props.modifiedCode,
+      'text/plain'
+    );
+
+    const editor = monaco.editor.createDiffEditor(editorEl, {
+      originalEditable: false,
+      automaticLayout: true,
+      theme: isDarkTheme() ? 'vs-dark' : 'vs'
+    });
+    editor.setModel({
+      original: existingModel,
+      modified: modifiedModel
+    });
+    modifiedModel.onDidChangeContent(() => {
+      props.onUpdatedCodeChange(modifiedModel.getValue());
+    });
+    setDiffEditor(editor);
+  }, []);
+
+  useEffect(() => {
+    diffEditor?.getModifiedEditor().getModel()?.setValue(props.modifiedCode);
+  }, [props.modifiedCode]);
+
+  return (
+    <div ref={editorContainerRef} className="monaco-editor-container"></div>
+  );
+}
+
 function InlinePromptComponent(props: any) {
   const [prompt, setPrompt] = useState<string>(props.prompt);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
@@ -956,8 +1084,8 @@ function InlinePromptComponent(props: any) {
       }
     }
 
-    const promptPrefix =
-      promptPrefixParts.length > 0 ? promptPrefixParts.join(' ') + ' ' : '';
+    // const promptPrefix =
+    //   promptPrefixParts.length > 0 ? promptPrefixParts.join(' ') + ' ' : '';
 
     submitCompletionRequest(
       {
@@ -977,7 +1105,7 @@ function InlinePromptComponent(props: any) {
         }
       }
     );
-    setPrompt(promptPrefix);
+    // setPrompt(promptPrefix);
   };
 
   const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1002,7 +1130,10 @@ function InlinePromptComponent(props: any) {
   }, []);
 
   return (
-    <div className="inline-prompt-container">
+    <div
+      className="inline-prompt-container"
+      style={{ height: props.limitHeight ? '40px' : '100%' }}
+    >
       <textarea
         ref={promptInputRef}
         rows={3}

@@ -566,6 +566,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         const { prefix, suffix } = getPrefixAndSuffixForActiveCell();
 
+        const applyGeneratedCode = () => {
+          // extract out code sections from markdown
+          generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
+          activeCell.model.sharedModel.source = generatedContent;
+          generatedContent = '';
+          Widget.detach(inlinePrompt);
+        };
+
         const inlinePrompt = new InlinePromptWidget(rect, {
           prompt: userPrompt,
           existingCode,
@@ -573,21 +581,36 @@ const plugin: JupyterFrontEndPlugin<void> = {
           suffix: removePromptComments(suffix),
           onRequestSubmitted: (prompt: string) => {
             userPrompt = prompt;
+            generatedContent = '';
+            if (existingCode !== '') {
+              return;
+            }
             inlinePrompt.hide();
           },
           onRequestCancelled: () => {
             Widget.detach(inlinePrompt);
+            activeCell.editor.focus();
           },
           onContentStream: (content: string) => {
+            if (existingCode !== '') {
+              return;
+            }
             generatedContent += content;
             activeCell.model.sharedModel.source = generatedContent;
           },
           onContentStreamEnd: () => {
-            // extract out code sections from markdown
-            generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
-            activeCell.model.sharedModel.source = generatedContent;
-            generatedContent = '';
-            Widget.detach(inlinePrompt);
+            if (existingCode !== '') {
+              return;
+            }
+            applyGeneratedCode();
+            activeCell.editor.focus();
+          },
+          onUpdatedCodeChange: (content: string) => {
+            generatedContent = content;
+          },
+          onUpdatedCodeAccepted: () => {
+            applyGeneratedCode();
+            activeCell.editor.focus();
           }
         });
         Widget.attach(inlinePrompt, document.body);
