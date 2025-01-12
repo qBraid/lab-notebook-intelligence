@@ -555,19 +555,17 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const inputResizeObserver = new ResizeObserver(updatePopoverPosition);
 
         const addPositionListeners = () => {
-          if (!scrollEl) {
-            return;
-          }
-          scrollEl.addEventListener('scroll', updatePopoverPosition);
           inputResizeObserver.observe(input);
+          if (scrollEl) {
+            scrollEl.addEventListener('scroll', updatePopoverPosition);
+          }
         };
 
         const removePositionListeners = () => {
-          if (!scrollEl) {
-            return;
-          }
-          scrollEl.removeEventListener('scroll', updatePopoverPosition);
           inputResizeObserver.unobserve(input);
+          if (scrollEl) {
+            scrollEl.removeEventListener('scroll', updatePopoverPosition);
+          }
         };
 
         const removePopover = () => {
