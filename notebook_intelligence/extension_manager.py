@@ -36,14 +36,19 @@ class ExtensionManager(Host):
             return
         subfolders = [f.path for f in os.scandir(extensions_dir) if f.is_dir()]
         for extension_dir in list(subfolders):
-            metadata_path = path.join(extension_dir, "extension.json")
-            if path.exists(metadata_path) and path.isfile(metadata_path):
-                with open(metadata_path, 'r') as file:
-                    data = json.load(file)
-                    class_name = data['class']
-                    extension = self.load_extension(class_name)
-                    if extension:
-                        extension.activate(self)
+            try:
+                print(f"Loading NBI extension from '{extension_dir}'...")
+                metadata_path = path.join(extension_dir, "extension.json")
+                if path.exists(metadata_path) and path.isfile(metadata_path):
+                    with open(metadata_path, 'r') as file:
+                        data = json.load(file)
+                        class_name = data['class']
+                        extension = self.load_extension(class_name)
+                        if extension:
+                            extension.activate(self)
+                            print(f"Activated NBI extension '{class_name}'.")
+            except Exception as e:
+                print(f"Failed to load NBI extension from '{extension_dir}'!\n{e}")
     
     def load_extension(self, extension_class: str) -> NotebookIntelligenceExtension:
         import importlib
