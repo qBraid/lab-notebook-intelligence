@@ -10,7 +10,7 @@ except ImportError:
     warnings.warn("Importing 'notebook_intelligence' outside a proper installation.")
     __version__ = "dev"
 from .handlers import NotebookIntelligenceJupyterExtApp
-from .extension import *
+from .api import *
 
 def _jupyter_labextension_paths():
     return [{

@@ -13,7 +13,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import web, websocket
-from notebook_intelligence.extension import ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
+from notebook_intelligence.api import ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
 from notebook_intelligence.extension_manager import ExtensionManager
 import notebook_intelligence.github_copilot as github_copilot
 

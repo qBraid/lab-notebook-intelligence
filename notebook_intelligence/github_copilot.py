@@ -10,7 +10,7 @@ import uuid
 import secrets
 import sseclient
 import datetime as dt
-from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, CompletionContext, MarkdownData, Tool
+from notebook_intelligence.api import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, CompletionContext, MarkdownData, Tool
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 from ._version import __version__ as NBI_VERSION

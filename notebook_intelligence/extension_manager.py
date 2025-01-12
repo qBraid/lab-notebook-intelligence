@@ -5,7 +5,7 @@ from os import path
 import os
 import sys
 from typing import Dict
-from notebook_intelligence.extension import AIModel, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
+from notebook_intelligence.api import AIModel, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
 from notebook_intelligence.github_copilot import completions
 
 
