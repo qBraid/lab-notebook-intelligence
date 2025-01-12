@@ -540,7 +540,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
         if (!input) {
           return;
         }
-        const scrollEl = currentWidget.node.querySelector('.jp-WindowedPanel-outer');
+        const scrollEl = currentWidget.node.querySelector(
+          '.jp-WindowedPanel-outer'
+        );
         const rect = input.getBoundingClientRect();
 
         const updatePopoverPosition = () => {
