@@ -192,6 +192,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       'JupyterLab extension @mbektas/notebook-intelligence is activated!'
     );
 
+    let openPopover: InlinePromptWidget | null = null;
+
     new LabIcon({
       name: 'notebook-intelligence:sparkles-icon',
       svgstr: sparklesSvgstr
@@ -573,7 +575,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
           activeCell.model.sharedModel.source = generatedContent;
           generatedContent = '';
           Widget.detach(inlinePrompt);
+          openPopover = null;
         };
+
+        if (openPopover) {
+          Widget.detach(openPopover);
+          openPopover = null;
+        }
 
         const inlinePrompt = new InlinePromptWidget(rect, {
           prompt: userPrompt,
@@ -586,10 +594,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
             if (existingCode !== '') {
               return;
             }
-            inlinePrompt.hide();
+            Widget.detach(inlinePrompt);
+            openPopover = null;
           },
           onRequestCancelled: () => {
             Widget.detach(inlinePrompt);
+            openPopover = null;
             activeCell.editor.focus();
           },
           onContentStream: (content: string) => {
@@ -614,6 +624,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
             activeCell.editor.focus();
           }
         });
+        openPopover = inlinePrompt;
         Widget.attach(inlinePrompt, document.body);
       },
       label: 'Generate code',
