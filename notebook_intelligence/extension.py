@@ -3,8 +3,6 @@
 import asyncio
 import json
 from os import path
-import os
-import sys
 from typing import Union
 import uuid
 
@@ -12,7 +10,7 @@ from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
-from tornado import web, websocket
+from tornado import websocket
 from notebook_intelligence.api import ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
 from notebook_intelligence.extension_manager import ExtensionManager
 import notebook_intelligence.github_copilot as github_copilot
