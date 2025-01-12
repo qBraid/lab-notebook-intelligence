@@ -18,7 +18,7 @@ class GitHubAIModel(AIModel):
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, options: dict = {}) -> None:
         return completions(messages, tools, response, options)
 
-class ExtensionManager(Host):
+class AIServiceManager(Host):
     def __init__(self, default_chat_participant: ChatParticipant):
         self.chat_participants: Dict[str, ChatParticipant] = {}
         self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
@@ -110,12 +110,12 @@ class ExtensionManager(Host):
         return [participant, command, input]
     
     def get_chat_participant(self, prompt: str) -> ChatParticipant:
-        (participant_id, command, input) = ExtensionManager.parse_prompt(prompt)
+        (participant_id, command, input) = AIServiceManager.parse_prompt(prompt)
         return self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         request.host = self
-        (participant_id, command, prompt) = ExtensionManager.parse_prompt(request.prompt)
+        (participant_id, command, prompt) = AIServiceManager.parse_prompt(request.prompt)
         participant = self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)
         request.command = command
         request.prompt = prompt

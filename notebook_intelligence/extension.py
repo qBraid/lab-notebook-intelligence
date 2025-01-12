@@ -12,10 +12,10 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
 from notebook_intelligence.api import ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
-from notebook_intelligence.extension_manager import ExtensionManager
+from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
 
-extension_manager: ExtensionManager = None
+ai_service_manager: AIServiceManager = None
 
 class GetCapabilitiesHandler(APIHandler):
     @tornado.web.authenticated
@@ -23,8 +23,8 @@ class GetCapabilitiesHandler(APIHandler):
         response = {
             "chat_participants": []
         }
-        for participant_id in extension_manager.chat_participants:
-            participant = extension_manager.chat_participants[participant_id]
+        for participant_id in ai_service_manager.chat_participants:
+            participant = ai_service_manager.chat_participants[participant_id]
             response["chat_participants"].append({
                 "id": participant.id,
                 "commands": [command.name for command in participant.commands]
@@ -59,7 +59,7 @@ class PostInlineCompletionsHandler(APIHandler):
         language = data['language']
         filename = data['filename']
 
-        context = await extension_manager.get_completion_context(ContextRequest(ContextType.InlineCompletion, prefix, suffix, language, filename, participant=extension_manager.get_chat_participant(prefix)))
+        context = await ai_service_manager.get_completion_context(ContextRequest(ContextType.InlineCompletion, prefix, suffix, language, filename, participant=ai_service_manager.get_chat_participant(prefix)))
         completions = github_copilot.inline_completions(prefix, suffix, language, filename, context)
         self.finish(json.dumps({
             "data": completions
@@ -94,8 +94,8 @@ class ChatHistory:
             existing_messages = self.messages[chatId]
             prev_user_message = next((m for m in reversed(existing_messages) if m["role"] == "user"), None)
             if prev_user_message is not None:
-                (current_participant, command, prompt) = ExtensionManager.parse_prompt(message["content"])
-                (prev_participant, command, prompt) = ExtensionManager.parse_prompt(prev_user_message["content"])
+                (current_participant, command, prompt) = AIServiceManager.parse_prompt(message["content"])
+                (prev_participant, command, prompt) = AIServiceManager.parse_prompt(prev_user_message["content"])
                 if current_participant != prev_participant:
                     self.messages[chatId] = []
 
@@ -288,7 +288,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
             responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             self._responseEmitters[messageId] = responseEmitter
-            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter))
+            asyncio.create_task(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter))
         elif messageType == RequestDataType.GenerateCode:
             data = msg['data']
             chatId = data['chatId']
@@ -307,7 +307,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             self.chat_history.add_message(chatId, {"role": "user", "content": f"Generate code for: {prompt}"})
             responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             self._responseEmitters[messageId] = responseEmitter
-            asyncio.create_task(extension_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing prefix and suffix code sections. You update or replace an existing code section. Prefix, suffix and existing code are all optional. If the request is relevant to the existing code, assume an update is requested. If updates to existing code are requested, update it with the requested changes. If updates are requested, update the existing code and return the existing code section with the updates applied, do not just return the update as your response will be replacing the existing code. Be concise and return only code as a response."}))
+            asyncio.create_task(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing prefix and suffix code sections. You update or replace an existing code section. Prefix, suffix and existing code are all optional. If the request is relevant to the existing code, assume an update is requested. If updates to existing code are requested, update it with the requested changes. If updates are requested, update the existing code and return the existing code section with the updates applied, do not just return the update as your response will be replacing the existing code. Be concise and return only code as a response."}))
         elif messageType == RequestDataType.ChatUserInput:
             responseEmitter = self._responseEmitters.get(messageId)
             if responseEmitter is None:
@@ -325,9 +325,9 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
         pass
 
 def initialize_extensions():
-    global extension_manager
+    global ai_service_manager
     default_chat_participant = github_copilot.GithubCopilotChatParticipant()
-    extension_manager = ExtensionManager(default_chat_participant)
+    ai_service_manager = AIServiceManager(default_chat_participant)
 
 
 class NotebookIntelligenceJupyterExtApp(ExtensionApp):
