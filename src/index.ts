@@ -837,6 +837,13 @@ const plugin: JupyterFrontEndPlugin<void> = {
       rank: 1
     });
 
+    app.contextMenu.addItem({
+      type: 'submenu',
+      submenu: copilotContextMenu,
+      selector: '.jp-OutputArea-child',
+      rank: 1
+    });
+
     if (statusBar) {
       const githubCopilotStatusBarItem = new GitHubCopilotStatusBarItem({
         getApp: () => app
