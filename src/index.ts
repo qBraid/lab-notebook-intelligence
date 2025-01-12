@@ -574,13 +574,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
           generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
           activeCell.model.sharedModel.source = generatedContent;
           generatedContent = '';
-          Widget.detach(inlinePrompt);
-          openPopover = null;
+          if (openPopover !== null) {
+            openPopover = null;
+            Widget.detach(inlinePrompt);
+          }
         };
 
-        if (openPopover) {
-          Widget.detach(openPopover);
+        if (openPopover !== null) {
           openPopover = null;
+          Widget.detach(openPopover);
         }
 
         const inlinePrompt = new InlinePromptWidget(rect, {
@@ -598,8 +600,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
             openPopover = null;
           },
           onRequestCancelled: () => {
-            Widget.detach(inlinePrompt);
-            openPopover = null;
+            if (openPopover !== null) {
+              openPopover = null;
+              Widget.detach(inlinePrompt);
+            }
             activeCell.editor.focus();
           },
           onContentStream: (content: string) => {

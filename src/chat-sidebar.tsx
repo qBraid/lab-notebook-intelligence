@@ -108,6 +108,14 @@ export class InlinePromptWidget extends ReactWidget {
     this.node.style.height = '42px';
     this.node.style.border = '1px solid var(--jp-border-color0)';
     this._options = options;
+
+    this.node.addEventListener('focusout', (event: any) => {
+      if (this.node.contains(event.relatedTarget)) {
+        return;
+      }
+
+      this._options.onRequestCancelled();
+    });
   }
 
   _onResponse(response: any) {
