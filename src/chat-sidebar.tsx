@@ -118,6 +118,12 @@ export class InlinePromptWidget extends ReactWidget {
     });
   }
 
+  updatePosition(rect: DOMRect) {
+    this.node.style.top = `${rect.top + 32}px`;
+    this.node.style.left = `${rect.left}px`;
+    this.node.style.width = rect.width + 'px';
+  }
+
   _onResponse(response: any) {
     if (response.type === BackendMessageType.StreamMessage) {
       const delta = response.data['choices']?.[0]?.['delta'];

@@ -540,7 +540,37 @@ const plugin: JupyterFrontEndPlugin<void> = {
         if (!input) {
           return;
         }
+        const scrollEl = currentWidget.node.querySelector('.jp-WindowedPanel-outer');
         const rect = input.getBoundingClientRect();
+
+        const scrollHandler = () => {
+          if (openPopover !== null) {
+            const rect = input.getBoundingClientRect();
+            openPopover.updatePosition(rect);
+          }
+        };
+
+        const addScrollListener = () => {
+          if (!scrollEl) {
+            return;
+          }
+          scrollEl.addEventListener('scroll', scrollHandler);
+        };
+
+        const removeScrollListener = () => {
+          if (!scrollEl) {
+            return;
+          }
+          scrollEl.removeEventListener('scroll', scrollHandler);
+        };
+
+        const removePopover = () => {
+          if (openPopover !== null) {
+            removeScrollListener();
+            openPopover = null;
+            Widget.detach(inlinePrompt);
+          }
+        };
 
         const NBI_PROMPT_PREFIX = '# nbi-prompt:';
         let userPrompt = '';
@@ -574,16 +604,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
           generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
           activeCell.model.sharedModel.source = generatedContent;
           generatedContent = '';
-          if (openPopover !== null) {
-            openPopover = null;
-            Widget.detach(inlinePrompt);
-          }
+          removePopover();
         };
 
-        if (openPopover !== null) {
-          openPopover = null;
-          Widget.detach(openPopover);
-        }
+        removePopover();
 
         const inlinePrompt = new InlinePromptWidget(rect, {
           prompt: userPrompt,
@@ -596,14 +620,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
             if (existingCode !== '') {
               return;
             }
-            Widget.detach(inlinePrompt);
-            openPopover = null;
+            removePopover();
           },
           onRequestCancelled: () => {
-            if (openPopover !== null) {
-              openPopover = null;
-              Widget.detach(inlinePrompt);
-            }
+            removePopover();
             activeCell.editor.focus();
           },
           onContentStream: (content: string) => {
@@ -629,6 +649,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         });
         openPopover = inlinePrompt;
+        addScrollListener();
         Widget.attach(inlinePrompt, document.body);
       },
       label: 'Generate code',
