@@ -543,30 +543,34 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const scrollEl = currentWidget.node.querySelector('.jp-WindowedPanel-outer');
         const rect = input.getBoundingClientRect();
 
-        const scrollHandler = () => {
+        const updatePopoverPosition = () => {
           if (openPopover !== null) {
             const rect = input.getBoundingClientRect();
             openPopover.updatePosition(rect);
           }
         };
 
-        const addScrollListener = () => {
+        const inputResizeObserver = new ResizeObserver(updatePopoverPosition);
+
+        const addPositionListeners = () => {
           if (!scrollEl) {
             return;
           }
-          scrollEl.addEventListener('scroll', scrollHandler);
+          scrollEl.addEventListener('scroll', updatePopoverPosition);
+          inputResizeObserver.observe(input);
         };
 
-        const removeScrollListener = () => {
+        const removePositionListeners = () => {
           if (!scrollEl) {
             return;
           }
-          scrollEl.removeEventListener('scroll', scrollHandler);
+          scrollEl.removeEventListener('scroll', updatePopoverPosition);
+          inputResizeObserver.unobserve(input);
         };
 
         const removePopover = () => {
           if (openPopover !== null) {
-            removeScrollListener();
+            removePositionListeners();
             openPopover = null;
             Widget.detach(inlinePrompt);
           }
@@ -649,7 +653,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           }
         });
         openPopover = inlinePrompt;
-        addScrollListener();
+        addPositionListeners();
         Widget.attach(inlinePrompt, document.body);
       },
       label: 'Generate code',
