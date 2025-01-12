@@ -21,6 +21,12 @@
       "keys": ["Accel G"],
       "selector": ".jp-Editor",
       "preventDefault": true
+    },
+    {
+      "command": "notebook-intelligence:editor-generate-code",
+      "keys": ["Accel G"],
+      "selector": ".jp-CodeCell",
+      "preventDefault": true
     }
   ]
 }
