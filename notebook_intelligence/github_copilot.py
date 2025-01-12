@@ -5,11 +5,11 @@
 from dataclasses import dataclass
 from enum import Enum
 import os, json, time, requests, threading
-import nbformat as nbf
 from pathlib import Path
 import uuid
 import secrets
 import sseclient
+import datetime as dt
 from notebook_intelligence.extension import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, CompletionContext, MarkdownData, Tool
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
@@ -24,6 +24,9 @@ MACHINE_ID = secrets.token_hex(33)[0:65]
 API_ENDPOINT = "https://api.githubcopilot.com"
 PROXY_ENDPOINT = "https://copilot-proxy.githubusercontent.com"
 TOKEN_REFRESH_INTERVAL = 1500
+ACCESS_TOKEN_THREAD_SLEEP_INTERVAL = 5
+TOKEN_THREAD_SLEEP_INTERVAL = 3
+TOKEN_FETCH_INTERVAL = 15
 NL = '\n'
 
 LoginStatus = Enum('LoginStatus', ['NOT_LOGGED_IN', 'ACTIVATING_DEVICE', 'LOGGING_IN', 'LOGGED_IN'])
@@ -34,11 +37,14 @@ github_auth = {
     "device_code": None,
     "access_token": None,
     "status" : LoginStatus.NOT_LOGGED_IN,
-    "token": None
+    "token": None,
+    "token_expires_at": dt.datetime.now()
 }
 
+stop_requested = False
 get_access_code_thread = None
 get_token_thread = None
+last_token_fetch_time = dt.datetime.now() + dt.timedelta(seconds=-TOKEN_FETCH_INTERVAL)
 
 def get_login_status():
     global github_auth
@@ -69,11 +75,14 @@ def logout():
         "status" : LoginStatus.NOT_LOGGED_IN,
         "token": None
     })
-    # if get_access_code_thread is not None:
-    #     get_access_code_thread.join()
+
     return {
         "status": github_auth["status"].name
     }
+
+def handle_stop_request():
+    global stop_requested
+    stop_requested = True
 
 def get_device_verification_info():
     global github_auth
@@ -118,11 +127,10 @@ def wait_for_user_access_token_thread_func():
         return
 
     while True:
-        # terminate thread if logged out
-        if github_auth["access_token"] is not None or github_auth["device_code"] is None or github_auth["status"] == LoginStatus.NOT_LOGGED_IN:
+        # terminate thread if logged out or stop requested
+        if stop_requested or github_auth["access_token"] is not None or github_auth["device_code"] is None or github_auth["status"] == LoginStatus.NOT_LOGGED_IN:
             get_access_code_thread = None
             break
-        time.sleep(5)
         data = {
             "client_id": CLIENT_ID,
             "device_code": github_auth["device_code"],
@@ -147,6 +155,10 @@ def wait_for_user_access_token_thread_func():
         if access_token:
             github_auth["access_token"] = access_token
             get_token()
+            get_access_code_thread = None
+            break
+
+        time.sleep(ACCESS_TOKEN_THREAD_SLEEP_INTERVAL)
 
 def get_token():
     global github_auth, API_ENDPOINT, PROXY_ENDPOINT, TOKEN_REFRESH_INTERVAL
@@ -167,6 +179,11 @@ def get_token():
     resp_json = resp.json()
     token = resp_json.get('token')
     github_auth["token"] = token
+    expires_at = resp_json.get('expires_at')
+    if expires_at is not None:
+        github_auth["token_expires_at"] = dt.datetime.fromtimestamp(expires_at)
+    else:
+        github_auth["token_expires_at"] = dt.datetime.now() + dt.timedelta(seconds=TOKEN_REFRESH_INTERVAL)
     github_auth["verification_uri"] = None
     github_auth["user_code"] = None
     github_auth["status"] = LoginStatus.LOGGED_IN
@@ -177,17 +194,21 @@ def get_token():
     TOKEN_REFRESH_INTERVAL = resp_json.get('refresh_in', TOKEN_REFRESH_INTERVAL)
 
 def get_token_thread_func():
-    global github_auth, get_token_thread
+    global github_auth, get_token_thread, last_token_fetch_time
     while True:
-        # terminate thread if logged out
-        if github_auth["status"] == LoginStatus.NOT_LOGGED_IN:
+        # terminate thread if logged out or stop requested
+        if stop_requested or github_auth["status"] == LoginStatus.NOT_LOGGED_IN:
             get_token_thread = None
             return
-        get_token()
         token = github_auth["token"]
-        wait_time = 15 if token is None else TOKEN_REFRESH_INTERVAL
-        # TODO: handle logout
-        time.sleep(wait_time)
+        # update token if 10 seconds or less left to expiration
+        if github_auth["access_token"] is not None and (token is None or (dt.datetime.now() - github_auth["token_expires_at"]).total_seconds() > -10):
+            if (dt.datetime.now() - last_token_fetch_time).total_seconds() > TOKEN_FETCH_INTERVAL:
+                print("Refreshing token")
+                get_token()
+                last_token_fetch_time = dt.datetime.now()
+
+        time.sleep(TOKEN_THREAD_SLEEP_INTERVAL)
 
 def wait_for_tokens():
     global get_access_code_thread, get_token_thread

@@ -8,6 +8,7 @@ import sys
 from typing import Union
 import uuid
 
+from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
@@ -330,22 +331,49 @@ def initialize_extensions():
     default_chat_participant = github_copilot.GithubCopilotChatParticipant()
     extension_manager = ExtensionManager(default_chat_participant)
 
-def setup_handlers(web_app):
-    host_pattern = ".*$"
 
-    base_url = web_app.settings["base_url"]
-    route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
-    route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
-    route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
-    route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
-    route_pattern_inline_completions = url_path_join(base_url, "notebook-intelligence", "inline-completions")
-    route_pattern_chat = url_path_join(base_url, "notebook-intelligence", "chat")
-    handlers = [
-        (route_pattern_capabilities, GetCapabilitiesHandler),
-        (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
-        (route_pattern_github_login, PostGitHubLoginHandler),
-        (route_pattern_github_logout, GetGitHubLogoutHandler),
-        (route_pattern_inline_completions, PostInlineCompletionsHandler),
-        (route_pattern_chat, WebsocketChatHandler),
-    ]
-    web_app.add_handlers(host_pattern, handlers)
+class NotebookIntelligenceJupyterExtApp(ExtensionApp):
+    name = "notebook_intelligence"
+    default_url = "/notebook-intelligence"
+    load_other_extensions = True
+    file_url_prefix = "/render"
+
+    static_paths = []
+    template_paths = []
+    settings = {}
+    handlers = []
+
+    def initialize_settings(self):
+        pass
+
+    def initialize_handlers(self):
+        initialize_extensions()
+        self._setup_handlers(self.serverapp.web_app)
+        self.serverapp.log.info(f"Registered {self.name} server extension")
+
+    def initialize_templates(self):
+        pass
+
+    async def stop_extension(self):
+        print(f"Stopping {self.name} extension...")
+        github_copilot.handle_stop_request()
+
+    def _setup_handlers(self, web_app):
+        host_pattern = ".*$"
+
+        base_url = web_app.settings["base_url"]
+        route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
+        route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
+        route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
+        route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
+        route_pattern_inline_completions = url_path_join(base_url, "notebook-intelligence", "inline-completions")
+        route_pattern_chat = url_path_join(base_url, "notebook-intelligence", "chat")
+        NotebookIntelligenceJupyterExtApp.handlers = [
+            (route_pattern_capabilities, GetCapabilitiesHandler),
+            (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
+            (route_pattern_github_login, PostGitHubLoginHandler),
+            (route_pattern_github_logout, GetGitHubLogoutHandler),
+            (route_pattern_inline_completions, PostInlineCompletionsHandler),
+            (route_pattern_chat, WebsocketChatHandler),
+        ]
+        web_app.add_handlers(host_pattern, NotebookIntelligenceJupyterExtApp.handlers)

@@ -1320,11 +1320,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
         deviceActivationCode && (
           <div>
             <div className="copilot-activation-message">
-              Please go to{' '}
-              <a href={deviceActivationURL} target="_blank">
-                {deviceActivationURL}
-              </a>{' '}
-              and use code{' '}
+              Copy code{' '}
               <span
                 className="user-code-span"
                 onClick={() => {
@@ -1340,7 +1336,12 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
                   ></span>
                 </b>
               </span>{' '}
-              to allow access to GitHub Copilot from this app.
+              and enter at{' '}
+              <a href={deviceActivationURL} target="_blank">
+                {deviceActivationURL}
+              </a>{' '}
+              to allow access to GitHub Copilot from this app. Activation could
+              take up to a minute after you enter the code.
             </div>
           </div>
         )}
