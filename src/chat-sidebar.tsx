@@ -28,7 +28,7 @@ import { MarkdownRenderer } from './markdown-renderer';
 import copySvgstr from '../style/icons/copy.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
-import { VscSend } from 'react-icons/vsc';
+import { VscSend, VscStopCircle } from 'react-icons/vsc';
 import { extractCodeFromMarkdown, isDarkTheme } from './utils';
 
 export enum RunChatCompletionType {
@@ -41,6 +41,7 @@ export enum RunChatCompletionType {
 }
 
 export interface IRunChatCompletionRequest {
+  messageId: string;
   chatId: string;
   type: RunChatCompletionType;
   content: string;
@@ -389,6 +390,7 @@ async function submitCompletionRequest(
   switch (request.type) {
     case RunChatCompletionType.Chat:
       return GitHubCopilot.chatRequest(
+        request.messageId,
         request.chatId,
         request.content,
         request.language || 'python',
@@ -400,6 +402,7 @@ async function submitCompletionRequest(
     case RunChatCompletionType.ExplainThisOutput:
     case RunChatCompletionType.TroubleshootThisOutput: {
       return GitHubCopilot.chatRequest(
+        request.messageId,
         request.chatId,
         request.content,
         request.language || 'python',
@@ -442,6 +445,7 @@ function SidebarComponent(props: any) {
   // position on prompt history stack
   const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
   const [chatId, setChatId] = useState(UUID.uuid4());
+  const [lastMessageId, setLastMessageId] = useState('');
 
   useEffect(() => {
     requestAPI<any>('capabilities', { method: 'GET' })
@@ -520,6 +524,14 @@ function SidebarComponent(props: any) {
     applyPrefixSuggestion(prefix);
   };
 
+  const handleSubmitStopChatButtonClick = async () => {
+    if (!copilotRequestInProgress) {
+      handleUserInputSubmit();
+    } else {
+      handleUserInputCancel();
+    }
+  };
+
   const handleUserInputSubmit = async () => {
     setPromptHistoryIndex(promptHistory.length + 1);
     setPromptHistory([...promptHistory, prompt]);
@@ -540,6 +552,8 @@ function SidebarComponent(props: any) {
       promptPrefixParts.length > 0 ? promptPrefixParts.join(' ') + ' ' : '';
 
     const messageId = UUID.uuid4();
+    setLastMessageId(messageId);
+
     const newList = [
       ...chatMessages,
       {
@@ -582,6 +596,7 @@ function SidebarComponent(props: any) {
 
     submitCompletionRequest(
       {
+        messageId,
         chatId,
         type: RunChatCompletionType.Chat,
         content: extractedPrompt,
@@ -651,6 +666,14 @@ function SidebarComponent(props: any) {
     filterPrefixSuggestions(promptPrefix);
   };
 
+  const handleUserInputCancel = async () => {
+    GitHubCopilot.sendWebSocketMessage(
+      lastMessageId,
+      RequestDataType.CancelChatRequest,
+      { chatId }
+    );
+  };
+
   const filterPrefixSuggestions = (prmpt: string) => {
     const userInput = prmpt.trimStart();
     if (userInput === '') {
@@ -680,7 +703,7 @@ function SidebarComponent(props: any) {
       }
 
       setSelectedPrefixSuggestionIndex(0);
-      handleUserInputSubmit();
+      handleSubmitStopChatButtonClick();
     } else if (event.key === 'Tab') {
       if (showPopover) {
         event.stopPropagation();
@@ -940,10 +963,10 @@ function SidebarComponent(props: any) {
             <div>
               <button
                 className="jp-Dialog-button jp-mod-accept jp-mod-styled send-button"
-                onClick={() => handleUserInputSubmit()}
+                onClick={() => handleSubmitStopChatButtonClick()}
                 disabled={prompt.length === 0}
               >
-                <VscSend></VscSend> Send
+                {copilotRequestInProgress ? <VscStopCircle /> : <VscSend />}
               </button>
             </div>
           </div>
@@ -1103,6 +1126,7 @@ function InlinePromptComponent(props: any) {
 
     submitCompletionRequest(
       {
+        messageId: UUID.uuid4(),
         chatId: UUID.uuid4(),
         type: RunChatCompletionType.GenerateCode,
         content: prompt,

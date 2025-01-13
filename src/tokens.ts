@@ -16,7 +16,8 @@ export enum RequestDataType {
   ChatUserInput = 'chat-user-input',
   ClearChatHistory = 'clear-chat-history',
   RunUICommandResponse = 'run-ui-command-response',
-  GenerateCode = 'generate-code'
+  GenerateCode = 'generate-code',
+  CancelChatRequest = 'cancel-chat-request'
 }
 
 export enum BackendMessageType {

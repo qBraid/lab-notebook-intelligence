@@ -120,13 +120,13 @@ export class GitHubCopilot {
   }
 
   static async chatRequest(
+    messageId: string,
     chatId: string,
     prompt: string,
     language: string,
     filename: string,
     responseEmitter: IChatCompletionResponseEmitter
   ) {
-    const messageId = UUID.uuid4();
     this._messageReceived.connect((_, msg) => {
       msg = JSON.parse(msg);
       if (msg.id === messageId) {

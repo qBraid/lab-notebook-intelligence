@@ -12,6 +12,7 @@ class RequestDataType(str, Enum):
     ClearChatHistory = 'clear-chat-history'
     RunUICommandResponse = 'run-ui-command-response'
     GenerateCode = 'generate-code'
+    CancelChatRequest = 'cancel-chat-request'
 
 class BackendMessageType(str, Enum):
     StreamMessage = 'stream-message'
@@ -31,12 +32,36 @@ class ResponseStreamDataType(str, Enum):
     def __str__(self) -> str:
         return self.value
 
+class Signal:
+    def __init__(self):
+        self._listeners = []
+
+    def connect(self, listener: Callable) -> None:
+        self._listeners.append(listener)
+
+    def disconnect(self, listener: Callable) -> None:
+        self._listeners.remove(listener)
+
+class CancelToken:
+    def __init__(self):
+        self._cancellation_signal = Signal()
+        self._cancellation_requested = False
+
+    @property
+    def is_cancel_requested(self) -> bool:
+        return self._cancellation_requested
+
+    @property
+    def cancellation_signal(self) -> Signal:
+        return self._cancellation_signal
+
 @dataclass
 class ChatRequest:
     host: 'Host' = None
     command: str = ''
     prompt: str = ''
     chat_history: list[dict] = None
+    cancel_token: CancelToken = None
 
 @dataclass
 class ResponseStreamData:
@@ -126,6 +151,7 @@ class ContextRequest:
     prefix: str = ''
     suffix: str = ''
     participant: 'ChatParticipant' = None
+    cancel_token: CancelToken = None
 
 @dataclass
 class ContextItem:

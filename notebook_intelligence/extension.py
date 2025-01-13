@@ -1,17 +1,19 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import asyncio
+from dataclasses import dataclass
 import json
 from os import path
 from typing import Union
 import uuid
+import threading
 
 from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
-from notebook_intelligence.api import ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType
+from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
 
@@ -265,10 +267,32 @@ class WebsocketChatResponseEmitter(ChatResponse):
         response = await ChatResponse.wait_for_run_ui_command_response(self, callback_id)
         return response
 
+class SignalImpl(Signal):
+    def __init__(self):
+        super().__init__()
+
+    def emit(self, *args, **kwargs) -> None:
+        for listener in self._listeners:
+            listener(*args, **kwargs)
+
+class CancelTokenImpl(CancelToken):
+    def __init__(self):
+        super().__init__()
+        self._cancellation_signal = SignalImpl()
+
+    def cancel_request(self) -> None:
+        self._cancellation_requested = True
+        self._cancellation_signal.emit()
+
+@dataclass
+class MessageCallbackHandlers:
+    response_emitter: WebsocketChatResponseEmitter
+    cancel_token: CancelTokenImpl
+
 class WebsocketChatHandler(websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
-        self._responseEmitters = {}
+        self._messageCallbackHandlers: dict[str, MessageCallbackHandlers] = {}
         self.chat_history = ChatHistory()
 
     def open(self):
@@ -286,9 +310,11 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             language = data['language']
             filename = data['filename']
             self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
-            responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
-            self._responseEmitters[messageId] = responseEmitter
-            asyncio.create_task(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter))
+            response_emitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
+            cancel_token = CancelTokenImpl()
+            self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
+            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter),))
+            thread.start()
         elif messageType == RequestDataType.GenerateCode:
             data = msg['data']
             chatId = data['chatId']
@@ -305,21 +331,28 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             if existing_code != '':
                 self.chat_history.add_message(chatId, {"role": "user", "content": f"You are asked to generate updates for or a replacement for the existing code. This is the existing code. : ```{existing_code}```"})
             self.chat_history.add_message(chatId, {"role": "user", "content": f"Generate code for: {prompt}"})
-            responseEmitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
-            self._responseEmitters[messageId] = responseEmitter
-            asyncio.create_task(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId)), responseEmitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing prefix and suffix code sections. You update or replace an existing code section. Prefix, suffix and existing code are all optional. If the request is relevant to the existing code, assume an update is requested. If updates to existing code are requested, update it with the requested changes. If updates are requested, update the existing code and return the existing code section with the updates applied, do not just return the update as your response will be replacing the existing code. Be concise and return only code as a response."}))
+            response_emitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
+            cancel_token = CancelTokenImpl()
+            self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
+            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing prefix and suffix code sections. You update or replace an existing code section. Prefix, suffix and existing code are all optional. If the request is relevant to the existing code, assume an update is requested. If updates to existing code are requested, update it with the requested changes. If updates are requested, update the existing code and return the existing code section with the updates applied, do not just return the update as your response will be replacing the existing code. Be concise and return only code as a response."}),))
+            thread.start()
         elif messageType == RequestDataType.ChatUserInput:
-            responseEmitter = self._responseEmitters.get(messageId)
-            if responseEmitter is None:
+            handlers = self._messageCallbackHandlers.get(messageId)
+            if handlers is None:
                 return
-            responseEmitter.on_user_input(msg['data'])
+            handlers.response_emitter.on_user_input(msg['data'])
         elif messageType == RequestDataType.ClearChatHistory:
             self.chat_history.clear(msg['data']['chatId'])
         elif messageType == RequestDataType.RunUICommandResponse:
-            responseEmitter = self._responseEmitters.get(messageId)
-            if responseEmitter is None:
+            handlers = self._messageCallbackHandlers.get(messageId)
+            if handlers is None:
                 return
-            responseEmitter.on_run_ui_command_response(msg['data'])
+            handlers.response_emitter.on_run_ui_command_response(msg['data'])
+        elif messageType == RequestDataType.CancelChatRequest:
+            handlers = self._messageCallbackHandlers.get(messageId)
+            if handlers is None:
+                return
+            handlers.cancel_token.cancel_request()
  
     def on_close(self):
         pass
