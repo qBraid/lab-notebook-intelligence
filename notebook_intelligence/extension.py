@@ -16,6 +16,7 @@ from tornado import websocket
 from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
+from notebook_intelligence.github_copilot_participant import GithubCopilotChatParticipant
 
 ai_service_manager: AIServiceManager = None
 
@@ -352,7 +353,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
 
 def initialize_extensions():
     global ai_service_manager
-    default_chat_participant = github_copilot.GithubCopilotChatParticipant()
+    default_chat_participant = GithubCopilotChatParticipant()
     ai_service_manager = AIServiceManager(default_chat_participant)
 
 
