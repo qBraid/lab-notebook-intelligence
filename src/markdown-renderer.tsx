@@ -4,9 +4,13 @@ import React from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { dracula } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import {
+  oneLight,
+  oneDark
+} from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { VscNewFile, VscInsert, VscCopy, VscNotebook } from 'react-icons/vsc';
 import { JupyterFrontEnd } from '@jupyterlab/application';
+import { isDarkTheme } from './utils';
 
 type MarkdownRendererProps = {
   children: string;
@@ -88,7 +92,7 @@ export function MarkdownRenderer({
                 )}
               </div>
               <SyntaxHighlighter
-                style={dracula}
+                style={isDarkTheme() ? oneDark : oneLight}
                 PreTag="div"
                 language={language}
                 {...props}
