@@ -143,7 +143,7 @@ pre:has(.code-block-header) {
 }
 
 .chat-message-copilot {
-  background-color: rgb(90 76 191 / 15%);
+  background-color: rgb(159 153 208 / 15%);
 }
 
 .copilot-generated-notebook-link {
@@ -250,11 +250,19 @@ pre:has(.code-block-header) {
   cursor: pointer;
   gap: 5px;
   border: 1px solid var(--jp-border-color1);
-  padding: 3px 5px;
 }
 
 .send-button:hover:enabled {
   background-color: var(--jp-layout-color1);
+}
+
+.send-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+button.send-button {
+  padding: 10px 8px;
 }
 
 .inline-popover {

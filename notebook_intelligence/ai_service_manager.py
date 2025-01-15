@@ -5,7 +5,7 @@ from os import path
 import os
 import sys
 from typing import Dict
-from notebook_intelligence.api import AIModel, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
+from notebook_intelligence.api import AIModel, CancelToken, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
 from notebook_intelligence.github_copilot import completions
 
 
@@ -15,8 +15,8 @@ RESERVED_PARTICIPANT_IDS = set([
 ])
 
 class GitHubAIModel(AIModel):
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, options: dict = {}) -> None:
-        return completions(messages, tools, response, options)
+    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> None:
+        return completions(messages, tools, response, cancel_token, options)
 
 class AIServiceManager(Host):
     def __init__(self, default_chat_participant: ChatParticipant):

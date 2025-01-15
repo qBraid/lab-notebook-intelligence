@@ -445,7 +445,7 @@ function SidebarComponent(props: any) {
   // position on prompt history stack
   const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
   const [chatId, setChatId] = useState(UUID.uuid4());
-  const [lastMessageId, setLastMessageId] = useState('');
+  const lastMessageId = useRef<string>('');
 
   useEffect(() => {
     requestAPI<any>('capabilities', { method: 'GET' })
@@ -551,18 +551,17 @@ function SidebarComponent(props: any) {
     const promptPrefix =
       promptPrefixParts.length > 0 ? promptPrefixParts.join(' ') + ' ' : '';
 
-    const messageId = UUID.uuid4();
-    setLastMessageId(messageId);
+    lastMessageId.current = UUID.uuid4();
 
     const newList = [
       ...chatMessages,
       {
-        id: messageId,
+        id: lastMessageId.current,
         date: new Date(),
         from: 'user',
         contents: [
           {
-            id: messageId,
+            id: lastMessageId.current,
             type: ResponseStreamDataType.Markdown,
             content: prompt
           }
@@ -596,7 +595,7 @@ function SidebarComponent(props: any) {
 
     submitCompletionRequest(
       {
-        messageId,
+        messageId: lastMessageId.current,
         chatId,
         type: RunChatCompletionType.Chat,
         content: extractedPrompt,
@@ -606,6 +605,10 @@ function SidebarComponent(props: any) {
       },
       {
         emit: async response => {
+          if (response.id !== lastMessageId.current) {
+            return;
+          }
+
           let responseMessage = '';
           if (response.type === BackendMessageType.StreamMessage) {
             const delta = response.data['choices']?.[0]?.['delta'];
@@ -649,11 +652,10 @@ function SidebarComponent(props: any) {
               data
             );
           }
-          const messageId = UUID.uuid4();
           setChatMessages([
             ...newList,
             {
-              id: messageId,
+              id: UUID.uuid4(),
               date: new Date(),
               from: 'copilot',
               contents: contents
@@ -668,10 +670,13 @@ function SidebarComponent(props: any) {
 
   const handleUserInputCancel = async () => {
     GitHubCopilot.sendWebSocketMessage(
-      lastMessageId,
+      lastMessageId.current,
       RequestDataType.CancelChatRequest,
       { chatId }
     );
+
+    lastMessageId.current = '';
+    setCopilotRequestInProgress(false);
   };
 
   const filterPrefixSuggestions = (prmpt: string) => {
@@ -964,7 +969,7 @@ function SidebarComponent(props: any) {
               <button
                 className="jp-Dialog-button jp-mod-accept jp-mod-styled send-button"
                 onClick={() => handleSubmitStopChatButtonClick()}
-                disabled={prompt.length === 0}
+                disabled={prompt.length === 0 && !copilotRequestInProgress}
               >
                 {copilotRequestInProgress ? <VscStopCircle /> : <VscSend />}
               </button>

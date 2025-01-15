@@ -42,6 +42,14 @@ class Signal:
     def disconnect(self, listener: Callable) -> None:
         self._listeners.remove(listener)
 
+class SignalImpl(Signal):
+    def __init__(self):
+        super().__init__()
+
+    def emit(self, *args, **kwargs) -> None:
+        for listener in self._listeners:
+            listener(*args, **kwargs)
+
 class CancelToken:
     def __init__(self):
         self._cancellation_signal = Signal()
@@ -164,8 +172,8 @@ class CompletionContext:
 
 class ChatResponse:
     def __init__(self):
-        self._user_input_listeners: list[Callable] = []
-        self._run_ui_command_listeners: list[Callable] = []
+        self._user_input_signal: SignalImpl = SignalImpl()
+        self._run_ui_command_response_signal: SignalImpl = SignalImpl()
 
     @property
     def message_id(self) -> str:
@@ -177,15 +185,12 @@ class ChatResponse:
     def finish(self) -> None:
         raise NotImplemented
     
-    def add_user_input_listener(self, listener: Callable) -> None:
-        self._user_input_listeners.append(listener)
-    
-    def remove_user_input_listener(self, listener: Callable) -> None:
-        self._user_input_listeners.remove(listener)
+    @property
+    def user_input_signal(self) -> Signal:
+        return self._user_input_signal
 
     def on_user_input(self, data: dict) -> None:
-        for listener in self._user_input_listeners:
-            listener(data)
+        self._user_input_signal.emit(data)
 
     @staticmethod
     async def wait_for_chat_user_input(response: 'ChatResponse', callback_id: str):
@@ -194,26 +199,23 @@ class ChatResponse:
             if data['callback_id'] == callback_id:
                 resp["data"] = data['data']
 
-        response.add_user_input_listener(_on_user_input)
+        response.user_input_signal.connect(_on_user_input)
 
         while True:
             if resp["data"] is not None:
-                response.remove_user_input_listener(_on_user_input)
+                response.user_input_signal.disconnect(_on_user_input)
                 return resp["data"]
             await asyncio.sleep(0.1)
 
     async def run_ui_command(self, command: str, args: dict = {}) -> None:
         raise NotImplemented
     
-    def add_run_ui_command_listener(self, listener: Callable) -> None:
-        self._run_ui_command_listeners.append(listener)
+    @property
+    def run_ui_command_response_signal(self) -> Signal:
+        return self._run_ui_command_response_signal
     
-    def remove_run_ui_command_listener(self, listener: Callable) -> None:
-        self._run_ui_command_listeners.remove(listener)
-
     def on_run_ui_command_response(self, data: dict) -> None:
-        for listener in self._run_ui_command_listeners:
-            listener(data)
+        self._run_ui_command_response_signal.emit(data)
 
     @staticmethod
     async def wait_for_run_ui_command_response(response: 'ChatResponse', callback_id: str):
@@ -222,11 +224,11 @@ class ChatResponse:
             if data['callback_id'] == callback_id:
                 resp["result"] = data['result']
 
-        response.add_run_ui_command_listener(_on_ui_command_response)
+        response.run_ui_command_response_signal.connect(_on_ui_command_response)
 
         while True:
             if resp["result"] is not None:
-                response.remove_run_ui_command_listener(_on_ui_command_response)
+                response.run_ui_command_response_signal.disconnect(_on_ui_command_response)
                 return resp["result"]
             await asyncio.sleep(0.1)
 
@@ -303,7 +305,7 @@ class ChatParticipant:
         messages = request.chat_history.copy()
 
         if len(tools) == 0:
-            request.host.model.completions(messages, tools=None, response=response)
+            request.host.model.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
             return
 
         openai_tools = [tool.schema for tool in tools]
@@ -313,7 +315,7 @@ class ChatParticipant:
         options = {'tool_choice': tool_choice}
 
         async def _tool_call_loop(tool_call_rounds: list):
-            tool_response = request.host.model.completions(messages, openai_tools, options=options)
+            tool_response = request.host.model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
             # after first call, set tool_choice to auto
             options['tool_choice'] = 'auto'
 
@@ -390,7 +392,7 @@ class CompletionContextProvider:
         raise NotImplemented
 
 class AIModel:
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, options: dict = {}) -> None:
+    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> None:
         raise NotImplemented
 
 class Host:

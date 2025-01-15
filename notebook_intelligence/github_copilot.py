@@ -10,7 +10,7 @@ import uuid
 import secrets
 import sseclient
 import datetime as dt
-from notebook_intelligence.api import ChatCommand, ChatResponse, ChatRequest, ChatParticipant, CompletionContext, MarkdownData, Tool
+from notebook_intelligence.api import CancelToken, ChatCommand, ChatResponse, ChatRequest, ChatParticipant, CompletionContext, MarkdownData, Tool
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 
 from ._version import __version__ as NBI_VERSION
@@ -289,7 +289,7 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
     
     return result
 
-def completions(messages, tools = None, response: ChatResponse = None, options: dict = {}):
+def completions(messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}):
     stream = response is not None
 
     try:
@@ -308,6 +308,9 @@ def completions(messages, tools = None, response: ChatResponse = None, options: 
         if 'tool_choice' in options:
             data['tool_choice'] = options['tool_choice']
 
+        if cancel_token is not None and cancel_token.is_cancel_requested:
+            response.finish()
+
         request = requests.post(
             f"{API_ENDPOINT}/chat/completions",
             headers = _generate_copilot_headers(),
@@ -318,6 +321,8 @@ def completions(messages, tools = None, response: ChatResponse = None, options: 
         if stream:
             client = sseclient.SSEClient(request)
             for event in client.events():
+                if cancel_token is not None and cancel_token.is_cancel_requested:
+                    response.finish()
                 if event.data == '[DONE]':
                     response.finish()
                 else:
@@ -479,4 +484,4 @@ class GithubCopilotChatParticipant(ChatParticipant):
             {"role": "system", "content": options.get("system_prompt", CopilotPrompts.chat_prompt())},
         ] + request.chat_history
 
-        completions(messages, response=response)
+        completions(messages, response=response, cancel_token=request.cancel_token)

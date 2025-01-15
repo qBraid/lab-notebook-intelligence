@@ -13,7 +13,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
-from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal
+from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
 
@@ -267,14 +267,6 @@ class WebsocketChatResponseEmitter(ChatResponse):
         response = await ChatResponse.wait_for_run_ui_command_response(self, callback_id)
         return response
 
-class SignalImpl(Signal):
-    def __init__(self):
-        super().__init__()
-
-    def emit(self, *args, **kwargs) -> None:
-        for listener in self._listeners:
-            listener(*args, **kwargs)
-
 class CancelTokenImpl(CancelToken):
     def __init__(self):
         super().__init__()
@@ -292,6 +284,7 @@ class MessageCallbackHandlers:
 class WebsocketChatHandler(websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
+        # TODO: cleanup
         self._messageCallbackHandlers: dict[str, MessageCallbackHandlers] = {}
         self.chat_history = ChatHistory()
 
