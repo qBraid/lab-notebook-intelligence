@@ -95,7 +95,8 @@ class MarkdownPartData(ResponseStreamData):
 
 @dataclass
 class HTMLData(ResponseStreamData):
-    content: str = ''
+    source: str = ''
+    height: int = 30
 
     @property
     def data_type(self) -> ResponseStreamDataType:

@@ -201,6 +201,11 @@ pre:has(.code-block-header) {
   margin: 5px 0;
 }
 
+.chat-response-html-iframe {
+  width: 100%;
+  border: none;
+}
+
 .chat-response-anchor {
   margin: 5px 0;
 }

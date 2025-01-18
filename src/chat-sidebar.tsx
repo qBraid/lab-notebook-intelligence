@@ -5,6 +5,7 @@ import React, {
   KeyboardEvent,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState
 } from 'react';
@@ -229,6 +230,23 @@ interface IChatParticipant {
 
 const answeredForms = new Map<string, string>();
 
+function ChatResponseHTML(props: any) {
+  const iframSrc = useMemo(
+    () => URL.createObjectURL(new Blob([props.source], { type: 'text/html' })),
+    []
+  );
+  return (
+    <div className="chat-response-html" key={`key-${props.index}`}>
+      <iframe
+        className="chat-response-html-iframe"
+        height={props.height}
+        sandbox="allow-scripts"
+        src={iframSrc}
+      ></iframe>
+    </div>
+  );
+}
+
 function ChatResponse(props: any) {
   const msg: IChatMessage = props.message;
   const timestamp = msg.date.toLocaleTimeString('en-US', { hour12: false });
@@ -302,10 +320,10 @@ function ChatResponse(props: any) {
               );
             case ResponseStreamDataType.HTML:
               return (
-                <div
-                  className="chat-response-html"
-                  key={`key-${index}`}
-                  dangerouslySetInnerHTML={{ __html: item.content }}
+                <ChatResponseHTML
+                  index={index}
+                  source={item.content.source}
+                  height={item.content.height}
                 />
               );
             case ResponseStreamDataType.Button:
