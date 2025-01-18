@@ -420,9 +420,13 @@ class NotebookIntelligenceExtension:
     @property
     def name(self) -> str:
         raise NotImplemented
+    
+    @property
+    def provider(self) -> str:
+        raise NotImplemented
 
     @property
-    def chat_agents(self) -> list[ChatParticipant]:
+    def url(self) -> str:
         raise NotImplemented
 
     def activate(self, host: Host) -> None:
