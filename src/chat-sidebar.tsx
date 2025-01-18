@@ -303,13 +303,14 @@ function ChatResponse(props: any) {
             case ResponseStreamDataType.HTML:
               return (
                 <div
+                  className="chat-response-html"
                   key={`key-${index}`}
                   dangerouslySetInnerHTML={{ __html: item.content }}
                 />
               );
             case ResponseStreamDataType.Button:
               return (
-                <div>
+                <div className="chat-response-button">
                   <button
                     key={`key-${index}`}
                     className="jp-Dialog-button jp-mod-accept jp-mod-styled"
@@ -325,7 +326,7 @@ function ChatResponse(props: any) {
               );
             case ResponseStreamDataType.Anchor:
               return (
-                <div>
+                <div className="chat-response-anchor">
                   <a
                     key={`key-${index}`}
                     href={item.content.uri}

@@ -197,6 +197,18 @@ pre:has(.code-block-header) {
   color: var(--jp-ui-font-color2);
 }
 
+.chat-response-html {
+  margin: 5px 0;
+}
+
+.chat-response-anchor {
+  margin: 5px 0;
+}
+
+.chat-response-button {
+  margin: 5px 0;
+}
+
 .chat-confirmation-form {
   border: 1px solid var(--jp-border-color1);
   padding: 5px;
