@@ -216,6 +216,15 @@ interface IChatMessage {
   from: string; // 'user' | 'copilot';
   contents: IChatMessageContent[];
   notebookLink?: string;
+  participant?: IChatParticipant;
+}
+
+interface IChatParticipant {
+  id: string;
+  name: string;
+  description: string;
+  iconPath: string;
+  commands: string[];
 }
 
 const answeredForms = new Map<string, string>();
@@ -262,8 +271,15 @@ function ChatResponse(props: any) {
     <div className={`chat-message chat-message-${msg.from}`}>
       <div className="chat-message-header">
         <div className="chat-message-from">
+          {msg.participant?.iconPath && (
+            <div
+              className={`chat-message-from-icon ${msg.participant?.id === 'default' ? 'chat-message-from-icon-default' : ''} ${isDarkTheme() ? 'dark' : ''}`}
+            >
+              <img src={msg.participant.iconPath} />
+            </div>
+          )}
           <div className="chat-message-from-title">
-            {msg.from === 'user' ? 'User' : 'Copilot'}
+            {msg.from === 'user' ? 'User' : msg.participant?.name || 'Copilot'}
           </div>
           <div
             className="chat-message-from-progress"
@@ -446,10 +462,14 @@ function SidebarComponent(props: any) {
   const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
   const [chatId, setChatId] = useState(UUID.uuid4());
   const lastMessageId = useRef<string>('');
+  const [chatParticipants, setChatParticipants] = useState<IChatParticipant[]>(
+    []
+  );
 
   useEffect(() => {
     requestAPI<any>('capabilities', { method: 'GET' })
       .then(data => {
+        setChatParticipants(data.chat_participants);
         const prefixes: string[] = [];
         for (const participant of data.chat_participants) {
           const id = participant.id;
@@ -658,7 +678,10 @@ function SidebarComponent(props: any) {
               id: UUID.uuid4(),
               date: new Date(),
               from: 'copilot',
-              contents: contents
+              contents: contents,
+              participant: chatParticipants.find(participant => {
+                return participant.id === response.participant;
+              })
             }
           ]);
         }

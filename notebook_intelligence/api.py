@@ -174,6 +174,7 @@ class ChatResponse:
     def __init__(self):
         self._user_input_signal: SignalImpl = SignalImpl()
         self._run_ui_command_response_signal: SignalImpl = SignalImpl()
+        self.participant_id = ''
 
     @property
     def message_id(self) -> str:
@@ -282,6 +283,10 @@ class ChatParticipant:
     @property
     def description(self) -> str:
         raise NotImplemented
+    
+    @property
+    def icon_path(self) -> str:
+        return None
     
     @property
     def commands(self) -> list[ChatCommand]:

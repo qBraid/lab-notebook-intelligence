@@ -83,7 +83,21 @@ pre:has(.code-block-header) {
 
 .chat-message-from {
   display: flex;
+  align-items: center;
   flex-grow: 1;
+}
+
+.chat-message-from-icon {
+  margin-right: 6px;
+}
+
+.chat-message-from-icon img {
+  width: 18px;
+  height: 18px;
+}
+
+.chat-message-from-icon-default.dark img {
+  filter: invert(100%);
 }
 
 .chat-message-from-title {

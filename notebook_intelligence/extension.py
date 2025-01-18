@@ -30,6 +30,9 @@ class GetCapabilitiesHandler(APIHandler):
             participant = ai_service_manager.chat_participants[participant_id]
             response["chat_participants"].append({
                 "id": participant.id,
+                "name": participant.name,
+                "description": participant.description,
+                "iconPath": participant.icon_path,
                 "commands": [command.name for command in participant.commands]
             })
         self.finish(json.dumps(response))
@@ -241,6 +244,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
 
         self.websocket_handler.write_message({
             "id": self.messageId,
+            "participant": self.participant_id,
             "type": BackendMessageType.StreamMessage,
             "data": data
         })
@@ -250,6 +254,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
         self.streamed_contents = []
         self.websocket_handler.write_message({
             "id": self.messageId,
+            "participant": self.participant_id,
             "type": BackendMessageType.StreamEnd,
             "data": {}
         })
@@ -258,6 +263,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
         callback_id = str(uuid.uuid4())
         self.websocket_handler.write_message({
             "id": self.messageId,
+            "participant": self.participant_id,
             "type": BackendMessageType.RunUICommand,
             "data": {
                 "callback_id": callback_id,

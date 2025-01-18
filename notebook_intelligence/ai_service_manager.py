@@ -119,6 +119,7 @@ class AIServiceManager(Host):
         participant = self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)
         request.command = command
         request.prompt = prompt
+        response.participant_id  = participant_id
         return await participant.handle_chat_request(request, response, options)
 
     async def get_completion_context(self, request: ContextRequest) -> CompletionContext:
