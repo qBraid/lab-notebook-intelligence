@@ -1078,6 +1078,7 @@ function InlinePopoverComponent(props: any) {
         {...props}
         onRequestSubmitted={onRequestSubmitted}
         onResponseEmit={onResponseEmit}
+        onUpdatedCodeAccepted={props.onUpdatedCodeAccepted}
         limitHeight={props.existingCode !== '' && promptSubmitted}
       />
       {props.existingCode !== '' && promptSubmitted && (
@@ -1152,6 +1153,7 @@ function InlineDiffViewerComponent(props: any) {
 function InlinePromptComponent(props: any) {
   const [prompt, setPrompt] = useState<string>(props.prompt);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
+  const [inputSubmitted, setInputSubmitted] = useState(false);
 
   const onPromptChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const newPrompt = event.target.value;
@@ -1169,9 +1171,6 @@ function InlinePromptComponent(props: any) {
         }
       }
     }
-
-    // const promptPrefix =
-    //   promptPrefixParts.length > 0 ? promptPrefixParts.join(' ') + ' ' : '';
 
     submitCompletionRequest(
       {
@@ -1192,15 +1191,20 @@ function InlinePromptComponent(props: any) {
         }
       }
     );
-    // setPrompt(promptPrefix);
+
+    setInputSubmitted(true);
   };
 
   const onPromptKeyDown = async (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter') {
       event.stopPropagation();
       event.preventDefault();
-      props.onRequestSubmitted(prompt);
-      handleUserInputSubmit();
+      if (inputSubmitted && (event.metaKey || event.ctrlKey)) {
+        props.onUpdatedCodeAccepted();
+      } else {
+        props.onRequestSubmitted(prompt);
+        handleUserInputSubmit();
+      }
     } else if (event.key === 'Escape') {
       event.stopPropagation();
       event.preventDefault();
