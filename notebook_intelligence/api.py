@@ -23,7 +23,7 @@ class ResponseStreamDataType(str, Enum):
     LLMRaw = 'llm-raw'
     Markdown = 'markdown'
     MarkdownPart = 'markdown-part'
-    HTML = 'html'
+    HTMLFrame = 'html-frame'
     Button = 'button'
     Anchor = 'anchor'
     Progress = 'progress'
@@ -94,13 +94,13 @@ class MarkdownPartData(ResponseStreamData):
         return ResponseStreamDataType.MarkdownPart
 
 @dataclass
-class HTMLData(ResponseStreamData):
+class HTMLFrameData(ResponseStreamData):
     source: str = ''
     height: int = 30
 
     @property
     def data_type(self) -> ResponseStreamDataType:
-        return ResponseStreamDataType.HTML
+        return ResponseStreamDataType.HTMLFrame
 
 @dataclass
 class AnchorData(ResponseStreamData):

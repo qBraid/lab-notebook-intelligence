@@ -197,11 +197,11 @@ pre:has(.code-block-header) {
   color: var(--jp-ui-font-color2);
 }
 
-.chat-response-html {
+.chat-response-html-frame {
   margin: 5px 0;
 }
 
-.chat-response-html-iframe {
+.chat-response-html-frame-iframe {
   width: 100%;
   border: none;
 }

@@ -149,7 +149,7 @@ class WebsocketChatResponseEmitter(ChatResponse):
                     }
                 ]
             }
-        elif data_type == ResponseStreamDataType.HTML:
+        elif data_type == ResponseStreamDataType.HTMLFrame:
             data = {
                 "choices": [
                     {

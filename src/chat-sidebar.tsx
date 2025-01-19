@@ -230,15 +230,15 @@ interface IChatParticipant {
 
 const answeredForms = new Map<string, string>();
 
-function ChatResponseHTML(props: any) {
+function ChatResponseHTMLFrame(props: any) {
   const iframSrc = useMemo(
     () => URL.createObjectURL(new Blob([props.source], { type: 'text/html' })),
     []
   );
   return (
-    <div className="chat-response-html" key={`key-${props.index}`}>
+    <div className="chat-response-html-frame" key={`key-${props.index}`}>
       <iframe
-        className="chat-response-html-iframe"
+        className="chat-response-html-frame-iframe"
         height={props.height}
         sandbox="allow-scripts"
         src={iframSrc}
@@ -318,9 +318,9 @@ function ChatResponse(props: any) {
                   {item.content}
                 </MarkdownRenderer>
               );
-            case ResponseStreamDataType.HTML:
+            case ResponseStreamDataType.HTMLFrame:
               return (
-                <ChatResponseHTML
+                <ChatResponseHTMLFrame
                   index={index}
                   source={item.content.source}
                   height={item.content.height}

@@ -30,7 +30,7 @@ export enum ResponseStreamDataType {
   LLMRaw = 'llm-raw',
   Markdown = 'markdown',
   MarkdownPart = 'markdown-part',
-  HTML = 'html',
+  HTMLFrame = 'html-frame',
   Button = 'button',
   Anchor = 'anchor',
   Progress = 'progress',
