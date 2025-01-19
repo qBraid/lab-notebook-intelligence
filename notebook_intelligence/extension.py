@@ -328,16 +328,16 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             language = data['language']
             filename = data['filename']
             if prefix != '':
-                self.chat_history.add_message(chatId, {"role": "user", "content": f"This prefix code section comes before the code section you will generate: ```{prefix}```"})
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"This code section comes before the code section you will generate, use as context. Leading content: ```{prefix}```"})
             if suffix != '':
-                self.chat_history.add_message(chatId, {"role": "user", "content": f"This suffix code section comes after the code section  you will generate: ```{suffix}```"})
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"This code section comes after the code section you will generate, use as context. Trailing content: ```{suffix}```"})
             if existing_code != '':
-                self.chat_history.add_message(chatId, {"role": "user", "content": f"You are asked to generate updates for or a replacement for the existing code. This is the existing code. : ```{existing_code}```"})
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"You are asked to modify the existing code. Generate a replacement for this existing code : ```{existing_code}```"})
             self.chat_history.add_message(chatId, {"role": "user", "content": f"Generate code for: {prompt}"})
             response_emitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
             self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
-            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing prefix and suffix code sections. You update or replace an existing code section. Prefix, suffix and existing code are all optional. If the request is relevant to the existing code, assume an update is requested. If updates to existing code are requested, update it with the requested changes. If updates are requested, update the existing code and return the existing code section with the updates applied, do not just return the update as your response will be replacing the existing code. Be concise and return only code as a response."}),))
+            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing leading and trailing code sections.{" Update the existing code section and return a modified version. Don't just return the update, recreate the existing code section with the update." if existing_code != '' else ''} Be concise and return only code as a response. Don't include leading content or trailing content in your response, they are provided only for context. You can reuse methods and symbols defined in leading and trailing content."}),))
             thread.start()
         elif messageType == RequestDataType.ChatUserInput:
             handlers = self._messageCallbackHandlers.get(messageId)
