@@ -481,14 +481,12 @@ function SidebarComponent(props: any) {
   const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
   const [chatId, setChatId] = useState(UUID.uuid4());
   const lastMessageId = useRef<string>('');
-  const [chatParticipants, setChatParticipants] = useState<IChatParticipant[]>(
-    []
-  );
+  const chatParticipants = useRef<IChatParticipant[]>([]);
 
   useEffect(() => {
     requestAPI<any>('capabilities', { method: 'GET' })
       .then(data => {
-        setChatParticipants(data.chat_participants);
+        chatParticipants.current = structuredClone(data.chat_participants);
         const prefixes: string[] = [];
         for (const participant of data.chat_participants) {
           const id = participant.id;
@@ -698,7 +696,7 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: chatParticipants.find(participant => {
+              participant: chatParticipants.current?.find(participant => {
                 return participant.id === response.participant;
               })
             }
@@ -861,6 +859,7 @@ function SidebarComponent(props: any) {
           break;
       }
       const messageId = UUID.uuid4();
+      request.messageId = messageId;
       const newList = [
         ...chatMessages,
         {
@@ -910,7 +909,10 @@ function SidebarComponent(props: any) {
               id: messageId,
               date: new Date(),
               from: 'copilot',
-              contents: contents
+              contents: contents,
+              participant: chatParticipants.current?.find(participant => {
+                return participant.id === response.participant;
+              })
             }
           ]);
         }
