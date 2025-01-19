@@ -18,15 +18,33 @@
   "jupyter.lab.shortcuts": [
     {
       "command": "notebook-intelligence:editor-generate-code",
-      "keys": ["Accel G"],
+      "keys": [
+        "Accel G"
+      ],
       "selector": ".jp-Editor",
       "preventDefault": true
     },
     {
       "command": "notebook-intelligence:editor-generate-code",
-      "keys": ["Accel G"],
+      "keys": [
+        "Accel G"
+      ],
       "selector": ".jp-CodeCell",
       "preventDefault": true
+    },
+    {
+      "command": "inline-completer:accept",
+      "selector": ".jp-mod-inline-completer-active",
+      "keys": [
+        "Tab"
+      ]
+    },
+    {
+      "command": "inline-completer:accept",
+      "selector": ".jp-Notebook.jp-mod-editMode .jp-mod-completer-enabled",
+      "keys": [
+        "Tab"
+      ]
     }
   ]
 }
