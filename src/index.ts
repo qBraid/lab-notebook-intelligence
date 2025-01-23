@@ -51,6 +51,8 @@ import {
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 import { IActiveDocumentInfo } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
+import copilotSvgstr from '../style/icons/copilot.svg';
+
 import {
   extractCodeFromMarkdown,
   markdownToComment,
@@ -82,6 +84,10 @@ namespace CommandIDs {
 }
 
 const DOCUMET_WATCH_INTERVAL = 1000;
+const githuCopilotIcon = new LabIcon({
+  name: 'notebook-intelligence:github-copilot-icon',
+  svgstr: copilotSvgstr
+});
 
 const emptyNotebookContent: any = {
   cells: [],
@@ -329,6 +335,10 @@ class GitHubInlineCompletionProvider
 
   get identifier(): string {
     return '@mbektas/notebook-intelligence';
+  }
+
+  get icon(): LabIcon.ILabIcon {
+    return githuCopilotIcon;
   }
 }
 
