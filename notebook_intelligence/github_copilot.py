@@ -245,7 +245,7 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
 
     if context is not None:
         for item in context.items:
-            context_file = f"Compare this snippet from {item.file_path if item.file_path is not None else 'undefined'}:{NL}{item.content}{NL}"
+            context_file = f"Compare this snippet from {item.filePath if item.filePath is not None else 'undefined'}:{NL}{item.content}{NL}"
             prompt += "\n# " + "\n# ".join(context_file.split('\n'))
 
     prompt += f"{NL}{prefix}"

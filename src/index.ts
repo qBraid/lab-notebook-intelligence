@@ -39,6 +39,7 @@ import { Menu, Panel, Widget } from '@lumino/widgets';
 import { PartialJSONObject } from '@lumino/coreutils';
 import { CommandRegistry } from '@lumino/commands';
 import { IStatusBar } from '@jupyterlab/statusbar';
+import { CodeEditor } from '@jupyterlab/codeeditor';
 
 import {
   ChatSidebar,
@@ -79,6 +80,8 @@ namespace CommandIDs {
     'notebook-intelligence:open-github-copilot-login-dialog';
 }
 
+const DOCUMET_WATCH_INTERVAL = 1000;
+
 const emptyNotebookContent: any = {
   cells: [],
   metadata: {},
@@ -86,10 +89,160 @@ const emptyNotebookContent: any = {
   nbformat_minor: 5
 };
 
-const activeDocumentInfo: IActiveDocumentInfo = {
-  language: 'python',
-  filename: 'Untitled.ipynb'
-};
+class ActiveDocumentWatcher {
+  static initialize(app: JupyterLab) {
+    ActiveDocumentWatcher.activeDocumentInfo.serverRoot =
+      app.paths.directories.serverRoot;
+    ActiveDocumentWatcher.activeDocumentInfo.parentDirectory =
+      ActiveDocumentWatcher.activeDocumentInfo.serverRoot + '/';
+
+    app.shell.currentChanged?.connect((_sender, args) => {
+      ActiveDocumentWatcher.watchDocument(args.newValue);
+    });
+
+    ActiveDocumentWatcher.activeDocumentInfo.activeWidget =
+      app.shell.currentWidget;
+    ActiveDocumentWatcher.handleWatchDocument();
+  }
+
+  static watchDocument(widget: Widget) {
+    if (ActiveDocumentWatcher.activeDocumentInfo.activeWidget === widget) {
+      return;
+    }
+    clearInterval(ActiveDocumentWatcher.watchTimer);
+    ActiveDocumentWatcher.activeDocumentInfo.activeWidget = widget;
+
+    ActiveDocumentWatcher.watchTimer = setInterval(() => {
+      ActiveDocumentWatcher.handleWatchDocument();
+    }, DOCUMET_WATCH_INTERVAL);
+
+    ActiveDocumentWatcher.handleWatchDocument();
+  }
+
+  static handleWatchDocument() {
+    const activeDocumentInfo = ActiveDocumentWatcher.activeDocumentInfo;
+    const activeWidget = activeDocumentInfo.activeWidget;
+    if (activeWidget instanceof NotebookPanel) {
+      const np = activeWidget as NotebookPanel;
+      activeDocumentInfo.filename = np.sessionContext.name;
+      activeDocumentInfo.filePath = np.sessionContext.path;
+      activeDocumentInfo.language =
+        (np.model?.sharedModel?.metadata?.kernelspec?.language as string) ||
+        'python';
+      const lastSlashIndex = np.sessionContext.path.lastIndexOf('/');
+      const nbFolder =
+        lastSlashIndex === -1
+          ? ''
+          : np.sessionContext.path.substring(0, lastSlashIndex);
+      activeDocumentInfo.parentDirectory =
+        activeDocumentInfo.serverRoot + '/' + nbFolder;
+
+      const { activeCellIndex, activeCell } = np.content;
+      activeDocumentInfo.activeCellIndex = activeCellIndex;
+      activeDocumentInfo.selection = activeCell.editor.getSelection();
+    } else if (activeWidget instanceof FileEditorWidget) {
+      const fe = activeWidget as FileEditorWidget;
+      activeDocumentInfo.language = 'python';
+      const lastSlashIndex = fe.context.path.lastIndexOf('/');
+      const folder =
+        lastSlashIndex === -1
+          ? ''
+          : fe.context.path.substring(0, lastSlashIndex);
+      activeDocumentInfo.filename = fe.context.path.substring(
+        lastSlashIndex + 1
+      );
+      activeDocumentInfo.filePath = fe.context.path;
+      activeDocumentInfo.parentDirectory =
+        activeDocumentInfo.serverRoot + '/' + folder;
+      activeDocumentInfo.selection = fe.content.editor.getSelection();
+    } else {
+      activeDocumentInfo.filename = '';
+      activeDocumentInfo.filePath = '';
+      activeDocumentInfo.language = '';
+      activeDocumentInfo.parentDirectory = '';
+    }
+
+    ActiveDocumentWatcher.fireActiveDocumentChangedEvent();
+  }
+
+  static getActiveSelectionContent(): string {
+    const isSelectionEmpty = (selection: CodeEditor.IRange): boolean => {
+      return (
+        selection.start.line === selection.end.line &&
+        selection.start.column === selection.end.column
+      );
+    };
+
+    const getSelectionInEditor = (editor: CodeEditor.IEditor): string => {
+      const selection = editor.getSelection();
+      const startOffset = editor.getOffsetAt(selection.start);
+      const endOffset = editor.getOffsetAt(selection.end);
+      return editor.model.sharedModel
+        .getSource()
+        .substring(startOffset, endOffset);
+    };
+
+    const getWholeNotebookContent = (np: NotebookPanel): string => {
+      let content = '';
+      for (const cell of np.content.widgets) {
+        const cellModel = cell.model.sharedModel;
+        if (cellModel.cell_type === 'code') {
+          content += cellModel.source + '\n';
+        } else if (cellModel.cell_type === 'markdown') {
+          content +=
+            cellModel.source.split('\n').map(line => `# ${line}`) + '\n';
+        }
+      }
+
+      return content;
+    };
+
+    const activeDocumentInfo = ActiveDocumentWatcher.activeDocumentInfo;
+    const activeWidget = activeDocumentInfo.activeWidget;
+
+    if (activeWidget instanceof NotebookPanel) {
+      const np = activeWidget as NotebookPanel;
+      const editor = np.content.activeCell.editor;
+      if (isSelectionEmpty(editor.getSelection())) {
+        return getWholeNotebookContent(np);
+      } else {
+        return getSelectionInEditor(editor);
+      }
+    } else if (activeWidget instanceof FileEditorWidget) {
+      const fe = activeWidget as FileEditorWidget;
+      const editor = fe.content.editor;
+      if (isSelectionEmpty(editor.getSelection())) {
+        return editor.model.sharedModel.getSource();
+      } else {
+        return getSelectionInEditor(editor);
+      }
+    }
+
+    return '';
+  }
+
+  static fireActiveDocumentChangedEvent() {
+    document.dispatchEvent(
+      new CustomEvent('copilotSidebar:activeDocumentChanged', {
+        detail: {
+          activeDocumentInfo: ActiveDocumentWatcher.activeDocumentInfo
+        }
+      })
+    );
+  }
+
+  static activeDocumentInfo: IActiveDocumentInfo = {
+    language: 'python',
+    filename: 'Untitled.ipynb',
+    filePath: 'Untitled.ipynb',
+    activeWidget: null,
+    serverRoot: '',
+    parentDirectory: '',
+    activeCellIndex: -1,
+    selection: null
+  };
+  static watchTimer: any;
+}
 
 class GitHubInlineCompletionProvider
   implements IInlineCompletionProvider<IInlineCompletionItem>
@@ -144,8 +297,8 @@ class GitHubInlineCompletionProvider
       GitHubCopilot.inlineCompletionsRequest(
         preContent + preCursor,
         postCursor + postContent,
-        activeDocumentInfo.language,
-        activeDocumentInfo.filename
+        ActiveDocumentWatcher.activeDocumentInfo.language,
+        ActiveDocumentWatcher.activeDocumentInfo.filename
       )
         .then(response => {
           items.push({
@@ -228,11 +381,11 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return new Promise<boolean>((resolve, reject) => {
         const checkIfActive = () => {
           const activeFilePath = URLExt.join(
-            activeDocumentInfo.parentDirectory || '',
-            activeDocumentInfo.filename
+            ActiveDocumentWatcher.activeDocumentInfo.parentDirectory || '',
+            ActiveDocumentWatcher.activeDocumentInfo.filename
           );
           const filePathToCheck = URLExt.join(
-            activeDocumentInfo.serverRoot || '',
+            ActiveDocumentWatcher.activeDocumentInfo.serverRoot || '',
             filePath
           );
           const currentWidget = app.shell.currentWidget;
@@ -271,7 +424,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
     panel.title.icon = sidebarIcon;
     const sidebar = new ChatSidebar({
       getActiveDocumentInfo: (): IActiveDocumentInfo => {
-        return activeDocumentInfo;
+        return ActiveDocumentWatcher.activeDocumentInfo;
+      },
+      getActiveSelectionContent: (): string => {
+        return ActiveDocumentWatcher.getActiveSelectionContent();
       },
       openFile: (path: string) => {
         docManager.openOrReveal(path);
@@ -676,8 +832,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
             detail: {
               type: RunChatCompletionType.ExplainThis,
               content,
-              language: activeDocumentInfo.language,
-              filename: activeDocumentInfo.filename
+              language: ActiveDocumentWatcher.activeDocumentInfo.language,
+              filename: ActiveDocumentWatcher.activeDocumentInfo.filename
             }
           })
         );
@@ -697,8 +853,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
             detail: {
               type: RunChatCompletionType.FixThis,
               content,
-              language: activeDocumentInfo.language,
-              filename: activeDocumentInfo.filename
+              language: ActiveDocumentWatcher.activeDocumentInfo.language,
+              filename: ActiveDocumentWatcher.activeDocumentInfo.filename
             }
           })
         );
@@ -737,8 +893,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
             detail: {
               type: RunChatCompletionType.ExplainThisOutput,
               content,
-              language: activeDocumentInfo.language,
-              filename: activeDocumentInfo.filename
+              language: ActiveDocumentWatcher.activeDocumentInfo.language,
+              filename: ActiveDocumentWatcher.activeDocumentInfo.filename
             }
           })
         );
@@ -786,8 +942,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
             detail: {
               type: RunChatCompletionType.TroubleshootThisOutput,
               content,
-              language: activeDocumentInfo.language,
-              filename: activeDocumentInfo.filename
+              language: ActiveDocumentWatcher.activeDocumentInfo.language,
+              filename: ActiveDocumentWatcher.activeDocumentInfo.filename
             }
           })
         );
@@ -861,36 +1017,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     }
 
     const jlabApp = app as JupyterLab;
-    activeDocumentInfo.serverRoot = jlabApp.paths.directories.serverRoot;
-    activeDocumentInfo.parentDirectory = activeDocumentInfo.serverRoot + '/';
-
-    app.shell.currentChanged?.connect((_sender, args) => {
-      if (args.newValue instanceof NotebookPanel) {
-        const np = args.newValue as NotebookPanel;
-        activeDocumentInfo.filename = np.sessionContext.name;
-        activeDocumentInfo.language =
-          (np.model?.sharedModel?.metadata?.kernelspec?.language as string) ||
-          'python';
-        const lastSlashIndex = np.sessionContext.path.lastIndexOf('/');
-        const nbFolder =
-          lastSlashIndex === -1
-            ? ''
-            : np.sessionContext.path.substring(0, lastSlashIndex);
-        activeDocumentInfo.parentDirectory =
-          activeDocumentInfo.serverRoot + '/' + nbFolder;
-      } else if (args.newValue instanceof FileEditorWidget) {
-        const fe = args.newValue as FileEditorWidget;
-        activeDocumentInfo.filename = fe.context.path;
-        activeDocumentInfo.language = 'python';
-        const lastSlashIndex = fe.context.path.lastIndexOf('/');
-        const nbFolder =
-          lastSlashIndex === -1
-            ? ''
-            : fe.context.path.substring(0, lastSlashIndex);
-        activeDocumentInfo.parentDirectory =
-          activeDocumentInfo.serverRoot + '/' + nbFolder;
-      }
-    });
+    ActiveDocumentWatcher.initialize(jlabApp);
 
     GitHubCopilot.initialize();
   }

@@ -13,7 +13,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
-from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
+from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
 from notebook_intelligence.github_copilot_participant import GithubCopilotChatParticipant
@@ -65,7 +65,7 @@ class PostInlineCompletionsHandler(APIHandler):
         language = data['language']
         filename = data['filename']
 
-        context = await ai_service_manager.get_completion_context(ContextRequest(ContextType.InlineCompletion, prefix, suffix, language, filename, participant=ai_service_manager.get_chat_participant(prefix)))
+        context = await ai_service_manager.get_completion_context(ContextRequest(ContextRequestType.InlineCompletion, prefix, suffix, language, filename, participant=ai_service_manager.get_chat_participant(prefix)))
         completions = github_copilot.inline_completions(prefix, suffix, language, filename, context)
         self.finish(json.dumps({
             "data": completions
@@ -312,6 +312,14 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
             prompt = data['prompt']
             language = data['language']
             filename = data['filename']
+            additionalContext = data.get('additionalContext', [])
+            for context in additionalContext:
+                file_path = context["filePath"]
+                file_path = path.join(NotebookIntelligenceJupyterExtApp.root_dir, file_path)
+                filename = path.basename(file_path)
+                start_line = context["startLine"]
+                end_line = context["endLine"]
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"Use this as additional context: ```{context["content"]}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}"})
             self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
             response_emitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
@@ -376,11 +384,13 @@ class NotebookIntelligenceJupyterExtApp(ExtensionApp):
     template_paths = []
     settings = {}
     handlers = []
+    root_dir = ''
 
     def initialize_settings(self):
         pass
 
     def initialize_handlers(self):
+        NotebookIntelligenceJupyterExtApp.root_dir = self.serverapp.root_dir
         initialize_extensions()
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")

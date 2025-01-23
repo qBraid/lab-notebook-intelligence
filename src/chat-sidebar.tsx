@@ -17,8 +17,10 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
 import {
   BackendMessageType,
+  ContextType,
   IActiveDocumentInfo,
   IChatCompletionResponseEmitter,
+  IContextItem,
   RequestDataType,
   ResponseStreamDataType
 } from './tokens';
@@ -29,7 +31,7 @@ import { MarkdownRenderer } from './markdown-renderer';
 import copySvgstr from '../style/icons/copy.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
-import { VscSend, VscStopCircle } from 'react-icons/vsc';
+import { VscSend, VscStopCircle, VscEye, VscEyeClosed } from 'react-icons/vsc';
 import { extractCodeFromMarkdown, isDarkTheme } from './utils';
 
 export enum RunChatCompletionType {
@@ -52,10 +54,12 @@ export interface IRunChatCompletionRequest {
   prefix?: string;
   suffix?: string;
   existingCode?: string;
+  additionalContext?: IContextItem[];
 }
 
 export interface IChatSidebarOptions {
   getActiveDocumentInfo: () => IActiveDocumentInfo;
+  getActiveSelectionContent: () => string;
   openFile: (path: string) => void;
   getApp: () => JupyterFrontEnd;
 }
@@ -66,6 +70,7 @@ export class ChatSidebar extends ReactWidget {
 
     this.node.style.height = '100%';
     this._getActiveDocumentInfo = options.getActiveDocumentInfo;
+    this._getActiveSelectionContent = options.getActiveSelectionContent;
     this._openFile = options.openFile;
     this._getApp = options.getApp;
   }
@@ -74,6 +79,7 @@ export class ChatSidebar extends ReactWidget {
     return (
       <SidebarComponent
         getActiveDocumentInfo={this._getActiveDocumentInfo}
+        getActiveSelectionContent={this._getActiveSelectionContent}
         openFile={this._openFile}
         getApp={this._getApp}
       />
@@ -81,6 +87,7 @@ export class ChatSidebar extends ReactWidget {
   }
 
   private _getActiveDocumentInfo: () => IActiveDocumentInfo;
+  private _getActiveSelectionContent: () => string;
   private _openFile: (path: string) => void;
   private _getApp: () => JupyterFrontEnd;
 }
@@ -430,6 +437,7 @@ async function submitCompletionRequest(
         request.content,
         request.language || 'python',
         request.filename || 'Untitled.ipynb',
+        request.additionalContext || [],
         responseEmitter
       );
     case RunChatCompletionType.ExplainThis:
@@ -442,6 +450,7 @@ async function submitCompletionRequest(
         request.content,
         request.language || 'python',
         request.filename || 'Untitled.ipynb',
+        [],
         responseEmitter
       );
     }
@@ -482,6 +491,10 @@ function SidebarComponent(props: any) {
   const [chatId, setChatId] = useState(UUID.uuid4());
   const lastMessageId = useRef<string>('');
   const chatParticipants = useRef<IChatParticipant[]>([]);
+  const [contextOn, setContextOn] = useState(false);
+  const [activeDocumentInfo, setActiveDocumentInfo] =
+    useState<IActiveDocumentInfo | null>(null);
+  const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
 
   useEffect(() => {
     requestAPI<any>('capabilities', { method: 'GET' })
@@ -629,6 +642,17 @@ function SidebarComponent(props: any) {
     const parentDirectory = activeDocInfo.parentDirectory!;
     const contents: IChatMessageContent[] = [];
     const app = props.getApp();
+    const additionalContext: IContextItem[] = [];
+    if (contextOn && activeDocumentInfo) {
+      additionalContext.push({
+        type: ContextType.CurrentFile,
+        content: props.getActiveSelectionContent(),
+        filePath: activeDocumentInfo.filePath,
+        cellIndex: activeDocumentInfo.activeCellIndex,
+        startLine: activeDocumentInfo.selection.start.line + 1,
+        endLine: activeDocumentInfo.selection.end.line + 1
+      });
+    }
 
     submitCompletionRequest(
       {
@@ -638,7 +662,8 @@ function SidebarComponent(props: any) {
         content: extractedPrompt,
         language: activeDocInfo.language,
         filename: activeDocInfo.filename,
-        parentDirectory
+        parentDirectory,
+        additionalContext
       },
       {
         emit: async response => {
@@ -932,6 +957,68 @@ function SidebarComponent(props: any) {
     };
   }, [chatMessages]);
 
+  const activeDocumentChangeHandler = (eventData: any) => {
+    // if file changes reset the context toggle
+    if (
+      eventData.detail.activeDocumentInfo?.filePath !==
+      activeDocumentInfo?.filePath
+    ) {
+      setContextOn(false);
+    }
+    setActiveDocumentInfo({
+      ...eventData.detail.activeDocumentInfo,
+      ...{ activeWidget: null }
+    });
+    setCurrentFileContextTitle(
+      getActiveDocumentContextTitle(eventData.detail.activeDocumentInfo)
+    );
+  };
+
+  useEffect(() => {
+    document.addEventListener(
+      'copilotSidebar:activeDocumentChanged',
+      activeDocumentChangeHandler
+    );
+
+    return () => {
+      document.removeEventListener(
+        'copilotSidebar:activeDocumentChanged',
+        activeDocumentChangeHandler
+      );
+    };
+  }, [activeDocumentInfo]);
+
+  const getActiveDocumentContextTitle = (
+    activeDocumentInfo: IActiveDocumentInfo
+  ): string => {
+    if (!activeDocumentInfo) {
+      return '';
+    }
+    const wholeFile =
+      activeDocumentInfo.selection === null ||
+      (activeDocumentInfo.selection.start.line ===
+        activeDocumentInfo.selection.end.line &&
+        activeDocumentInfo.selection.start.column ===
+          activeDocumentInfo.selection.end.column);
+    let cellAndLineIndicator = '';
+
+    if (!wholeFile) {
+      if (activeDocumentInfo.filename.endsWith('.ipynb')) {
+        cellAndLineIndicator = ` · Cell ${activeDocumentInfo.activeCellIndex + 1}`;
+      }
+      if (
+        activeDocumentInfo.selection.start.line ===
+        activeDocumentInfo.selection.end.line
+      ) {
+        cellAndLineIndicator += `:${activeDocumentInfo.selection.start.line + 1}`;
+      } else {
+        cellAndLineIndicator += `:${activeDocumentInfo.selection.start.line + 1}-${activeDocumentInfo.selection.end.line + 1}`;
+      }
+    }
+
+    return `${activeDocumentInfo.filename}${cellAndLineIndicator}`;
+  };
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
@@ -992,9 +1079,26 @@ function SidebarComponent(props: any) {
             spellCheck={false}
             value={prompt}
           />
-          <div className="user-input-context-row">
-            {/* <div>Context</div> */}
-          </div>
+          {activeDocumentInfo?.filename && (
+            <div className="user-input-context-row">
+              <div
+                className={`user-input-context user-input-context-active-file ${contextOn ? 'on' : 'off'}`}
+              >
+                <div>{currentFileContextTitle}</div>
+                {contextOn ? (
+                  <VscEye
+                    onClick={() => setContextOn(!contextOn)}
+                    title="Use as context"
+                  />
+                ) : (
+                  <VscEyeClosed
+                    onClick={() => setContextOn(!contextOn)}
+                    title="Don't use as context"
+                  />
+                )}
+              </div>
+            </div>
+          )}
           <div className="user-input-footer">
             <div>
               <a

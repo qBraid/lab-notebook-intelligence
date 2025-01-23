@@ -140,10 +140,14 @@ class ConfirmationData(ResponseStreamData):
     def data_type(self) -> ResponseStreamDataType:
         return ResponseStreamDataType.Confirmation
 
-class ContextType(Enum):
+class ContextRequestType(Enum):
     InlineCompletion = 'inline-completion'
     NewPythonFile = 'new-python-file'
     NewNotebook = 'new-notebook'
+
+class ContextType(Enum):
+    Custom = 'custom'
+    CurrentFile = 'current-file'
 
 @dataclass
 class ContextInputFileInfo:
@@ -153,7 +157,7 @@ class ContextInputFileInfo:
 
 @dataclass
 class ContextRequest:
-    type: ContextType
+    type: ContextRequestType
     prompt: str = ''
     file_info: ContextInputFileInfo = None
     language: str = ''
@@ -164,8 +168,12 @@ class ContextRequest:
 
 @dataclass
 class ContextItem:
+    type: ContextType
     content: str
-    file_path: str = None
+    filePath: str = None
+    cellIndex: int = None
+    startLine: int = None
+    endLine: int = None
 
 @dataclass
 class CompletionContext:

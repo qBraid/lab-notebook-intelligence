@@ -140,7 +140,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
             }, tool_choice='required')
             return
         elif request.command == 'newPythonFile':
-            # create a new notebook
+            # create a new python file
             messages = [
                 {"role": "system", "content": f"You are an assistant that creates Python code. You should return the code directly without any explantion. You should not print message to explain the code or purpose of the code. You should return the code directly, without wrapping it inside ```."},
                 {"role": "user", "content": f"Generate code for: {request.prompt}"}

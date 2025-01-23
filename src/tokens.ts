@@ -1,10 +1,17 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import { Widget } from '@lumino/widgets';
+import { CodeEditor } from '@jupyterlab/codeeditor';
+
 export interface IActiveDocumentInfo {
+  activeWidget: Widget | null;
   language: string;
   filename: string;
+  filePath: string;
   serverRoot?: string;
   parentDirectory?: string;
+  activeCellIndex: number;
+  selection: CodeEditor.IRange;
 }
 
 export interface IChatCompletionResponseEmitter {
@@ -35,4 +42,18 @@ export enum ResponseStreamDataType {
   Anchor = 'anchor',
   Progress = 'progress',
   Confirmation = 'confirmation'
+}
+
+export enum ContextType {
+  Custom = 'custom',
+  CurrentFile = 'current-file'
+}
+
+export interface IContextItem {
+  type: ContextType;
+  content: string;
+  filePath?: string;
+  cellIndex?: number;
+  startLine?: number;
+  endLine?: number;
 }

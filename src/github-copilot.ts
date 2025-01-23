@@ -5,7 +5,11 @@ import { requestAPI } from './handler';
 import { URLExt } from '@jupyterlab/coreutils';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
-import { IChatCompletionResponseEmitter, RequestDataType } from './tokens';
+import {
+  IChatCompletionResponseEmitter,
+  IContextItem,
+  RequestDataType
+} from './tokens';
 
 const LOGIN_STATUS_UPDATE_INTERVAL = 2000;
 
@@ -125,6 +129,7 @@ export class GitHubCopilot {
     prompt: string,
     language: string,
     filename: string,
+    additionalContext: IContextItem[],
     responseEmitter: IChatCompletionResponseEmitter
   ) {
     this._messageReceived.connect((_, msg) => {
@@ -137,7 +142,7 @@ export class GitHubCopilot {
       JSON.stringify({
         id: messageId,
         type: RequestDataType.ChatRequest,
-        data: { chatId, prompt, language, filename }
+        data: { chatId, prompt, language, filename, additionalContext }
       })
     );
   }

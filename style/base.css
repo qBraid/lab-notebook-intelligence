@@ -29,7 +29,7 @@
 }
 
 .sidebar-user-input {
-  height: 60px;
+  height: 80px;
   padding: 5px;
   padding-right: 15px;
   display: flex;
@@ -52,6 +52,25 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+}
+
+.user-input-context {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 4px;
+  padding: 2px;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.user-input-context.off {
+  color: var(--jp-ui-font-color2);
+}
+
+.user-input-context svg {
+  width: 13px;
+  height: 13px;
 }
 
 .sidebar-user-input .user-input-footer {
