@@ -171,10 +171,6 @@ pre:has(.code-block-header) {
   text-decoration: underline;
 }
 
-.chat-message-user {
-  background-color: var(--jp-cell-editor-background);
-}
-
 .chat-message-copilot {
   background-color: rgb(159 153 208 / 15%);
 }
@@ -312,7 +308,9 @@ pre:has(.code-block-header) {
 }
 
 button.send-button {
-  padding: 10px 8px;
+  padding: 4px;
+  width: 24px;
+  height: 24px;
 }
 
 .inline-popover {
