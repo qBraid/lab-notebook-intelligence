@@ -53,6 +53,7 @@ import { IActiveDocumentInfo } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
 import {
   extractCodeFromMarkdown,
+  markdownToComment,
   removeAnsiChars,
   waitForDuration
 } from './utils';
@@ -189,8 +190,7 @@ class ActiveDocumentWatcher {
         if (cellModel.cell_type === 'code') {
           content += cellModel.source + '\n';
         } else if (cellModel.cell_type === 'markdown') {
-          content +=
-            cellModel.source.split('\n').map(line => `# ${line}`) + '\n';
+          content += markdownToComment(cellModel.source) + '\n';
         }
       }
 
@@ -263,9 +263,13 @@ class GitHubInlineCompletionProvider
     let postContent = '';
     const preCursor = request.text.substring(0, request.offset);
     const postCursor = request.text.substring(request.offset);
+    let language = ActiveDocumentWatcher.activeDocumentInfo.language;
 
     if (context.widget instanceof NotebookPanel) {
       const activeCell = context.widget.content.activeCell;
+      if (activeCell.model.sharedModel.cell_type === 'markdown') {
+        language = 'markdown';
+      }
       let activeCellReached = false;
 
       for (const cell of context.widget.content.widgets) {
@@ -275,10 +279,14 @@ class GitHubInlineCompletionProvider
         } else if (!activeCellReached) {
           if (cellModel.cell_type === 'code') {
             preContent += cellModel.source + '\n';
+          } else if (cellModel.cell_type === 'markdown') {
+            preContent += markdownToComment(cellModel.source) + '\n';
           }
         } else {
           if (cellModel.cell_type === 'code') {
             postContent += cellModel.source + '\n';
+          } else if (cellModel.cell_type === 'markdown') {
+            postContent += markdownToComment(cellModel.source) + '\n';
           }
         }
       }
@@ -297,7 +305,7 @@ class GitHubInlineCompletionProvider
       GitHubCopilot.inlineCompletionsRequest(
         preContent + preCursor,
         postCursor + postContent,
-        ActiveDocumentWatcher.activeDocumentInfo.language,
+        language,
         ActiveDocumentWatcher.activeDocumentInfo.filename
       )
         .then(response => {

@@ -62,3 +62,10 @@ export function extractCodeFromMarkdown(source: string): string {
 export function isDarkTheme(): boolean {
   return document.body.getAttribute('data-jp-theme-light') === 'false';
 }
+
+export function markdownToComment(source: string): string {
+  return source
+    .split('\n')
+    .map(line => `# ${line}`)
+    .join('\n');
+}
