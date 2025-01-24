@@ -52,8 +52,14 @@ export enum ContextType {
 export interface IContextItem {
   type: ContextType;
   content: string;
+  currentCellContents: ICellContents;
   filePath?: string;
   cellIndex?: number;
   startLine?: number;
   endLine?: number;
+}
+
+export interface ICellContents {
+  input: string;
+  output: string;
 }

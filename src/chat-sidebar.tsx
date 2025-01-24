@@ -19,6 +19,7 @@ import {
   BackendMessageType,
   ContextType,
   IActiveDocumentInfo,
+  ICellContents,
   IChatCompletionResponseEmitter,
   IContextItem,
   RequestDataType,
@@ -60,6 +61,7 @@ export interface IRunChatCompletionRequest {
 export interface IChatSidebarOptions {
   getActiveDocumentInfo: () => IActiveDocumentInfo;
   getActiveSelectionContent: () => string;
+  getCurrentCellContents: () => ICellContents;
   openFile: (path: string) => void;
   getApp: () => JupyterFrontEnd;
 }
@@ -68,28 +70,23 @@ export class ChatSidebar extends ReactWidget {
   constructor(options: IChatSidebarOptions) {
     super();
 
+    this._options = options;
     this.node.style.height = '100%';
-    this._getActiveDocumentInfo = options.getActiveDocumentInfo;
-    this._getActiveSelectionContent = options.getActiveSelectionContent;
-    this._openFile = options.openFile;
-    this._getApp = options.getApp;
   }
 
   render(): JSX.Element {
     return (
       <SidebarComponent
-        getActiveDocumentInfo={this._getActiveDocumentInfo}
-        getActiveSelectionContent={this._getActiveSelectionContent}
-        openFile={this._openFile}
-        getApp={this._getApp}
+        getActiveDocumentInfo={this._options.getActiveDocumentInfo}
+        getActiveSelectionContent={this._options.getActiveSelectionContent}
+        getCurrentCellContents={this._options.getCurrentCellContents}
+        openFile={this._options.openFile}
+        getApp={this._options.getApp}
       />
     );
   }
 
-  private _getActiveDocumentInfo: () => IActiveDocumentInfo;
-  private _getActiveSelectionContent: () => string;
-  private _openFile: (path: string) => void;
-  private _getApp: () => JupyterFrontEnd;
+  private _options: IChatSidebarOptions;
 }
 
 export interface IInlinePromptWidgetOptions {
@@ -647,6 +644,7 @@ function SidebarComponent(props: any) {
       additionalContext.push({
         type: ContextType.CurrentFile,
         content: props.getActiveSelectionContent(),
+        currentCellContents: props.getCurrentCellContents(),
         filePath: activeDocumentInfo.filePath,
         cellIndex: activeDocumentInfo.activeCellIndex,
         startLine: activeDocumentInfo.selection.start.line + 1,

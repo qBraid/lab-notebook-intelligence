@@ -170,6 +170,7 @@ class ContextRequest:
 class ContextItem:
     type: ContextType
     content: str
+    currentCellContents: dict = None
     filePath: str = None
     cellIndex: int = None
     startLine: int = None

@@ -36,7 +36,6 @@ import { ContentsManager, KernelSpecManager } from '@jupyterlab/services';
 import { LabIcon } from '@jupyterlab/ui-components';
 
 import { Menu, Panel, Widget } from '@lumino/widgets';
-import { PartialJSONObject } from '@lumino/coreutils';
 import { CommandRegistry } from '@lumino/commands';
 import { IStatusBar } from '@jupyterlab/statusbar';
 import { CodeEditor } from '@jupyterlab/codeeditor';
@@ -49,14 +48,14 @@ import {
   RunChatCompletionType
 } from './chat-sidebar';
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
-import { IActiveDocumentInfo } from './tokens';
+import { IActiveDocumentInfo, ICellContents } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 
 import {
+  cellOutputAsText,
   extractCodeFromMarkdown,
   markdownToComment,
-  removeAnsiChars,
   waitForDuration
 } from './utils';
 
@@ -225,6 +224,25 @@ class ActiveDocumentWatcher {
     }
 
     return '';
+  }
+
+  static getCurrentCellContents(): ICellContents {
+    const activeDocumentInfo = ActiveDocumentWatcher.activeDocumentInfo;
+    const activeWidget = activeDocumentInfo.activeWidget;
+
+    if (activeWidget instanceof NotebookPanel) {
+      const np = activeWidget as NotebookPanel;
+      const activeCell = np.content.activeCell;
+      const input = activeCell.model.sharedModel.source.trim();
+      let output = '';
+      if (activeCell instanceof CodeCell) {
+        output = cellOutputAsText(np.content.activeCell as CodeCell);
+      }
+
+      return { input, output };
+    }
+
+    return null;
   }
 
   static fireActiveDocumentChangedEvent() {
@@ -446,6 +464,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       getActiveSelectionContent: (): string => {
         return ActiveDocumentWatcher.getActiveSelectionContent();
+      },
+      getCurrentCellContents: (): ICellContents => {
+        return ActiveDocumentWatcher.getCurrentCellContents();
       },
       openFile: (path: string) => {
         docManager.openOrReveal(path);
@@ -886,26 +907,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
       execute: () => {
         const np = app.shell.currentWidget as NotebookPanel;
         const activeCell = np.content.activeCell;
-        let content = '';
-        const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
-        for (const output of outputs) {
-          if (output.output_type === 'execute_result') {
-            content +=
-              typeof output.data === 'object' && output.data !== null
-                ? (output.data as PartialJSONObject)['text/plain']
-                : '' + '\n';
-          } else if (output.output_type === 'stream') {
-            content += output.text + '\n';
-          } else if (output.output_type === 'error') {
-            if (Array.isArray(output.traceback)) {
-              content += output.ename + ': ' + output.evalue + '\n';
-              content +=
-                output.traceback
-                  .map(item => removeAnsiChars(item as string))
-                  .join('\n') + '\n';
-            }
-          }
+        if (!(activeCell instanceof CodeCell)) {
+          return;
         }
+        const content = cellOutputAsText(activeCell as CodeCell);
         document.dispatchEvent(
           new CustomEvent('copilotSidebar:runPrompt', {
             detail: {
@@ -942,19 +947,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
       execute: () => {
         const np = app.shell.currentWidget as NotebookPanel;
         const activeCell = np.content.activeCell;
-        let content = '';
-        const outputs = (activeCell as CodeCell).outputArea.model.toJSON();
-        for (const output of outputs) {
-          if (output.output_type === 'error') {
-            if (Array.isArray(output.traceback)) {
-              content += output.ename + ': ' + output.evalue + '\n';
-              content +=
-                output.traceback
-                  .map(item => removeAnsiChars(item as string))
-                  .join('\n') + '\n';
-            }
-          }
+        if (!(activeCell instanceof CodeCell)) {
+          return;
         }
+        const content = cellOutputAsText(activeCell as CodeCell);
         document.dispatchEvent(
           new CustomEvent('copilotSidebar:runPrompt', {
             detail: {

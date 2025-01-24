@@ -1,5 +1,8 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import { CodeCell } from '@jupyterlab/cells';
+import { PartialJSONObject } from '@lumino/coreutils';
+
 export function removeAnsiChars(str: string): string {
   return str.replace(
     // eslint-disable-next-line no-control-regex
@@ -68,4 +71,29 @@ export function markdownToComment(source: string): string {
     .split('\n')
     .map(line => `# ${line}`)
     .join('\n');
+}
+
+export function cellOutputAsText(cell: CodeCell): string {
+  let content = '';
+  const outputs = cell.outputArea.model.toJSON();
+  for (const output of outputs) {
+    if (output.output_type === 'execute_result') {
+      content +=
+        typeof output.data === 'object' && output.data !== null
+          ? (output.data as PartialJSONObject)['text/plain']
+          : '' + '\n';
+    } else if (output.output_type === 'stream') {
+      content += output.text + '\n';
+    } else if (output.output_type === 'error') {
+      if (Array.isArray(output.traceback)) {
+        content += output.ename + ': ' + output.evalue + '\n';
+        content +=
+          output.traceback
+            .map(item => removeAnsiChars(item as string))
+            .join('\n') + '\n';
+      }
+    }
+  }
+
+  return content;
 }
