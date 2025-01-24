@@ -341,7 +341,7 @@ class GitHubInlineCompletionProvider
         })
         .catch(reason => {
           console.error(
-            `The notebook_intelligence server extension appears to be missing.\n${reason}`
+            `Failed to fetch inline completion suggestions.\n${reason}`
           );
         });
     });

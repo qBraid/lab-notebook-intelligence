@@ -5,9 +5,11 @@ from os import path
 import os
 import sys
 from typing import Dict
+import logging
 from notebook_intelligence.api import AIModel, CancelToken, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
 from notebook_intelligence.github_copilot import completions
 
+log = logging.getLogger(__name__)
 
 DEFAULT_CHAT_PARTICIPANT_ID = 'default'
 RESERVED_PARTICIPANT_IDS = set([
@@ -37,7 +39,7 @@ class AIServiceManager(Host):
         subfolders = [f.path for f in os.scandir(extensions_dir) if f.is_dir()]
         for extension_dir in list(subfolders):
             try:
-                print(f"Loading NBI extension from '{extension_dir}'...")
+                log.info(f"Loading NBI extension from '{extension_dir}'...")
                 metadata_path = path.join(extension_dir, "extension.json")
                 if path.exists(metadata_path) and path.isfile(metadata_path):
                     with open(metadata_path, 'r') as file:
@@ -46,9 +48,9 @@ class AIServiceManager(Host):
                         extension = self.load_extension(class_name)
                         if extension:
                             extension.activate(self)
-                            print(f"Activated NBI extension '{class_name}'.")
+                            log.info(f"Activated NBI extension '{class_name}'.")
             except Exception as e:
-                print(f"Failed to load NBI extension from '{extension_dir}'!\n{e}")
+                log.error(f"Failed to load NBI extension from '{extension_dir}'!\n{e}")
     
     def load_extension(self, extension_class: str) -> NotebookIntelligenceExtension:
         import importlib
@@ -67,16 +69,16 @@ class AIServiceManager(Host):
 
     def register_chat_participant(self, participant: ChatParticipant):
         if participant.id in RESERVED_PARTICIPANT_IDS:
-            print(f"Participant ID '{participant.id}' is reserved!")
+            log.error(f"Participant ID '{participant.id}' is reserved!")
             return
         if participant.id in self.chat_participants:
-            print(f"Participant ID '{participant.id}' is already in use!")
+            log.error(f"Participant ID '{participant.id}' is already in use!")
             return
         self.chat_participants[participant.id] = participant
 
     def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         if provider.id in self.completion_context_providers:
-            print(f"Completion Context Provider ID '{provider.id}' is already in use!")
+            log.error(f"Completion Context Provider ID '{provider.id}' is already in use!")
             return
         self.completion_context_providers[provider.id] = provider
 

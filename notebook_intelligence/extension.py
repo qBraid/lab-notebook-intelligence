@@ -7,6 +7,7 @@ from os import path
 from typing import Union
 import uuid
 import threading
+import logging
 
 from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
@@ -19,6 +20,7 @@ import notebook_intelligence.github_copilot as github_copilot
 from notebook_intelligence.github_copilot_participant import GithubCopilotChatParticipant
 
 ai_service_manager: AIServiceManager = None
+log = logging.getLogger(__name__)
 
 class GetCapabilitiesHandler(APIHandler):
     @tornado.web.authenticated
@@ -48,7 +50,14 @@ class GetGitHubLoginStatusHandler(APIHandler):
 class PostGitHubLoginHandler(APIHandler):
     @tornado.web.authenticated
     def post(self):
-        self.finish(json.dumps(github_copilot.login()))
+        device_verification_info = github_copilot.login()
+        if device_verification_info is None:
+            self.set_status(500)
+            self.finish(json.dumps({
+                "error": "Failed to get device verification info from GitHub Copilot"
+            }))
+            return
+        self.finish(json.dumps(device_verification_info))
 
 class GetGitHubLogoutHandler(APIHandler):
     @tornado.web.authenticated
@@ -401,7 +410,7 @@ class NotebookIntelligenceJupyterExtApp(ExtensionApp):
         pass
 
     async def stop_extension(self):
-        print(f"Stopping {self.name} extension...")
+        log.info(f"Stopping {self.name} extension...")
         github_copilot.handle_stop_request()
 
     def _setup_handlers(self, web_app):

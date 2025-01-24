@@ -78,9 +78,7 @@ export class GitHubCopilot {
           this.updateGitHubLoginStatus();
         })
         .catch(reason => {
-          console.error(
-            `The notebook_intelligence server extension appears to be missing.\n${reason}`
-          );
+          console.error(`Failed to login to GitHub Copilot.\n${reason}`);
           reject(reason);
         });
     });
@@ -96,9 +94,7 @@ export class GitHubCopilot {
           });
         })
         .catch(reason => {
-          console.error(
-            `The notebook_intelligence server extension appears to be missing.\n${reason}`
-          );
+          console.error(`Failed to logout from GitHub Copilot.\n${reason}`);
           reject(reason);
         });
     });
@@ -116,7 +112,7 @@ export class GitHubCopilot {
         })
         .catch(reason => {
           console.error(
-            `The notebook_intelligence server extension appears to be missing.\n${reason}`
+            `Failed to fetch GitHub Copilot login status.\n${reason}`
           );
           reject(reason);
         });

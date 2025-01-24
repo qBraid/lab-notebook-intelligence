@@ -10,9 +10,12 @@ import uuid
 import secrets
 import sseclient
 import datetime as dt
+import logging
 from notebook_intelligence.api import CancelToken, ChatResponse, CompletionContext
 
 from ._version import __version__ as NBI_VERSION
+
+log = logging.getLogger(__name__)
 
 EDITOR_VERSION = f"NotebookIntelligence/{NBI_VERSION}"
 EDITOR_PLUGIN_VERSION = f"NotebookIntelligence/{NBI_VERSION}"
@@ -61,7 +64,8 @@ def get_login_status():
 
 def login():
     login_info = get_device_verification_info()
-    wait_for_tokens()
+    if login_info is not None:
+        wait_for_tokens()
     return login_info
 
 def logout():
@@ -89,24 +93,28 @@ def get_device_verification_info():
         "client_id": CLIENT_ID,
         "scope": "read:user"
     }
-    resp = requests.post('https://github.com/login/device/code',
-        headers={
-            'accept': 'application/json',
-            'editor-version': EDITOR_VERSION,
-            'editor-plugin-version': EDITOR_PLUGIN_VERSION,
-            'content-type': 'application/json',
-            'user-agent': USER_AGENT,
-            'accept-encoding': 'gzip,deflate,br'
-        },
-        data=json.dumps(data)
-    )
+    try:
+        resp = requests.post('https://github.com/login/device/code',
+            headers={
+                'accept': 'application/json',
+                'editor-version': EDITOR_VERSION,
+                'editor-plugin-version': EDITOR_PLUGIN_VERSION,
+                'content-type': 'application/json',
+                'user-agent': USER_AGENT,
+                'accept-encoding': 'gzip,deflate,br'
+            },
+            data=json.dumps(data)
+        )
 
-    resp_json = resp.json()
-    github_auth["verification_uri"] = resp_json.get('verification_uri')
-    github_auth["user_code"] = resp_json.get('user_code')
-    github_auth["device_code"] = resp_json.get('device_code')
+        resp_json = resp.json()
+        github_auth["verification_uri"] = resp_json.get('verification_uri')
+        github_auth["user_code"] = resp_json.get('user_code')
+        github_auth["device_code"] = resp_json.get('device_code')
 
-    github_auth["status"] = LoginStatus.ACTIVATING_DEVICE
+        github_auth["status"] = LoginStatus.ACTIVATING_DEVICE
+    except Exception as e:
+        log.error(f"Failed to get device verification info: {e}")
+        return None
 
     # user needs to visit the verification_uri and enter the user_code
     return {
@@ -120,7 +128,7 @@ def wait_for_user_access_token_thread_func():
     token_from_env = os.environ.get("GITHUB_ACCESS_TOKEN", None)
 
     if token_from_env is not None:
-        print("Setting GitHub access token from environment variable")
+        log.info("Setting GitHub access token from environment variable")
         github_auth["access_token"] = token_from_env
         get_access_code_thread = None
         return
@@ -135,27 +143,30 @@ def wait_for_user_access_token_thread_func():
             "device_code": github_auth["device_code"],
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
         }
-        resp = requests.post('https://github.com/login/oauth/access_token',
-            headers={
-            'accept': 'application/json',
-            'editor-version': EDITOR_VERSION,
-            'editor-plugin-version': EDITOR_PLUGIN_VERSION,
-            'content-type': 'application/json',
-            'user-agent': USER_AGENT,
-            'accept-encoding': 'gzip,deflate,br'
-            },
-            data=json.dumps(data)
-        )
+        try:
+            resp = requests.post('https://github.com/login/oauth/access_token',
+                headers={
+                'accept': 'application/json',
+                'editor-version': EDITOR_VERSION,
+                'editor-plugin-version': EDITOR_PLUGIN_VERSION,
+                'content-type': 'application/json',
+                'user-agent': USER_AGENT,
+                'accept-encoding': 'gzip,deflate,br'
+                },
+                data=json.dumps(data)
+            )
 
-        resp_json = resp.json()
-        access_token = resp_json.get('access_token')
-        # print(f"ACCESS TOKEN {access_token}")
+            resp_json = resp.json()
+            access_token = resp_json.get('access_token')
+            # log.info(f"ACCESS TOKEN {access_token}")
 
-        if access_token:
-            github_auth["access_token"] = access_token
-            get_token()
-            get_access_code_thread = None
-            break
+            if access_token:
+                github_auth["access_token"] = access_token
+                get_token()
+                get_access_code_thread = None
+                break
+        except Exception as e:
+            log.error(f"Failed to get access token from GitHub Copilot: {e}")
 
         time.sleep(ACCESS_TOKEN_THREAD_SLEEP_INTERVAL)
 
@@ -168,29 +179,32 @@ def get_token():
 
     github_auth["status"] = LoginStatus.LOGGING_IN
 
-    resp = requests.get('https://api.github.com/copilot_internal/v2/token', headers={
-        'authorization': f'token {access_token}',
-        'editor-version': EDITOR_VERSION,
-        'editor-plugin-version': EDITOR_PLUGIN_VERSION,
-        'user-agent': USER_AGENT
-    })
+    try:
+        resp = requests.get('https://api.github.com/copilot_internal/v2/token', headers={
+            'authorization': f'token {access_token}',
+            'editor-version': EDITOR_VERSION,
+            'editor-plugin-version': EDITOR_PLUGIN_VERSION,
+            'user-agent': USER_AGENT
+        })
 
-    resp_json = resp.json()
-    token = resp_json.get('token')
-    github_auth["token"] = token
-    expires_at = resp_json.get('expires_at')
-    if expires_at is not None:
-        github_auth["token_expires_at"] = dt.datetime.fromtimestamp(expires_at)
-    else:
-        github_auth["token_expires_at"] = dt.datetime.now() + dt.timedelta(seconds=TOKEN_REFRESH_INTERVAL)
-    github_auth["verification_uri"] = None
-    github_auth["user_code"] = None
-    github_auth["status"] = LoginStatus.LOGGED_IN
+        resp_json = resp.json()
+        token = resp_json.get('token')
+        github_auth["token"] = token
+        expires_at = resp_json.get('expires_at')
+        if expires_at is not None:
+            github_auth["token_expires_at"] = dt.datetime.fromtimestamp(expires_at)
+        else:
+            github_auth["token_expires_at"] = dt.datetime.now() + dt.timedelta(seconds=TOKEN_REFRESH_INTERVAL)
+        github_auth["verification_uri"] = None
+        github_auth["user_code"] = None
+        github_auth["status"] = LoginStatus.LOGGED_IN
 
-    endpoints = resp_json.get('endpoints', {})
-    API_ENDPOINT = endpoints.get('api', API_ENDPOINT)
-    PROXY_ENDPOINT = endpoints.get('proxy', PROXY_ENDPOINT)
-    TOKEN_REFRESH_INTERVAL = resp_json.get('refresh_in', TOKEN_REFRESH_INTERVAL)
+        endpoints = resp_json.get('endpoints', {})
+        API_ENDPOINT = endpoints.get('api', API_ENDPOINT)
+        PROXY_ENDPOINT = endpoints.get('proxy', PROXY_ENDPOINT)
+        TOKEN_REFRESH_INTERVAL = resp_json.get('refresh_in', TOKEN_REFRESH_INTERVAL)
+    except Exception as e:
+        log.error(f"Failed to get token from GitHub Copilot: {e}")
 
 def get_token_thread_func():
     global github_auth, get_token_thread, last_token_fetch_time
@@ -203,7 +217,7 @@ def get_token_thread_func():
         # update token if 10 seconds or less left to expiration
         if github_auth["access_token"] is not None and (token is None or (dt.datetime.now() - github_auth["token_expires_at"]).total_seconds() > -10):
             if (dt.datetime.now() - last_token_fetch_time).total_seconds() > TOKEN_FETCH_INTERVAL:
-                print("Refreshing token")
+                log.info("Refreshing token")
                 get_token()
                 last_token_fetch_time = dt.datetime.now()
 
@@ -271,7 +285,8 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
                 }
             }
         )
-    except requests.exceptions.ConnectionError:
+    except Exception as e:
+        log.error(f"Failed to get inline completions: {e}")
         return ''
 
     result = ''

@@ -9,6 +9,10 @@ except ImportError:
     import warnings
     warnings.warn("Importing 'notebook_intelligence' outside a proper installation.")
     __version__ = "dev"
+
+import logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(filename)s - %(levelname)s - %(message)s', level=logging.INFO)
+
 from .extension import NotebookIntelligenceJupyterExtApp
 from .api import *
 
