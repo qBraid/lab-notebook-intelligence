@@ -329,7 +329,7 @@ class WebsocketChatHandler(websocket.WebSocketHandler):
                 start_line = context["startLine"]
                 end_line = context["endLine"]
                 current_cell_contents = context["currentCellContents"]
-                current_cell_context = f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_contents["input"]}``` and currently selected cell output is: ```{current_cell_contents["output"]}```." if current_cell_contents is not None else ""
+                current_cell_context = f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_contents["input"]}``` and currently selected cell output is: ```{current_cell_contents["output"]}```. If user asks a question about 'this' cell then assume that user is referring to currently selected cell." if current_cell_contents is not None else ""
                 self.chat_history.add_message(chatId, {"role": "user", "content": f"Use this as additional context: ```{context["content"]}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
             self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
             response_emitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
