@@ -7,6 +7,7 @@ import {
 } from '@jupyterlab/application';
 
 import { IDocumentManager } from '@jupyterlab/docmanager';
+import { DocumentWidget } from '@jupyterlab/docregistry';
 
 import { Dialog } from '@jupyterlab/apputils';
 
@@ -162,10 +163,18 @@ class ActiveDocumentWatcher {
         activeDocumentInfo.serverRoot + '/' + folder;
       activeDocumentInfo.selection = fe.content.editor.getSelection();
     } else {
-      activeDocumentInfo.filename = '';
-      activeDocumentInfo.filePath = '';
+      const dw = activeWidget as DocumentWidget;
+      const sessionContext = dw?.context?.sessionContext;
+      activeDocumentInfo.filename = sessionContext?.name || '';
+      activeDocumentInfo.filePath = sessionContext?.path || '';
+      const lastSlashIndex = activeDocumentInfo.filePath.lastIndexOf('/');
+      const folder =
+        lastSlashIndex === -1
+          ? ''
+          : activeDocumentInfo.filePath.substring(0, lastSlashIndex);
+      activeDocumentInfo.parentDirectory =
+        activeDocumentInfo.serverRoot + '/' + folder;
       activeDocumentInfo.language = '';
-      activeDocumentInfo.parentDirectory = '';
     }
 
     ActiveDocumentWatcher.fireActiveDocumentChangedEvent();
@@ -221,6 +230,9 @@ class ActiveDocumentWatcher {
       } else {
         return getSelectionInEditor(editor);
       }
+    } else {
+      const dw = activeWidget as DocumentWidget;
+      return dw?.context?.model?.toString();
     }
 
     return '';
