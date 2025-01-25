@@ -68,9 +68,18 @@
   color: var(--jp-ui-font-color2);
 }
 
+.user-input-context-toggle {
+  cursor: pointer;
+}
+
+.user-input-context-toggle:hover {
+  background-color: var(--jp-layout-color2);
+}
+
 .user-input-context svg {
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
+  margin: -4px 0;
 }
 
 .sidebar-user-input .user-input-footer {

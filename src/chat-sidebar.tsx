@@ -1082,15 +1082,19 @@ function SidebarComponent(props: any) {
               >
                 <div>{currentFileContextTitle}</div>
                 {contextOn ? (
-                  <VscEye
+                  <div
+                    className="user-input-context-toggle"
                     onClick={() => setContextOn(!contextOn)}
-                    title="Use as context"
-                  />
+                  >
+                    <VscEye title="Use as context" />
+                  </div>
                 ) : (
-                  <VscEyeClosed
+                  <div
+                    className="user-input-context-toggle"
                     onClick={() => setContextOn(!contextOn)}
-                    title="Don't use as context"
-                  />
+                  >
+                    <VscEyeClosed title="Don't use as context" />
+                  </div>
                 )}
               </div>
             </div>
