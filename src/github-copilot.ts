@@ -49,7 +49,7 @@ export class GitHubCopilot {
     const wsUrl = URLExt.join(
       serverSettings.wsUrl,
       'notebook-intelligence',
-      'chat'
+      'copilot'
     );
 
     this._webSocket = new WebSocket(wsUrl);

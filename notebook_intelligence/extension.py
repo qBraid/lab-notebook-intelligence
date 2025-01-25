@@ -300,7 +300,7 @@ class MessageCallbackHandlers:
     response_emitter: WebsocketChatResponseEmitter
     cancel_token: CancelTokenImpl
 
-class WebsocketChatHandler(websocket.WebSocketHandler):
+class WebsocketCopilotHandler(websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         super().__init__(application, request, **kwargs)
         # TODO: cleanup
@@ -422,13 +422,13 @@ class NotebookIntelligenceJupyterExtApp(ExtensionApp):
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
         route_pattern_inline_completions = url_path_join(base_url, "notebook-intelligence", "inline-completions")
-        route_pattern_chat = url_path_join(base_url, "notebook-intelligence", "chat")
+        route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
         NotebookIntelligenceJupyterExtApp.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),
             (route_pattern_github_logout, GetGitHubLogoutHandler),
             (route_pattern_inline_completions, PostInlineCompletionsHandler),
-            (route_pattern_chat, WebsocketChatHandler),
+            (route_pattern_copilot, WebsocketCopilotHandler),
         ]
         web_app.add_handlers(host_pattern, NotebookIntelligenceJupyterExtApp.handlers)
