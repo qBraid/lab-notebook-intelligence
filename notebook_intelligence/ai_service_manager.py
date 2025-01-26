@@ -125,16 +125,25 @@ class AIServiceManager(Host):
         return await participant.handle_chat_request(request, response, options)
 
     async def get_completion_context(self, request: ContextRequest) -> CompletionContext:
+        cancel_token = request.cancel_token
         context = CompletionContext([])
 
         allowed_context_providers = request.participant.allowed_context_providers
 
+        if cancel_token.is_cancel_requested:
+            return context
+
         for provider in self.completion_context_providers:
+            if cancel_token.is_cancel_requested:
+                return context
             provider = self.completion_context_providers.get(provider)
             if provider.id not in allowed_context_providers and '*' not in allowed_context_providers:
                 continue
-            provider_context = provider.handle_completion_context_request(request)
-            if provider_context.items:
-                context.items += provider_context.items
+            try:
+                provider_context = provider.handle_completion_context_request(request)
+                if provider_context.items:
+                    context.items += provider_context.items
+            except Exception as e:
+                log.error(f"Error while getting completion context from provider '{provider.id}'!\n{e}")
 
         return context
