@@ -11,7 +11,6 @@ import { DocumentWidget } from '@jupyterlab/docregistry';
 
 import { Dialog } from '@jupyterlab/apputils';
 
-import { URLExt } from '@jupyterlab/coreutils';
 import { IEditorLanguageRegistry } from '@jupyterlab/codemirror';
 
 import { CodeCell } from '@jupyterlab/cells';
@@ -109,10 +108,6 @@ class ActiveDocumentWatcher {
     languageRegistry: IEditorLanguageRegistry
   ) {
     ActiveDocumentWatcher._languageRegistry = languageRegistry;
-    ActiveDocumentWatcher.activeDocumentInfo.serverRoot =
-      app.paths.directories.serverRoot;
-    ActiveDocumentWatcher.activeDocumentInfo.parentDirectory =
-      ActiveDocumentWatcher.activeDocumentInfo.serverRoot + '/';
 
     app.shell.currentChanged?.connect((_sender, args) => {
       ActiveDocumentWatcher.watchDocument(args.newValue);
@@ -147,14 +142,6 @@ class ActiveDocumentWatcher {
       activeDocumentInfo.language =
         (np.model?.sharedModel?.metadata?.kernelspec?.language as string) ||
         'python';
-      const lastSlashIndex = np.sessionContext.path.lastIndexOf('/');
-      const nbFolder =
-        lastSlashIndex === -1
-          ? ''
-          : np.sessionContext.path.substring(0, lastSlashIndex);
-      activeDocumentInfo.parentDirectory =
-        activeDocumentInfo.serverRoot + '/' + nbFolder;
-
       const { activeCellIndex, activeCell } = np.content;
       activeDocumentInfo.activeCellIndex = activeCellIndex;
       activeDocumentInfo.selection = activeCell.editor.getSelection();
@@ -171,13 +158,8 @@ class ActiveDocumentWatcher {
           contentsModel.mimetype
         ) || ActiveDocumentWatcher._languageRegistry.findByFileName(fileName);
       activeDocumentInfo.language = language?.name || 'unknown';
-      const lastSlashIndex = filePath.lastIndexOf('/');
-      const folder =
-        lastSlashIndex === -1 ? '' : filePath.substring(0, lastSlashIndex);
       activeDocumentInfo.filename = fileName;
       activeDocumentInfo.filePath = filePath;
-      activeDocumentInfo.parentDirectory =
-        activeDocumentInfo.serverRoot + '/' + folder;
       if (activeWidget instanceof FileEditorWidget) {
         const fe = activeWidget as FileEditorWidget;
         activeDocumentInfo.selection = fe.content.editor.getSelection();
@@ -279,8 +261,6 @@ class ActiveDocumentWatcher {
     filename: 'Untitled.ipynb',
     filePath: 'Untitled.ipynb',
     activeWidget: null,
-    serverRoot: '',
-    parentDirectory: '',
     activeCellIndex: -1,
     selection: null
   };
@@ -462,14 +442,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
       return new Promise<boolean>((resolve, reject) => {
         const checkIfActive = () => {
-          const activeFilePath = URLExt.join(
-            ActiveDocumentWatcher.activeDocumentInfo.parentDirectory || '',
-            ActiveDocumentWatcher.activeDocumentInfo.filename
-          );
-          const filePathToCheck = URLExt.join(
-            ActiveDocumentWatcher.activeDocumentInfo.serverRoot || '',
-            filePath
-          );
+          const activeFilePath =
+            ActiveDocumentWatcher.activeDocumentInfo.filePath;
+          const filePathToCheck = filePath;
           const currentWidget = app.shell.currentWidget;
           if (
             activeFilePath === filePathToCheck &&

@@ -8,8 +8,6 @@ export interface IActiveDocumentInfo {
   language: string;
   filename: string;
   filePath: string;
-  serverRoot?: string;
-  parentDirectory?: string;
   activeCellIndex: number;
   selection?: CodeEditor.IRange;
 }

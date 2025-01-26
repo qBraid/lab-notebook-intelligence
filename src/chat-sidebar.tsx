@@ -51,7 +51,6 @@ export interface IRunChatCompletionRequest {
   content: string;
   language?: string;
   filename?: string;
-  parentDirectory?: string;
   prefix?: string;
   suffix?: string;
   existingCode?: string;
@@ -634,7 +633,6 @@ function SidebarComponent(props: any) {
 
     const activeDocInfo: IActiveDocumentInfo = props.getActiveDocumentInfo();
     const extractedPrompt = prompt;
-    const parentDirectory = activeDocInfo.parentDirectory!;
     const contents: IChatMessageContent[] = [];
     const app = props.getApp();
     const additionalContext: IContextItem[] = [];
@@ -659,7 +657,6 @@ function SidebarComponent(props: any) {
         content: extractedPrompt,
         language: activeDocInfo.language,
         filename: activeDocInfo.filename,
-        parentDirectory,
         additionalContext
       },
       {
@@ -1285,7 +1282,6 @@ function InlinePromptComponent(props: any) {
         content: prompt,
         language: undefined,
         filename: undefined,
-        parentDirectory: '',
         prefix: props.prefix,
         suffix: props.suffix,
         existingCode: props.existingCode
