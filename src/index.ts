@@ -12,6 +12,7 @@ import { DocumentWidget } from '@jupyterlab/docregistry';
 import { Dialog } from '@jupyterlab/apputils';
 
 import { URLExt } from '@jupyterlab/coreutils';
+import { IEditorLanguageRegistry } from '@jupyterlab/codemirror';
 
 import { CodeCell } from '@jupyterlab/cells';
 import { ISharedNotebook } from '@jupyter/ydoc';
@@ -103,7 +104,11 @@ const emptyNotebookContent: any = {
 };
 
 class ActiveDocumentWatcher {
-  static initialize(app: JupyterLab) {
+  static initialize(
+    app: JupyterLab,
+    languageRegistry: IEditorLanguageRegistry
+  ) {
+    ActiveDocumentWatcher._languageRegistry = languageRegistry;
     ActiveDocumentWatcher.activeDocumentInfo.serverRoot =
       app.paths.directories.serverRoot;
     ActiveDocumentWatcher.activeDocumentInfo.parentDirectory =
@@ -122,10 +127,10 @@ class ActiveDocumentWatcher {
     if (ActiveDocumentWatcher.activeDocumentInfo.activeWidget === widget) {
       return;
     }
-    clearInterval(ActiveDocumentWatcher.watchTimer);
+    clearInterval(ActiveDocumentWatcher._watchTimer);
     ActiveDocumentWatcher.activeDocumentInfo.activeWidget = widget;
 
-    ActiveDocumentWatcher.watchTimer = setInterval(() => {
+    ActiveDocumentWatcher._watchTimer = setInterval(() => {
       ActiveDocumentWatcher.handleWatchDocument();
     }, DOCUMET_WATCH_INTERVAL);
 
@@ -153,34 +158,32 @@ class ActiveDocumentWatcher {
       const { activeCellIndex, activeCell } = np.content;
       activeDocumentInfo.activeCellIndex = activeCellIndex;
       activeDocumentInfo.selection = activeCell.editor.getSelection();
-    } else if (activeWidget instanceof FileEditorWidget) {
-      const fe = activeWidget as FileEditorWidget;
-      activeDocumentInfo.language = 'python';
-      const lastSlashIndex = fe.context.path.lastIndexOf('/');
-      const folder =
-        lastSlashIndex === -1
-          ? ''
-          : fe.context.path.substring(0, lastSlashIndex);
-      activeDocumentInfo.filename = fe.context.path.substring(
-        lastSlashIndex + 1
-      );
-      activeDocumentInfo.filePath = fe.context.path;
-      activeDocumentInfo.parentDirectory =
-        activeDocumentInfo.serverRoot + '/' + folder;
-      activeDocumentInfo.selection = fe.content.editor.getSelection();
-    } else {
+    } else if (activeWidget) {
       const dw = activeWidget as DocumentWidget;
-      const sessionContext = dw?.context?.sessionContext;
-      activeDocumentInfo.filename = sessionContext?.name || '';
-      activeDocumentInfo.filePath = sessionContext?.path || '';
-      const lastSlashIndex = activeDocumentInfo.filePath.lastIndexOf('/');
+      const contentsModel = dw.context?.contentsModel;
+      if (!contentsModel) {
+        return;
+      }
+      const fileName = contentsModel.name;
+      const filePath = contentsModel.path;
+      const language =
+        ActiveDocumentWatcher._languageRegistry.findByMIME(
+          contentsModel.mimetype
+        ) || ActiveDocumentWatcher._languageRegistry.findByFileName(fileName);
+      activeDocumentInfo.language = language?.name || 'unknown';
+      const lastSlashIndex = filePath.lastIndexOf('/');
       const folder =
-        lastSlashIndex === -1
-          ? ''
-          : activeDocumentInfo.filePath.substring(0, lastSlashIndex);
+        lastSlashIndex === -1 ? '' : filePath.substring(0, lastSlashIndex);
+      activeDocumentInfo.filename = fileName;
+      activeDocumentInfo.filePath = filePath;
       activeDocumentInfo.parentDirectory =
         activeDocumentInfo.serverRoot + '/' + folder;
-      activeDocumentInfo.language = '';
+      if (activeWidget instanceof FileEditorWidget) {
+        const fe = activeWidget as FileEditorWidget;
+        activeDocumentInfo.selection = fe.content.editor.getSelection();
+      } else {
+        activeDocumentInfo.selection = undefined;
+      }
     }
 
     ActiveDocumentWatcher.fireActiveDocumentChangedEvent();
@@ -240,8 +243,6 @@ class ActiveDocumentWatcher {
       const dw = activeWidget as DocumentWidget;
       return dw?.context?.model?.toString();
     }
-
-    return '';
   }
 
   static getCurrentCellContents(): ICellContents {
@@ -283,7 +284,8 @@ class ActiveDocumentWatcher {
     activeCellIndex: -1,
     selection: null
   };
-  static watchTimer: any;
+  private static _watchTimer: any;
+  private static _languageRegistry: IEditorLanguageRegistry;
 }
 
 class GitHubInlineCompletionProvider
@@ -405,13 +407,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
   id: '@mbektas/notebook-intelligence:plugin',
   description: 'Notebook Intelligence',
   autoStart: true,
-  requires: [ICompletionProviderManager, IDocumentManager, IDefaultFileBrowser],
+  requires: [
+    ICompletionProviderManager,
+    IDocumentManager,
+    IDefaultFileBrowser,
+    IEditorLanguageRegistry
+  ],
   optional: [ISettingRegistry, IStatusBar],
   activate: (
     app: JupyterFrontEnd,
     completionManager: ICompletionProviderManager,
     docManager: IDocumentManager,
     defaultBrowser: IDefaultFileBrowser,
+    languageRegistry: IEditorLanguageRegistry,
     settingRegistry: ISettingRegistry | null,
     statusBar: IStatusBar | null
   ) => {
@@ -1069,7 +1077,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     }
 
     const jlabApp = app as JupyterLab;
-    ActiveDocumentWatcher.initialize(jlabApp);
+    ActiveDocumentWatcher.initialize(jlabApp, languageRegistry);
 
     GitHubCopilot.initialize();
   }

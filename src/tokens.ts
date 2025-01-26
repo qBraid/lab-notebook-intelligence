@@ -11,7 +11,7 @@ export interface IActiveDocumentInfo {
   serverRoot?: string;
   parentDirectory?: string;
   activeCellIndex: number;
-  selection: CodeEditor.IRange;
+  selection?: CodeEditor.IRange;
 }
 
 export interface IChatCompletionResponseEmitter {

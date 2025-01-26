@@ -639,14 +639,15 @@ function SidebarComponent(props: any) {
     const app = props.getApp();
     const additionalContext: IContextItem[] = [];
     if (contextOn && activeDocumentInfo) {
+      const selection = activeDocumentInfo.selection;
       additionalContext.push({
         type: ContextType.CurrentFile,
         content: props.getActiveSelectionContent(),
         currentCellContents: props.getCurrentCellContents(),
         filePath: activeDocumentInfo.filePath,
         cellIndex: activeDocumentInfo.activeCellIndex,
-        startLine: activeDocumentInfo.selection.start.line + 1,
-        endLine: activeDocumentInfo.selection.end.line + 1
+        startLine: selection ? selection.start.line + 1 : 1,
+        endLine: selection ? selection.end.line + 1 : 1
       });
     }
 
@@ -991,7 +992,7 @@ function SidebarComponent(props: any) {
       return '';
     }
     const wholeFile =
-      activeDocumentInfo.selection === null ||
+      !activeDocumentInfo.selection ||
       (activeDocumentInfo.selection.start.line ===
         activeDocumentInfo.selection.end.line &&
         activeDocumentInfo.selection.start.column ===
