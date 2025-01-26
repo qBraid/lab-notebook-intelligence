@@ -13,6 +13,8 @@ class RequestDataType(str, Enum):
     RunUICommandResponse = 'run-ui-command-response'
     GenerateCode = 'generate-code'
     CancelChatRequest = 'cancel-chat-request'
+    InlineCompletionRequest = 'inline-completion-request'
+    CancelInlineCompletionRequest = 'cancel-inline-completion-request'
 
 class BackendMessageType(str, Enum):
     StreamMessage = 'stream-message'

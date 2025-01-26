@@ -217,7 +217,7 @@ def get_token_thread_func():
         # update token if 10 seconds or less left to expiration
         if github_auth["access_token"] is not None and (token is None or (dt.datetime.now() - github_auth["token_expires_at"]).total_seconds() > -10):
             if (dt.datetime.now() - last_token_fetch_time).total_seconds() > TOKEN_FETCH_INTERVAL:
-                log.info("Refreshing token")
+                log.info("Refreshing GitHub token")
                 get_token()
                 last_token_fetch_time = dt.datetime.now()
 
@@ -251,11 +251,14 @@ def _generate_copilot_headers():
         'vscode-machineid': MACHINE_ID,
     }
 
-def inline_completions(prefix, suffix, language, filename, context: CompletionContext):
+def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken):
     global github_auth
     token = github_auth['token']
 
     prompt = f"# Path: {filename}"
+
+    if cancel_token.is_cancel_requested:
+        return ''
 
     if context is not None:
         for item in context.items:
@@ -265,6 +268,8 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
     prompt += f"{NL}{prefix}"
 
     try:
+        if cancel_token.is_cancel_requested:
+            return ''
         resp = requests.post(f"{PROXY_ENDPOINT}/v1/engines/copilot-codex/completions",
             headers={'authorization': f'Bearer {token}'},
                 json={
@@ -287,6 +292,9 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
         )
     except Exception as e:
         log.error(f"Failed to get inline completions: {e}")
+        return ''
+
+    if cancel_token.is_cancel_requested:
         return ''
 
     result = ''

@@ -49,7 +49,12 @@ import {
   RunChatCompletionType
 } from './chat-sidebar';
 import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
-import { IActiveDocumentInfo, ICellContents } from './tokens';
+import {
+  BackendMessageType,
+  IActiveDocumentInfo,
+  ICellContents,
+  RequestDataType
+} from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 
@@ -59,6 +64,7 @@ import {
   markdownToComment,
   waitForDuration
 } from './utils';
+import { UUID } from '@lumino/coreutils';
 
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat-user-input';
@@ -338,24 +344,42 @@ class GitHubInlineCompletionProvider
         return;
       }
 
+      if (this._lastRequestInfo) {
+        GitHubCopilot.sendWebSocketMessage(
+          this._lastRequestInfo.messageId,
+          RequestDataType.CancelInlineCompletionRequest,
+          { chatId: this._lastRequestInfo.chatId }
+        );
+      }
+
+      const messageId = UUID.uuid4();
+      const chatId = UUID.uuid4();
+      this._lastRequestInfo = { chatId, messageId };
+
       GitHubCopilot.inlineCompletionsRequest(
+        chatId,
+        messageId,
         preContent + preCursor,
         postCursor + postContent,
         language,
-        ActiveDocumentWatcher.activeDocumentInfo.filename
-      )
-        .then(response => {
-          items.push({
-            insertText: response.data
-          });
+        ActiveDocumentWatcher.activeDocumentInfo.filename,
+        {
+          emit: (response: any) => {
+            if (
+              response.type === BackendMessageType.StreamMessage &&
+              response.id === this._lastRequestInfo.messageId
+            ) {
+              items.push({
+                insertText: response.data.completions
+              });
 
-          resolve({ items });
-        })
-        .catch(reason => {
-          console.error(
-            `Failed to fetch inline completion suggestions.\n${reason}`
-          );
-        });
+              resolve({ items });
+            } else {
+              reject();
+            }
+          }
+        }
+      );
     });
   }
 
@@ -370,6 +394,8 @@ class GitHubInlineCompletionProvider
   get icon(): LabIcon.ILabIcon {
     return githuCopilotIcon;
   }
+
+  private _lastRequestInfo: { chatId: string; messageId: string } = null;
 }
 
 /**

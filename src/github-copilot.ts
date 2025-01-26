@@ -198,19 +198,32 @@ export class GitHubCopilot {
   }
 
   static async inlineCompletionsRequest(
+    chatId: string,
+    messageId: string,
     prefix: string,
     suffix: string,
     language: string,
-    filename: string
+    filename: string,
+    responseEmitter: IChatCompletionResponseEmitter
   ) {
-    return requestAPI<any>('inline-completions', {
-      method: 'POST',
-      body: JSON.stringify({
-        prefix,
-        suffix,
-        language,
-        filename
-      })
+    this._messageReceived.connect((_, msg) => {
+      msg = JSON.parse(msg);
+      if (msg.id === messageId) {
+        responseEmitter.emit(msg);
+      }
     });
+    this._webSocket.send(
+      JSON.stringify({
+        id: messageId,
+        type: RequestDataType.InlineCompletionRequest,
+        data: {
+          chatId,
+          prefix,
+          suffix,
+          language,
+          filename
+        }
+      })
+    );
   }
 }

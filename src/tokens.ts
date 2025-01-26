@@ -24,7 +24,9 @@ export enum RequestDataType {
   ClearChatHistory = 'clear-chat-history',
   RunUICommandResponse = 'run-ui-command-response',
   GenerateCode = 'generate-code',
-  CancelChatRequest = 'cancel-chat-request'
+  CancelChatRequest = 'cancel-chat-request',
+  InlineCompletionRequest = 'inline-completion-request',
+  CancelInlineCompletionRequest = 'cancel-inline-completion-request'
 }
 
 export enum BackendMessageType {

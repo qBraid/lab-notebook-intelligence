@@ -64,22 +64,6 @@ class GetGitHubLogoutHandler(APIHandler):
     def get(self):
         self.finish(json.dumps(github_copilot.logout()))
 
-
-class PostInlineCompletionsHandler(APIHandler):
-    @tornado.web.authenticated
-    async def post(self):
-        data = self.get_json_body()
-        prefix = data['prefix']
-        suffix = data['suffix']
-        language = data['language']
-        filename = data['filename']
-
-        context = await ai_service_manager.get_completion_context(ContextRequest(ContextRequestType.InlineCompletion, prefix, suffix, language, filename, participant=ai_service_manager.get_chat_participant(prefix)))
-        completions = github_copilot.inline_completions(prefix, suffix, language, filename, context)
-        self.finish(json.dumps({
-            "data": completions
-        }))
-
 class ChatHistory:
     """
     History of chat messages, key is chat id, value is list of messages
@@ -122,7 +106,7 @@ class ChatHistory:
     def get_history(self, chatId):
         return self.messages.get(chatId, [])
 
-class WebsocketChatResponseEmitter(ChatResponse):
+class WebsocketCopilotResponseEmitter(ChatResponse):
     def __init__(self, chatId, messageId, websocket_handler, chat_history):
         super().__init__()
         self.chatId = chatId
@@ -297,7 +281,7 @@ class CancelTokenImpl(CancelToken):
 
 @dataclass
 class MessageCallbackHandlers:
-    response_emitter: WebsocketChatResponseEmitter
+    response_emitter: WebsocketCopilotResponseEmitter
     cancel_token: CancelTokenImpl
 
 class WebsocketCopilotHandler(websocket.WebSocketHandler):
@@ -332,7 +316,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
                 current_cell_context = f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_contents["input"]}``` and currently selected cell output is: ```{current_cell_contents["output"]}```. If user asks a question about 'this' cell then assume that user is referring to currently selected cell." if current_cell_contents is not None else ""
                 self.chat_history.add_message(chatId, {"role": "user", "content": f"Use this as additional context: ```{context["content"]}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
             self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
-            response_emitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
+            response_emitter = WebsocketCopilotResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
             self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
             thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter),))
@@ -353,10 +337,25 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             if existing_code != '':
                 self.chat_history.add_message(chatId, {"role": "user", "content": f"You are asked to modify the existing code. Generate a replacement for this existing code : ```{existing_code}```"})
             self.chat_history.add_message(chatId, {"role": "user", "content": f"Generate code for: {prompt}"})
-            response_emitter = WebsocketChatResponseEmitter(chatId, messageId, self, self.chat_history)
+            response_emitter = WebsocketCopilotResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
             self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
             thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing leading and trailing code sections.{" Update the existing code section and return a modified version. Don't just return the update, recreate the existing code section with the update." if existing_code != '' else ''} Be concise and return only code as a response. Don't include leading content or trailing content in your response, they are provided only for context. You can reuse methods and symbols defined in leading and trailing content."}),))
+            thread.start()
+        elif messageType == RequestDataType.InlineCompletionRequest:
+            data = msg['data']
+            chatId = data['chatId']
+            prefix = data['prefix']
+            suffix = data['suffix']
+            language = data['language']
+            filename = data['filename']
+            chat_history = ChatHistory()
+
+            response_emitter = WebsocketCopilotResponseEmitter(chatId, messageId, self, chat_history)
+            cancel_token = CancelTokenImpl()
+            self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
+
+            thread = threading.Thread(target=asyncio.run, args=(WebsocketCopilotHandler.handle_inline_completions(prefix, suffix, language, filename, response_emitter, cancel_token),))
             thread.start()
         elif messageType == RequestDataType.ChatUserInput:
             handlers = self._messageCallbackHandlers.get(messageId)
@@ -370,7 +369,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             if handlers is None:
                 return
             handlers.response_emitter.on_run_ui_command_response(msg['data'])
-        elif messageType == RequestDataType.CancelChatRequest:
+        elif messageType == RequestDataType.CancelChatRequest or  messageType == RequestDataType.CancelInlineCompletionRequest:
             handlers = self._messageCallbackHandlers.get(messageId)
             if handlers is None:
                 return
@@ -378,6 +377,21 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
  
     def on_close(self):
         pass
+
+    async def handle_inline_completions(prefix, suffix, language, filename, response_emitter, cancel_token):
+        context = await ai_service_manager.get_completion_context(ContextRequest(ContextRequestType.InlineCompletion, prefix, suffix, language, filename, participant=ai_service_manager.get_chat_participant(prefix), cancel_token=cancel_token))
+
+        if cancel_token.is_cancel_requested:
+            response_emitter.finish()
+            return
+
+        completions = github_copilot.inline_completions(prefix, suffix, language, filename, context, cancel_token)
+        if cancel_token.is_cancel_requested:
+            response_emitter.finish()
+            return
+
+        response_emitter.stream({"completions": completions})
+        response_emitter.finish()
 
 def initialize_extensions():
     global ai_service_manager
@@ -421,14 +435,12 @@ class NotebookIntelligenceJupyterExtApp(ExtensionApp):
         route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
-        route_pattern_inline_completions = url_path_join(base_url, "notebook-intelligence", "inline-completions")
         route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
         NotebookIntelligenceJupyterExtApp.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),
             (route_pattern_github_logout, GetGitHubLogoutHandler),
-            (route_pattern_inline_completions, PostInlineCompletionsHandler),
             (route_pattern_copilot, WebsocketCopilotHandler),
         ]
         web_app.add_handlers(host_pattern, NotebookIntelligenceJupyterExtApp.handlers)
