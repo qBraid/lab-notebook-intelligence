@@ -148,23 +148,26 @@ class ActiveDocumentWatcher {
     } else if (activeWidget) {
       const dw = activeWidget as DocumentWidget;
       const contentsModel = dw.context?.contentsModel;
-      if (!contentsModel) {
-        return;
-      }
-      const fileName = contentsModel.name;
-      const filePath = contentsModel.path;
-      const language =
-        ActiveDocumentWatcher._languageRegistry.findByMIME(
-          contentsModel.mimetype
-        ) || ActiveDocumentWatcher._languageRegistry.findByFileName(fileName);
-      activeDocumentInfo.language = language?.name || 'unknown';
-      activeDocumentInfo.filename = fileName;
-      activeDocumentInfo.filePath = filePath;
-      if (activeWidget instanceof FileEditorWidget) {
-        const fe = activeWidget as FileEditorWidget;
-        activeDocumentInfo.selection = fe.content.editor.getSelection();
+      if (contentsModel) {
+        const fileName = contentsModel.name;
+        const filePath = contentsModel.path;
+        const language =
+          ActiveDocumentWatcher._languageRegistry.findByMIME(
+            contentsModel.mimetype
+          ) || ActiveDocumentWatcher._languageRegistry.findByFileName(fileName);
+        activeDocumentInfo.language = language?.name || 'unknown';
+        activeDocumentInfo.filename = fileName;
+        activeDocumentInfo.filePath = filePath;
+        if (activeWidget instanceof FileEditorWidget) {
+          const fe = activeWidget as FileEditorWidget;
+          activeDocumentInfo.selection = fe.content.editor.getSelection();
+        } else {
+          activeDocumentInfo.selection = undefined;
+        }
       } else {
-        activeDocumentInfo.selection = undefined;
+        activeDocumentInfo.filename = '';
+        activeDocumentInfo.filePath = '';
+        activeDocumentInfo.language = '';
       }
     }
 

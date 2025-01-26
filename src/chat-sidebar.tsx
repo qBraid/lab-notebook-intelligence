@@ -636,7 +636,7 @@ function SidebarComponent(props: any) {
     const contents: IChatMessageContent[] = [];
     const app = props.getApp();
     const additionalContext: IContextItem[] = [];
-    if (contextOn && activeDocumentInfo) {
+    if (contextOn && activeDocumentInfo?.filename) {
       const selection = activeDocumentInfo.selection;
       additionalContext.push({
         type: ContextType.CurrentFile,
@@ -985,7 +985,7 @@ function SidebarComponent(props: any) {
   const getActiveDocumentContextTitle = (
     activeDocumentInfo: IActiveDocumentInfo
   ): string => {
-    if (!activeDocumentInfo) {
+    if (!activeDocumentInfo?.filename) {
       return '';
     }
     const wholeFile =
