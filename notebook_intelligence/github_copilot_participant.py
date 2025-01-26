@@ -141,10 +141,9 @@ class GithubCopilotChatParticipant(ChatParticipant):
             return
         elif request.command == 'newPythonFile':
             # create a new python file
-            messages = [
-                {"role": "system", "content": f"You are an assistant that creates Python code. You should return the code directly without any explantion. You should not print message to explain the code or purpose of the code. You should return the code directly, without wrapping it inside ```."},
-                {"role": "user", "content": f"Generate code for: {request.prompt}"}
-            ]
+            messages = request.chat_history.copy()
+            messages.insert(0, {"role": "system", "content": f"You are an assistant that creates Python code. You should return the code directly, without wrapping it inside ```."})
+            messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
             generated = completions(messages)
             code = generated['choices'][0]['message']['content']
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
