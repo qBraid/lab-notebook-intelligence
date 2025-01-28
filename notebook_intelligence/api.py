@@ -5,6 +5,7 @@ import json
 from typing import Callable, Dict, Union
 from dataclasses import dataclass
 from enum import Enum
+from fuzzy_json import loads as fuzzy_json_loads
 
 class RequestDataType(str, Enum):
     ChatRequest = 'chat-request'
@@ -332,63 +333,82 @@ class ChatParticipant:
         options = {'tool_choice': tool_choice}
 
         async def _tool_call_loop(tool_call_rounds: list):
-            tool_response = request.host.model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
-            # after first call, set tool_choice to auto
-            options['tool_choice'] = 'auto'
+            try:
+                tool_response = request.host.model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
+                # after first call, set tool_choice to auto
+                options['tool_choice'] = 'auto'
 
-            if 'tool_calls' in tool_response['choices'][0]['message']:
-                for tool_call in tool_response['choices'][0]['message']['tool_calls']:
-                    tool_call_rounds.append(tool_call)
-            elif 'content' in tool_response['choices'][0]['message']:
-                messages.append(tool_response['choices'][0]['message'])
-                response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
+                if 'tool_calls' in tool_response['choices'][0]['message']:
+                    for tool_call in tool_response['choices'][0]['message']['tool_calls']:
+                        tool_call_rounds.append(tool_call)
+                elif 'content' in tool_response['choices'][0]['message']:
+                    messages.append(tool_response['choices'][0]['message'])
+                    response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
 
-            # handle first tool call in tool_call_rounds
-            if len(tool_call_rounds) > 0:
-                tool_call = tool_call_rounds[0]
-                tool_call_rounds = tool_call_rounds[1:]
+                # handle first tool call in tool_call_rounds
+                if len(tool_call_rounds) > 0:
+                    tool_call = tool_call_rounds[0]
+                    tool_call_rounds = tool_call_rounds[1:]
 
-                tool_name = tool_call['function']['name']
-                tool_to_call = self._get_tool_by_name(tool_name)
-                args = json.loads(tool_call['function']['arguments'])
+                    tool_name = tool_call['function']['name']
+                    tool_to_call = self._get_tool_by_name(tool_name)
+                    try:
+                        args = json.loads(tool_call['function']['arguments'])
+                    except Exception as e:
+                        tool_properties = tool_to_call.schema["function"]["parameters"]["properties"]
+                        if len(tool_properties) == 1 and tool_call['function']['arguments'] is not None:
+                            tool_property = list(tool_properties.keys())[0]
+                            # handle imperfect json response
+                            if tool_call['function']['arguments'].startswith('{'):
+                                args = fuzzy_json_loads(tool_call['function']['arguments'])
+                            else:
+                                args = {tool_property: tool_call['function']['arguments']}
+                        elif len(tool_properties) == 0:
+                            args = {}
+                        else:
+                            raise Exception(f"Invalid tool call arguments: {str(e)}")
 
-                tool_pre_invoke_response = tool_to_call.pre_invoke(request, args)
-                if tool_pre_invoke_response is not None:
-                    if tool_pre_invoke_response.message is not None:
-                        response.stream(MarkdownData(f"&#x2713; {tool_pre_invoke_response.message}..."))
-                    if tool_pre_invoke_response.confirmationMessage is not None:
-                        response.stream(ConfirmationData(
-                            title=tool_pre_invoke_response.confirmationTitle,
-                            message=tool_pre_invoke_response.confirmationMessage,
-                            confirmArgs={"id": response.message_id, "data": { "callback_id": tool_call['id'], "data": {"confirmed": True}}},
-                            cancelArgs={"id": response.message_id, "data": { "callback_id": tool_call['id'], "data": {"confirmed": False}}},
-                        ))
-                        user_input = await ChatResponse.wait_for_chat_user_input(response, tool_call['id'])
-                        if user_input['confirmed'] == False:
-                            response.finish()
-                            return
+                    tool_pre_invoke_response = tool_to_call.pre_invoke(request, args)
+                    if tool_pre_invoke_response is not None:
+                        if tool_pre_invoke_response.message is not None:
+                            response.stream(MarkdownData(f"&#x2713; {tool_pre_invoke_response.message}..."))
+                        if tool_pre_invoke_response.confirmationMessage is not None:
+                            response.stream(ConfirmationData(
+                                title=tool_pre_invoke_response.confirmationTitle,
+                                message=tool_pre_invoke_response.confirmationMessage,
+                                confirmArgs={"id": response.message_id, "data": { "callback_id": tool_call['id'], "data": {"confirmed": True}}},
+                                cancelArgs={"id": response.message_id, "data": { "callback_id": tool_call['id'], "data": {"confirmed": False}}},
+                            ))
+                            user_input = await ChatResponse.wait_for_chat_user_input(response, tool_call['id'])
+                            if user_input['confirmed'] == False:
+                                response.finish()
+                                return
 
-                tool_call_response = await tool_to_call.handle_tool_call(request, response, tool_context, args)
+                    tool_call_response = await tool_to_call.handle_tool_call(request, response, tool_context, args)
 
-                tool_call_args_resp = args.copy()
-                tool_call_args_resp.update(tool_call_response)
+                    tool_call_args_resp = args.copy()
+                    tool_call_args_resp.update(tool_call_response)
 
-                function_call_result_message = {
-                    "role": "tool",
-                    "content": json.dumps(tool_call_args_resp),
-                    "tool_call_id": tool_call['id']
-                }
+                    function_call_result_message = {
+                        "role": "tool",
+                        "content": json.dumps(tool_call_args_resp),
+                        "tool_call_id": tool_call['id']
+                    }
 
-                # TODO: duplicate message?
-                messages.append(tool_response['choices'][0]['message'])
-                messages.append(function_call_result_message)
-                await _tool_call_loop(tool_call_rounds)
-                return
+                    # TODO: duplicate message?
+                    messages.append(tool_response['choices'][0]['message'])
+                    messages.append(function_call_result_message)
+                    await _tool_call_loop(tool_call_rounds)
+                    return
 
-            if len(tool_call_rounds) > 0:
-                await _tool_call_loop(tool_call_rounds)
-                return
-            else:
+                if len(tool_call_rounds) > 0:
+                    await _tool_call_loop(tool_call_rounds)
+                    return
+                else:
+                    response.finish()
+                    return
+            except Exception as e:
+                response.stream(MarkdownData(f"Oops! I am sorry, there was a problem generating response with tools. Please try again. You can check server logs for more details."))
                 response.finish()
                 return
 
