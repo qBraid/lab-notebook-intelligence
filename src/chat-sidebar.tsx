@@ -856,7 +856,7 @@ function SidebarComponent(props: any) {
 
   useEffect(() => {
     scrollMessagesToBottom();
-  }, [copilotRequestInProgress]);
+  }, [chatMessages]);
 
   const promptRequestHandler = useCallback(
     (eventData: any) => {
