@@ -123,3 +123,6 @@ dmypy.json
 # gh-pages
 _site/
 Gemfile.lock
+
+# notebook files
+**/*.ipynb

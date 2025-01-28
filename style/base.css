@@ -250,7 +250,7 @@ pre:has(.code-block-header) {
   border: 1px solid var(--jp-border-color1);
   flex-direction: column;
   position: absolute;
-  bottom: 72px;
+  bottom: 92px;
   left: 4px;
   gap: 2px;
   max-height: 300px;
