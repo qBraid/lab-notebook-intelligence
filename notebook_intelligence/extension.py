@@ -313,8 +313,11 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
                 start_line = context["startLine"]
                 end_line = context["endLine"]
                 current_cell_contents = context["currentCellContents"]
-                current_cell_context = f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_contents["input"]}``` and currently selected cell output is: ```{current_cell_contents["output"]}```. If user asks a question about 'this' cell then assume that user is referring to currently selected cell." if current_cell_contents is not None else ""
-                self.chat_history.add_message(chatId, {"role": "user", "content": f"Use this as additional context: ```{context["content"]}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
+                current_cell_input = current_cell_contents["input"]
+                current_cell_output = current_cell_contents["output"]
+                current_cell_context = f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_input}``` and currently selected cell output is: ```{current_cell_output}```. If user asks a question about 'this' cell then assume that user is referring to currently selected cell." if current_cell_contents is not None else ""
+                context_content = context["content"]
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"Use this as additional context: ```{context_content}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
             self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
             response_emitter = WebsocketCopilotResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
@@ -340,7 +343,8 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             response_emitter = WebsocketCopilotResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
             self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
-            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing leading and trailing code sections.{" Update the existing code section and return a modified version. Don't just return the update, recreate the existing code section with the update." if existing_code != '' else ''} Be concise and return only code as a response. Don't include leading content or trailing content in your response, they are provided only for context. You can reuse methods and symbols defined in leading and trailing content."}),))
+            existing_code_message = " Update the existing code section and return a modified version. Don't just return the update, recreate the existing code section with the update." if existing_code != '' else ''
+            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing leading and trailing code sections.{existing_code_message} Be concise and return only code as a response. Don't include leading content or trailing content in your response, they are provided only for context. You can reuse methods and symbols defined in leading and trailing content."}),))
             thread.start()
         elif messageType == RequestDataType.InlineCompletionRequest:
             data = msg['data']
