@@ -6,6 +6,9 @@ from typing import Callable, Dict, Union
 from dataclasses import dataclass
 from enum import Enum
 from fuzzy_json import loads as fuzzy_json_loads
+import logging
+
+log = logging.getLogger(__name__)
 
 class RequestDataType(str, Enum):
     ChatRequest = 'chat-request'
@@ -330,6 +333,7 @@ class ChatParticipant:
 
 
         tool_call_rounds = []
+        # TODO overrides options arg
         options = {'tool_choice': tool_choice}
 
         async def _tool_call_loop(tool_call_rounds: list):
@@ -352,21 +356,29 @@ class ChatParticipant:
 
                     tool_name = tool_call['function']['name']
                     tool_to_call = self._get_tool_by_name(tool_name)
-                    try:
-                        args = json.loads(tool_call['function']['arguments'])
-                    except Exception as e:
-                        tool_properties = tool_to_call.schema["function"]["parameters"]["properties"]
+                    if tool_to_call is None:
+                        log.error(f"Tool not found: {tool_name}, args: {tool_call['function']['arguments']}")
+                        response.stream(MarkdownData("Oops! Failed to find requested tool. Please try again with a different prompt."))
+                        response.finish()
+                        return
+
+                    if not tool_call['function']['arguments'].startswith('{'):
+                        args = tool_call['function']['arguments']
+                    else:
+                        args = fuzzy_json_loads(tool_call['function']['arguments'])
+
+                    tool_properties = tool_to_call.schema["function"]["parameters"]["properties"]
+                    if type(args) is str:
                         if len(tool_properties) == 1 and tool_call['function']['arguments'] is not None:
                             tool_property = list(tool_properties.keys())[0]
-                            # handle imperfect json response
-                            if tool_call['function']['arguments'].startswith('{'):
-                                args = fuzzy_json_loads(tool_call['function']['arguments'])
-                            else:
-                                args = {tool_property: tool_call['function']['arguments']}
-                        elif len(tool_properties) == 0:
-                            args = {}
+                            args = {tool_property: args}
                         else:
-                            raise Exception(f"Invalid tool call arguments: {str(e)}")
+                            args = {}
+
+                    if len(tool_properties) != len(args):
+                        response.stream(MarkdownData(f"Oops! There was a problem handling tool request. Please try again with a different prompt."))
+                        response.finish()
+                        return
 
                     tool_pre_invoke_response = tool_to_call.pre_invoke(request, args)
                     if tool_pre_invoke_response is not None:
@@ -408,6 +420,7 @@ class ChatParticipant:
                     response.finish()
                     return
             except Exception as e:
+                log.error(f"Error in tool call loop: {str(e)}")
                 response.stream(MarkdownData(f"Oops! I am sorry, there was a problem generating response with tools. Please try again. You can check server logs for more details."))
                 response.finish()
                 return

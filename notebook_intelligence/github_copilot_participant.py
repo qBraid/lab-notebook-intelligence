@@ -96,6 +96,51 @@ class AddCodeCellTool(Tool):
         ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
         return {}
 
+# Fallback tool to handle GitHub Copilot tool errors
+class PythonTool(AddCodeCellTool):
+    @property
+    def name(self) -> str:
+        return "python"
+
+    @property
+    def title(self) -> str:
+        return "Add code cell to notebook"
+    
+    @property
+    def tags(self) -> list[str]:
+        return ["default-participant-tool"]
+    
+    @property
+    def description(self) -> str:
+        return "This is a tool that adds code cell to a notebook"
+    
+    @property
+    def schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "strict": True,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "code_cell_source": {
+                            "type": "string",
+                            "description": "Code to add to the notebook",
+                        }
+                    },
+                    "required": ["code_cell_source"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+        code = tool_args.get('code_cell_source')
+        ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
+        return {}
+
 class GithubCopilotChatParticipant(ChatParticipant):
     @property
     def id(self) -> str:
@@ -123,7 +168,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
 
     @property
     def tools(self) -> list[Tool]:
-        return [AddMarkdownCellToNotebookTool(), AddCodeCellTool()]
+        return [AddMarkdownCellToNotebookTool(), AddCodeCellTool(), PythonTool()]
 
     @property
     def allowed_context_providers(self) -> set[str]:
@@ -135,8 +180,10 @@ class GithubCopilotChatParticipant(ChatParticipant):
             # create a new notebook
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
             file_path = ui_cmd_response['path']
-            tool_names = [tool.name for tool in self.tools]
-            request.chat_history.insert(0, {"role": "system", "content": f"You are an assistant that creates Jupyter notebooks in Python language. Use the functions provided to add markdown or code cells to the notebook. Code cells are written in Python. Markdown cells are written in Markdown. Do not repeat the code in the code cells with markdown explanations. You have only two functions available to you: '{tool_names[0]}' and '{tool_names[1]}'. Do not assume the availibility of any other tools or functions. Make sure to generate at least one code cell and one markdown cell."})
+            request.chat_history = request.chat_history.copy()
+            request.chat_history.pop()
+            request.chat_history.append({"role": "user", "content":  f"Generate notebook for: {request.prompt}"})
+            request.chat_history.insert(0, {"role": "system", "content": f"You are an assistant that creates Jupyter notebooks. Notebooks are composed of markdown and code cells. You create markdown cells and code cells. Markdown cells usually come before the code cells and explain the code below. Make sure to generate at least one markdown cell and one code cell."})
             await self.handle_chat_request_with_tools(request, response, options, tool_context={
                 'file_path': file_path
             }, tool_choice='required')
@@ -144,6 +191,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
         elif request.command == 'newPythonFile':
             # create a new python file
             messages = request.chat_history.copy()
+            messages.pop()
             messages.insert(0, {"role": "system", "content": f"You are an assistant that creates Python code. You should return the code directly, without wrapping it inside ```."})
             messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
             generated = completions(messages)

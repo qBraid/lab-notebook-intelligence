@@ -340,6 +340,11 @@ def completions(messages, tools = None, response: ChatResponse = None, cancel_to
             stream = stream
         )
 
+        if request.status_code != 200:
+            msg = f"Failed to get completions from GitHub Copilot: {request.status_code}: {request.text}"
+            log.error(msg)
+            raise Exception(msg)
+
         if stream:
             client = sseclient.SSEClient(request)
             for event in client.events():
@@ -354,3 +359,6 @@ def completions(messages, tools = None, response: ChatResponse = None, cancel_to
             return request.json()
     except requests.exceptions.ConnectionError:
         raise Exception("Connection error")
+    except Exception as e:
+        log.error(f"Failed to get completions from GitHub Copilot: {e}")
+        raise e

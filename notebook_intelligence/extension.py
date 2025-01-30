@@ -306,6 +306,9 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             language = data['language']
             filename = data['filename']
             additionalContext = data.get('additionalContext', [])
+
+            request_chat_history = self.chat_history.get_history(chatId).copy()
+
             for context in additionalContext:
                 file_path = context["filePath"]
                 file_path = path.join(NotebookIntelligenceJupyterExtApp.root_dir, file_path)
@@ -313,16 +316,19 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
                 start_line = context["startLine"]
                 end_line = context["endLine"]
                 current_cell_contents = context["currentCellContents"]
-                current_cell_input = current_cell_contents["input"]
-                current_cell_output = current_cell_contents["output"]
+                current_cell_input = current_cell_contents["input"] if current_cell_contents is not None else ""
+                current_cell_output = current_cell_contents["output"] if current_cell_contents is not None else ""
                 current_cell_context = f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_input}``` and currently selected cell output is: ```{current_cell_output}```. If user asks a question about 'this' cell then assume that user is referring to currently selected cell." if current_cell_contents is not None else ""
                 context_content = context["content"]
-                self.chat_history.add_message(chatId, {"role": "user", "content": f"Use this as additional context: ```{context_content}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
+                request_chat_history.append({"role": "user", "content": f"Use this as additional context: ```{context_content}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
+                self.chat_history.add_message(chatId, {"role": "user", "content": f"This file was provided as additional context: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
+
             self.chat_history.add_message(chatId, {"role": "user", "content": prompt})
+            request_chat_history.append({"role": "user", "content": prompt})
             response_emitter = WebsocketCopilotResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
             self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
-            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter),))
+            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=request_chat_history, cancel_token=cancel_token), response_emitter),))
             thread.start()
         elif messageType == RequestDataType.GenerateCode:
             data = msg['data']
