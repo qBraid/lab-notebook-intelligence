@@ -148,7 +148,7 @@ class ActiveDocumentWatcher {
     } else if (activeWidget) {
       const dw = activeWidget as DocumentWidget;
       const contentsModel = dw.context?.contentsModel;
-      if (contentsModel) {
+      if (contentsModel?.format === 'text') {
         const fileName = contentsModel.name;
         const filePath = contentsModel.path;
         const language =
