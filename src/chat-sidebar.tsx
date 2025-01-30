@@ -638,10 +638,18 @@ function SidebarComponent(props: any) {
     const additionalContext: IContextItem[] = [];
     if (contextOn && activeDocumentInfo?.filename) {
       const selection = activeDocumentInfo.selection;
+      const textSelected =
+        selection &&
+        !(
+          selection.start.line === selection.end.line &&
+          selection.start.column === selection.end.column
+        );
       additionalContext.push({
         type: ContextType.CurrentFile,
         content: props.getActiveSelectionContent(),
-        currentCellContents: props.getCurrentCellContents(),
+        currentCellContents: textSelected
+          ? null
+          : props.getCurrentCellContents(),
         filePath: activeDocumentInfo.filePath,
         cellIndex: activeDocumentInfo.activeCellIndex,
         startLine: selection ? selection.start.line + 1 : 1,
