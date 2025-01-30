@@ -153,6 +153,7 @@ class ContextRequestType(Enum):
 
 class ContextType(Enum):
     Custom = 'custom'
+    Provider = 'provider'
     CurrentFile = 'current-file'
 
 @dataclass

@@ -586,7 +586,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
           nbFileContent.metadata = {
             kernelspec: {
               language: 'python',
-              name: pythonKernelSpec.name
+              name: pythonKernelSpec.name,
+              display_name: pythonKernelSpec.display_name
             }
           };
         }
