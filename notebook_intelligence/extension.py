@@ -8,6 +8,7 @@ from typing import Union
 import uuid
 import threading
 import logging
+import tiktoken
 
 from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
@@ -21,6 +22,8 @@ from notebook_intelligence.github_copilot_participant import GithubCopilotChatPa
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
+tiktoken_encoding = tiktoken.encoding_for_model('gpt-4o')
+MAX_TOKENS = 4096
 
 class GetCapabilitiesHandler(APIHandler):
     @tornado.web.authenticated
@@ -309,6 +312,8 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
 
             request_chat_history = self.chat_history.get_history(chatId).copy()
 
+            token_budget = 0.8 * MAX_TOKENS
+
             for context in additionalContext:
                 file_path = context["filePath"]
                 file_path = path.join(NotebookIntelligenceJupyterExtApp.root_dir, file_path)
@@ -320,6 +325,10 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
                 current_cell_output = current_cell_contents["output"] if current_cell_contents is not None else ""
                 current_cell_context = f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_input}``` and currently selected cell output is: ```{current_cell_output}```. If user asks a question about 'this' cell then assume that user is referring to currently selected cell." if current_cell_contents is not None else ""
                 context_content = context["content"]
+                token_count = len(tiktoken_encoding.encode(context_content))
+                if token_count > token_budget:
+                    context_content = context_content[:int(token_budget)] + "..."
+
                 request_chat_history.append({"role": "user", "content": f"Use this as additional context: ```{context_content}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
                 self.chat_history.add_message(chatId, {"role": "user", "content": f"This file was provided as additional context: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}"})
 

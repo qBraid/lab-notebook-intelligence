@@ -2012,6 +2012,7 @@ __metadata:
     stylelint-config-standard: ^34.0.0
     stylelint-csstree-validator: ^3.0.0
     stylelint-prettier: ^4.0.0
+    tiktoken: 1.0.18
     typescript: ~5.0.2
     yjs: ^13.5.0
   languageName: unknown
@@ -7590,6 +7591,13 @@ __metadata:
   version: 0.2.0
   resolution: "text-table@npm:0.2.0"
   checksum: b6937a38c80c7f84d9c11dd75e49d5c44f71d95e810a3250bd1f1797fc7117c57698204adf676b71497acc205d769d65c16ae8fa10afad832ae1322630aef10a
+  languageName: node
+  linkType: hard
+
+"tiktoken@npm:1.0.18":
+  version: 1.0.18
+  resolution: "tiktoken@npm:1.0.18"
+  checksum: 0979ebaa2804f65ef2e5b0a5fb8bff9941458a937831286bc6b56ede0cafe9d69eb4180d1a2a1b47d32e502200e2e53c5d619a6eb40f12fffed8da95f686c9ab
   languageName: node
   linkType: hard
 

@@ -61,6 +61,7 @@ import copilotSvgstr from '../style/icons/copilot.svg';
 import {
   cellOutputAsText,
   extractCodeFromMarkdown,
+  getTokenCount,
   markdownToComment,
   waitForDuration
 } from './utils';
@@ -90,6 +91,7 @@ namespace CommandIDs {
 }
 
 const DOCUMET_WATCH_INTERVAL = 1000;
+const MAX_TOKENS = 4096;
 const githuCopilotIcon = new LabIcon({
   name: 'notebook-intelligence:github-copilot-icon',
   svgstr: copilotSvgstr
@@ -723,20 +725,39 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return { prefix, suffix };
       }
 
-      const activeCell = currentWidget.content.activeCell;
-      let activeCellReached = false;
+      const activeCellIndex = currentWidget.content.activeCellIndex;
+      const numCells = currentWidget.content.widgets.length;
+      const maxContext = 0.7 * MAX_TOKENS;
 
-      for (const cell of currentWidget.content.widgets) {
-        const cellModel = cell.model.sharedModel;
-        if (cell === activeCell) {
-          activeCellReached = true;
-        } else if (!activeCellReached) {
+      for (let d = 1; d < numCells; ++d) {
+        const above = activeCellIndex - d;
+        const below = activeCellIndex + d;
+        if (
+          (above < 0 && below >= numCells) ||
+          getTokenCount(`${prefix} ${suffix}`) >= maxContext
+        ) {
+          break;
+        }
+
+        if (above >= 0) {
+          const aboveCell = currentWidget.content.widgets[above];
+          const cellModel = aboveCell.model.sharedModel;
+
           if (cellModel.cell_type === 'code') {
-            prefix += cellModel.source + '\n';
+            prefix = cellModel.source + '\n' + prefix;
+          } else if (cellModel.cell_type === 'markdown') {
+            prefix = markdownToComment(cellModel.source) + '\n' + prefix;
           }
-        } else {
+        }
+
+        if (below < numCells) {
+          const belowCell = currentWidget.content.widgets[below];
+          const cellModel = belowCell.model.sharedModel;
+
           if (cellModel.cell_type === 'code') {
             suffix += cellModel.source + '\n';
+          } else if (cellModel.cell_type === 'markdown') {
+            suffix += markdownToComment(cellModel.source) + '\n';
           }
         }
       }

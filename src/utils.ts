@@ -2,6 +2,9 @@
 
 import { CodeCell } from '@jupyterlab/cells';
 import { PartialJSONObject } from '@lumino/coreutils';
+import { encoding_for_model } from 'tiktoken';
+
+const tiktoken_encoding = encoding_for_model('gpt-4o');
 
 export function removeAnsiChars(str: string): string {
   return str.replace(
@@ -96,4 +99,9 @@ export function cellOutputAsText(cell: CodeCell): string {
   }
 
   return content;
+}
+
+export function getTokenCount(source: string): number {
+  const tokens = tiktoken_encoding.encode(source);
+  return tokens.length;
 }

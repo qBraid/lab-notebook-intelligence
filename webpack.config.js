@@ -7,5 +7,8 @@ module.exports = {
     new MonacoWebpackPlugin({
       languages: ['python']
     })
-  ]
+  ],
+  experiments: {
+    syncWebAssembly: true
+  }
 };
