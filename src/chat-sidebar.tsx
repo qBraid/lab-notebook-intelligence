@@ -387,7 +387,9 @@ function ChatResponse(props: any) {
                       );
                     }}
                   >
-                    <div className="jp-Dialog-buttonLabel">Proceed</div>
+                    <div className="jp-Dialog-buttonLabel">
+                      {item.content.confirmLabel}
+                    </div>
                   </button>
                   <button
                     className="jp-Dialog-button jp-mod-reject jp-mod-styled"
@@ -399,7 +401,9 @@ function ChatResponse(props: any) {
                       );
                     }}
                   >
-                    <div className="jp-Dialog-buttonLabel">Cancel</div>
+                    <div className="jp-Dialog-buttonLabel">
+                      {item.content.cancelLabel}
+                    </div>
                   </button>
                 </div>
               );
