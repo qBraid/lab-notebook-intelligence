@@ -24,12 +24,12 @@ class AIServiceManager(Host):
     def __init__(self, default_chat_participant: ChatParticipant):
         self.chat_participants: Dict[str, ChatParticipant] = {}
         self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
-        self.default_chat_participant = default_chat_participant
+        self._default_chat_participant = default_chat_participant
         self.initialize()
 
     def initialize(self):
         self.chat_participants = {}
-        self.register_chat_participant(self.default_chat_participant)
+        self.register_chat_participant(self._default_chat_participant)
         self.initialize_extensions()
 
     def initialize_extensions(self):
@@ -62,8 +62,8 @@ class AIServiceManager(Host):
             if ExtensionClass is not None and issubclass(ExtensionClass, NotebookIntelligenceExtension):
                 instance = ExtensionClass()
                 return instance
-        except:
-            pass
+        except Exception as e:
+            log.error(f"Failed to load NBI extension: '{extension_class}'!\n{e}")
 
         return None
 
@@ -81,6 +81,10 @@ class AIServiceManager(Host):
             log.error(f"Completion Context Provider ID '{provider.id}' is already in use!")
             return
         self.completion_context_providers[provider.id] = provider
+
+    @property
+    def default_chat_participant(self) -> ChatParticipant:
+        return self._default_chat_participant
 
     @property
     def model(self) -> AIModel:

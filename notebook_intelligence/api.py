@@ -141,6 +141,8 @@ class ConfirmationData(ResponseStreamData):
     message: str = ''
     confirmArgs: dict = None
     cancelArgs: dict = None
+    confirmLabel: str = None
+    cancelLabel: str = None
 
     @property
     def data_type(self) -> ResponseStreamDataType:
@@ -451,6 +453,10 @@ class Host:
         raise NotImplemented
     
     def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
+        raise NotImplemented
+    
+    @property
+    def default_chat_participant(self) -> ChatParticipant:
         raise NotImplemented
     
     @property
