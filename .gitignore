@@ -124,5 +124,3 @@ dmypy.json
 _site/
 Gemfile.lock
 
-# notebook files
-**/*.ipynb
