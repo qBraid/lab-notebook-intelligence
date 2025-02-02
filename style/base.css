@@ -66,6 +66,7 @@
 
 .user-input-context.off {
   color: var(--jp-ui-font-color2);
+  font-style: italic;
 }
 
 .user-input-context-toggle {
