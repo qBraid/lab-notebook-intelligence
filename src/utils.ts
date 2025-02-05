@@ -2,6 +2,7 @@
 
 import { CodeCell } from '@jupyterlab/cells';
 import { PartialJSONObject } from '@lumino/coreutils';
+import { CodeEditor } from '@jupyterlab/codeeditor';
 import { encoding_for_model } from 'tiktoken';
 
 const tiktoken_encoding = encoding_for_model('gpt-4o');
@@ -104,4 +105,27 @@ export function cellOutputAsText(cell: CodeCell): string {
 export function getTokenCount(source: string): number {
   const tokens = tiktoken_encoding.encode(source);
   return tokens.length;
+}
+
+export function compareSelectionPoints(
+  lhs: CodeEditor.IPosition,
+  rhs: CodeEditor.IPosition
+): boolean {
+  return lhs.line === rhs.line && lhs.column === rhs.column;
+}
+
+export function compareSelections(
+  lhs: CodeEditor.IRange,
+  rhs: CodeEditor.IRange
+): boolean {
+  // if one undefined
+  if ((!lhs || !rhs) && !(!lhs && !rhs)) {
+    return true;
+  }
+
+  return (
+    lhs === rhs ||
+    (compareSelectionPoints(lhs.start, rhs.start) &&
+      compareSelectionPoints(lhs.end, rhs.end))
+  );
 }

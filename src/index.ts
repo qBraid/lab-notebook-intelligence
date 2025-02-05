@@ -60,6 +60,7 @@ import copilotSvgstr from '../style/icons/copilot.svg';
 
 import {
   cellOutputAsText,
+  compareSelections,
   extractCodeFromMarkdown,
   getTokenCount,
   markdownToComment,
@@ -90,7 +91,7 @@ namespace CommandIDs {
     'notebook-intelligence:open-github-copilot-login-dialog';
 }
 
-const DOCUMET_WATCH_INTERVAL = 1000;
+const DOCUMENT_WATCH_INTERVAL = 1000;
 const MAX_TOKENS = 4096;
 const githuCopilotIcon = new LabIcon({
   name: 'notebook-intelligence:github-copilot-icon',
@@ -129,13 +130,18 @@ class ActiveDocumentWatcher {
 
     ActiveDocumentWatcher._watchTimer = setInterval(() => {
       ActiveDocumentWatcher.handleWatchDocument();
-    }, DOCUMET_WATCH_INTERVAL);
+    }, DOCUMENT_WATCH_INTERVAL);
 
     ActiveDocumentWatcher.handleWatchDocument();
   }
 
   static handleWatchDocument() {
     const activeDocumentInfo = ActiveDocumentWatcher.activeDocumentInfo;
+    const previousDocumentInfo = {
+      ...activeDocumentInfo,
+      ...{ activeWidget: null }
+    };
+
     const activeWidget = activeDocumentInfo.activeWidget;
     if (activeWidget instanceof NotebookPanel) {
       const np = activeWidget as NotebookPanel;
@@ -146,7 +152,7 @@ class ActiveDocumentWatcher {
         'python';
       const { activeCellIndex, activeCell } = np.content;
       activeDocumentInfo.activeCellIndex = activeCellIndex;
-      activeDocumentInfo.selection = activeCell.editor.getSelection();
+      activeDocumentInfo.selection = activeCell?.editor?.getSelection();
     } else if (activeWidget) {
       const dw = activeWidget as DocumentWidget;
       const contentsModel = dw.context?.contentsModel;
@@ -162,7 +168,7 @@ class ActiveDocumentWatcher {
         activeDocumentInfo.filePath = filePath;
         if (activeWidget instanceof FileEditorWidget) {
           const fe = activeWidget as FileEditorWidget;
-          activeDocumentInfo.selection = fe.content.editor.getSelection();
+          activeDocumentInfo.selection = fe.content.editor?.getSelection();
         } else {
           activeDocumentInfo.selection = undefined;
         }
@@ -173,7 +179,31 @@ class ActiveDocumentWatcher {
       }
     }
 
-    ActiveDocumentWatcher.fireActiveDocumentChangedEvent();
+    if (
+      ActiveDocumentWatcher.documentInfoChanged(
+        previousDocumentInfo,
+        activeDocumentInfo
+      )
+    ) {
+      ActiveDocumentWatcher.fireActiveDocumentChangedEvent();
+    }
+  }
+
+  private static documentInfoChanged(
+    lhs: IActiveDocumentInfo,
+    rhs: IActiveDocumentInfo
+  ): boolean {
+    if (!lhs || !rhs) {
+      return true;
+    }
+
+    return (
+      lhs.filename !== rhs.filename ||
+      lhs.filePath !== rhs.filePath ||
+      lhs.language !== rhs.language ||
+      lhs.activeCellIndex !== rhs.activeCellIndex ||
+      !compareSelections(lhs.selection, rhs.selection)
+    );
   }
 
   static getActiveSelectionContent(): string {
@@ -263,8 +293,8 @@ class ActiveDocumentWatcher {
 
   static activeDocumentInfo: IActiveDocumentInfo = {
     language: 'python',
-    filename: 'Untitled.ipynb',
-    filePath: 'Untitled.ipynb',
+    filename: 'nb-doesnt-exist.ipynb',
+    filePath: 'nb-doesnt-exist.ipynb',
     activeWidget: null,
     activeCellIndex: -1,
     selection: null

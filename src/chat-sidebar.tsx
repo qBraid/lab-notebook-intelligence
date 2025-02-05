@@ -710,10 +710,18 @@ function SidebarComponent(props: any) {
               response.data.commandId,
               response.data.args
             );
+
             const data = {
               callback_id: response.data.callback_id,
               result
             };
+
+            try {
+              JSON.stringify(data);
+            } catch (error) {
+              data.result = 'Could not serialize the result';
+            }
+
             GitHubCopilot.sendWebSocketMessage(
               messageId,
               RequestDataType.RunUICommandResponse,

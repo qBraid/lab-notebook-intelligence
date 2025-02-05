@@ -159,19 +159,12 @@ class ContextType(Enum):
     CurrentFile = 'current-file'
 
 @dataclass
-class ContextInputFileInfo:
-    file_name: str = ''
-    parent_dir: str = ''
-    server_root: str = ''
-
-@dataclass
 class ContextRequest:
     type: ContextRequestType
-    prompt: str = ''
-    file_info: ContextInputFileInfo = None
-    language: str = ''
     prefix: str = ''
     suffix: str = ''
+    language: str = ''
+    filename: str = ''
     participant: 'ChatParticipant' = None
     cancel_token: CancelToken = None
 
