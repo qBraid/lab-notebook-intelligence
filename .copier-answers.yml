@@ -9,6 +9,6 @@ kind: server
 labextension_name: '@mbektas/notebook-intelligence'
 project_short_description: Notebook Intelligence extension for JupyterLab
 python_name: notebook_intelligence
-repository: https://github.com/mbektas/notebook-intelligence
+repository: https://github.com/notebook-intelligence/notebook-intelligence
 test: false
 
