@@ -2,7 +2,9 @@
 
 Notebook Intelligence (NBI) is an AI coding assistant and extensible AI framework for JupyterLab. It uses GitHub Copilot under the hood and is inspired by its design principles. NBI greatly boosts the productivity of JupyterLab users with AI assistance powered by GitHub Copilot.
 
-See [blog post](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/01/08/introducing-notebook-intelligence.html) for features and usage.
+See blog posts for features and usage.
+- [Introducing Notebook Intelligence!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/01/08/introducing-notebook-intelligence.html)
+- [Extending Copilot Chat in JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/05/extending-notebook-intelligence.html)
 
 ![Generate code](media/generate-code.gif)
 
