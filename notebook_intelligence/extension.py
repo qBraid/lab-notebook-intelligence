@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import dataclass
 import json
 from os import path
+import os
 from typing import Union
 import uuid
 import threading
@@ -440,6 +441,8 @@ class NotebookIntelligenceJupyterExtApp(ExtensionApp):
         initialize_extensions()
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")
+        if os.environ.get("GITHUB_ACCESS_TOKEN"):
+            github_copilot.login()
 
     def initialize_templates(self):
         pass
