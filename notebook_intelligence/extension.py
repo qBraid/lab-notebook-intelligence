@@ -16,6 +16,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
+from traitlets import Unicode
 from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
@@ -319,7 +320,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
 
             for context in additionalContext:
                 file_path = context["filePath"]
-                file_path = path.join(NotebookIntelligenceJupyterExtApp.root_dir, file_path)
+                file_path = path.join(NotebookIntelligence.root_dir, file_path)
                 filename = path.basename(file_path)
                 start_line = context["startLine"]
                 end_line = context["endLine"]
@@ -421,7 +422,7 @@ def initialize_extensions():
     ai_service_manager = AIServiceManager(default_chat_participant)
 
 
-class NotebookIntelligenceJupyterExtApp(ExtensionApp):
+class NotebookIntelligence(ExtensionApp):
     name = "notebook_intelligence"
     default_url = "/notebook-intelligence"
     load_other_extensions = True
@@ -433,16 +434,29 @@ class NotebookIntelligenceJupyterExtApp(ExtensionApp):
     handlers = []
     root_dir = ''
 
+    github_access_token = Unicode(
+        default_value=None,
+        help="""
+        GitHub Copilot credentials storage options.
+
+        'remember' - Store credentials in keyring and remember next time.
+        'forget' - Remove credentials stored in keyring.
+        '<TOKEN_VALUE>' - Use the provided access token value.
+
+        """,
+        allow_none=True,
+        config=True,
+    )
+
     def initialize_settings(self):
         pass
 
     def initialize_handlers(self):
-        NotebookIntelligenceJupyterExtApp.root_dir = self.serverapp.root_dir
+        NotebookIntelligence.root_dir = self.serverapp.root_dir
         initialize_extensions()
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")
-        if os.environ.get("GITHUB_ACCESS_TOKEN"):
-            github_copilot.login()
+        github_copilot.login_with_existing_credentials(self.github_access_token)
 
     def initialize_templates(self):
         pass
@@ -460,11 +474,11 @@ class NotebookIntelligenceJupyterExtApp(ExtensionApp):
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
         route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
-        NotebookIntelligenceJupyterExtApp.handlers = [
+        NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),
             (route_pattern_github_logout, GetGitHubLogoutHandler),
             (route_pattern_copilot, WebsocketCopilotHandler),
         ]
-        web_app.add_handlers(host_pattern, NotebookIntelligenceJupyterExtApp.handlers)
+        web_app.add_handlers(host_pattern, NotebookIntelligence.handlers)

@@ -3,6 +3,7 @@
 Notebook Intelligence (NBI) is an AI coding assistant and extensible AI framework for JupyterLab. It uses GitHub Copilot under the hood and is inspired by its design principles. NBI greatly boosts the productivity of JupyterLab users with AI assistance powered by GitHub Copilot.
 
 See blog posts for features and usage.
+
 - [Introducing Notebook Intelligence!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/01/08/introducing-notebook-intelligence.html)
 - [Building AI Extensions for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/05/building-ai-extensions-for-jupyterlab.html)
 
@@ -34,6 +35,24 @@ To remove the extension, execute:
 
 ```bash
 pip uninstall notebook_intelligence
+```
+
+## Configuration options
+
+### Remembering GitHub Copilot login
+
+Notebook Intelligence uses system keyring to store the GitHub access tokens. If your stored access token fails to login (due to expiration or other reasons), you will be prompted to relogin on the UI. If you run into issues with this feature, check the Jupyter server logs and the [keyring package](https://github.com/jaraco/keyring) documentation.
+
+To let Notebook Intelligence remember your GitHub access token after you logged in:
+
+```bash
+jupyter lab --NotebookIntelligence.github_access_token=remember
+```
+
+Once you set it to remember, it will continue to remember even if you skip `--NotebookIntelligence.github_access_token` at following launches. In order to forget the GitHub access token stored:
+
+```bash
+jupyter lab --NotebookIntelligence.github_access_token=forget
 ```
 
 ## Troubleshoot
