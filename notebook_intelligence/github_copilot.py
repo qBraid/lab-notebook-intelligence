@@ -30,6 +30,8 @@ ACCESS_TOKEN_THREAD_SLEEP_INTERVAL = 5
 TOKEN_THREAD_SLEEP_INTERVAL = 3
 TOKEN_FETCH_INTERVAL = 15
 NL = '\n'
+KEYRING_SERVICE_NAME = "NotebookIntelligence"
+GITHUB_ACCESS_TOKEN_KEYRING_NAME = "github-copilot-access-token"
 
 LoginStatus = Enum('LoginStatus', ['NOT_LOGGED_IN', 'ACTIVATING_DEVICE', 'LOGGING_IN', 'LOGGED_IN'])
 
@@ -47,6 +49,8 @@ stop_requested = False
 get_access_code_thread = None
 get_token_thread = None
 last_token_fetch_time = dt.datetime.now() + dt.timedelta(seconds=-TOKEN_FETCH_INTERVAL)
+remember_github_access_token = False
+github_access_token_provided = None
 
 def get_login_status():
     global github_auth
@@ -61,6 +65,35 @@ def get_login_status():
         })
 
     return response
+
+def login_with_existing_credentials(access_token_config=None):
+    global github_access_token_provided, remember_github_access_token
+    if access_token_config == "remember" or access_token_config is None:
+        try:
+            import keyring
+            github_access_token_provided = keyring.get_password(KEYRING_SERVICE_NAME, GITHUB_ACCESS_TOKEN_KEYRING_NAME)
+        except Exception as e:
+            log.error(f"Failed to get GitHub access token: {e}")
+        remember_github_access_token = access_token_config == "remember"
+    elif access_token_config == "forget":
+        try:
+            import keyring
+            keyring.delete_password(KEYRING_SERVICE_NAME, GITHUB_ACCESS_TOKEN_KEYRING_NAME)
+        except Exception as e:
+            log.error(f"Failed to forget GitHub access token: {e}")
+    elif access_token_config is not None:
+        github_access_token_provided = access_token_config
+
+    if github_access_token_provided is not None:
+        login()
+
+def store_github_access_token(access_token):
+    if remember_github_access_token:
+        try:
+            import keyring
+            keyring.set_password(KEYRING_SERVICE_NAME, GITHUB_ACCESS_TOKEN_KEYRING_NAME, access_token)
+        except Exception as e:
+            log.error(f"Failed to store GitHub access token: {e}")
 
 def login():
     login_info = get_device_verification_info()
@@ -125,11 +158,9 @@ def get_device_verification_info():
 def wait_for_user_access_token_thread_func():
     global github_auth, get_access_code_thread
 
-    token_from_env = os.environ.get("GITHUB_ACCESS_TOKEN", None)
-
-    if token_from_env is not None:
-        log.info("Setting GitHub access token from environment variable")
-        github_auth["access_token"] = token_from_env
+    if github_access_token_provided is not None:
+        log.info("Using existing GitHub access token")
+        github_auth["access_token"] = github_access_token_provided
         get_access_code_thread = None
         return
 
@@ -158,12 +189,12 @@ def wait_for_user_access_token_thread_func():
 
             resp_json = resp.json()
             access_token = resp_json.get('access_token')
-            # log.info(f"ACCESS TOKEN {access_token}")
 
             if access_token:
                 github_auth["access_token"] = access_token
                 get_token()
                 get_access_code_thread = None
+                store_github_access_token(access_token)
                 break
         except Exception as e:
             log.error(f"Failed to get access token from GitHub Copilot: {e}")
@@ -171,7 +202,7 @@ def wait_for_user_access_token_thread_func():
         time.sleep(ACCESS_TOKEN_THREAD_SLEEP_INTERVAL)
 
 def get_token():
-    global github_auth, API_ENDPOINT, PROXY_ENDPOINT, TOKEN_REFRESH_INTERVAL
+    global github_auth, github_access_token_provided, API_ENDPOINT, PROXY_ENDPOINT, TOKEN_REFRESH_INTERVAL
     access_token = github_auth["access_token"]
 
     if access_token is None:
@@ -188,6 +219,17 @@ def get_token():
         })
 
         resp_json = resp.json()
+
+        if resp.status_code == 401:
+            github_access_token_provided = None
+            logout()
+            wait_for_tokens()
+            return
+        
+        if resp.status_code != 200:
+            log.error(f"Failed to get token from GitHub Copilot: {resp_json}")
+            return
+
         token = resp_json.get('token')
         github_auth["token"] = token
         expires_at = resp_json.get('expires_at')

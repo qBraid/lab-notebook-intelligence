@@ -13,7 +13,7 @@ except ImportError:
 import logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(filename)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-from .extension import NotebookIntelligenceJupyterExtApp
+from .extension import NotebookIntelligence
 from .api import *
 
 def _jupyter_labextension_paths():
@@ -26,5 +26,5 @@ def _jupyter_labextension_paths():
 def _jupyter_server_extension_points():
     return [{
         "module": "notebook_intelligence",
-        "app": NotebookIntelligenceJupyterExtApp
+        "app": NotebookIntelligence
     }]
