@@ -78,8 +78,8 @@ namespace CommandIDs {
     'notebook-intelligence:add-code-cell-to-notebook';
   export const addMarkdownCellToNotebook =
     'notebook-intelligence:add-markdown-cell-to-notebook';
-  export const editorGenerateCellCode =
-    'notebook-intelligence:editor-generate-cell-code';
+  export const editorGenerateCode =
+    'notebook-intelligence:editor-generate-code';
   export const editorExplainThisCode =
     'notebook-intelligence:editor-explain-this-code';
   export const editorFixThisCode = 'notebook-intelligence:editor-fix-this-code';
@@ -93,6 +93,7 @@ namespace CommandIDs {
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
 const MAX_TOKENS = 4096;
+const NBI_PROMPT_PREFIX = '# nbi-prompt:';
 const githuCopilotIcon = new LabIcon({
   name: 'notebook-intelligence:github-copilot-icon',
   svgstr: copilotSvgstr
@@ -669,6 +670,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return activeCell instanceof CodeCell;
     };
 
+    const isCurrentWidgetFileEditor = (): boolean => {
+      return app.shell.currentWidget instanceof FileEditorWidget;
+    };
+
     const addCellToNotebook = (
       filePath: string,
       cellType: 'code' | 'markdown',
@@ -795,146 +800,314 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return { prefix, suffix };
     };
 
+    const getPrefixAndSuffixForFileEditor = (): {
+      prefix: string;
+      suffix: string;
+    } => {
+      let prefix = '';
+      let suffix = '';
+      const currentWidget = app.shell.currentWidget;
+      if (
+        !(
+          currentWidget instanceof FileEditorWidget
+        )
+      ) {
+        return { prefix, suffix };
+      }
+
+      const fe = currentWidget as FileEditorWidget;
+
+      const cursor = fe.content.editor.getCursorPosition();
+      const offset = fe.content.editor.getOffsetAt(cursor);
+      const source = fe.content.editor.model.sharedModel.getSource();
+      prefix = source.substring(0, offset);
+      suffix = source.substring(offset);
+
+      return { prefix, suffix };
+    };
+
+    const generateCodeForCell = () => {
+      const currentWidget = app.shell.currentWidget;
+      const np = currentWidget as NotebookPanel;
+      const activeCell = np.content.activeCell;
+      const input = activeCell.node.querySelector('.jp-InputArea-editor');
+      if (!input) {
+        return;
+      }
+      const scrollEl = np.node.querySelector(
+        '.jp-WindowedPanel-outer'
+      );
+      const rect = input.getBoundingClientRect();
+
+      const updatePopoverPosition = () => {
+        if (openPopover !== null) {
+          const rect = input.getBoundingClientRect();
+          openPopover.updatePosition(rect);
+        }
+      };
+
+      const inputResizeObserver = new ResizeObserver(updatePopoverPosition);
+
+      const addPositionListeners = () => {
+        inputResizeObserver.observe(input);
+        if (scrollEl) {
+          scrollEl.addEventListener('scroll', updatePopoverPosition);
+        }
+      };
+
+      const removePositionListeners = () => {
+        inputResizeObserver.unobserve(input);
+        if (scrollEl) {
+          scrollEl.removeEventListener('scroll', updatePopoverPosition);
+        }
+      };
+
+      const removePopover = () => {
+        if (openPopover !== null) {
+          removePositionListeners();
+          openPopover = null;
+          Widget.detach(inlinePrompt);
+        }
+      };
+
+      let userPrompt = '';
+      let generatedContent = '';
+
+      let existingCode = activeCell.model.sharedModel.source.trim();
+      const existingLines = existingCode.split('\n');
+      if (existingLines.length > 0) {
+        if (existingLines[0].startsWith(NBI_PROMPT_PREFIX)) {
+          userPrompt = existingLines[0]
+            .substring(NBI_PROMPT_PREFIX.length)
+            .trim();
+          existingCode =
+            existingLines.length > 1 ? existingLines.slice(1).join('\n') : '';
+        }
+      }
+
+      const removePromptComments = (source: string): string => {
+        source = source.trim();
+        const existingLines = source.split('\n');
+        const newLines = existingLines.filter(
+          line => !line.startsWith(NBI_PROMPT_PREFIX)
+        );
+        return newLines.join('\n');
+      };
+
+      const { prefix, suffix } = getPrefixAndSuffixForActiveCell();
+
+      const applyGeneratedCode = () => {
+        // extract out code sections from markdown
+        generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
+        activeCell.model.sharedModel.source = generatedContent;
+        generatedContent = '';
+        removePopover();
+      };
+
+      removePopover();
+
+      const inlinePrompt = new InlinePromptWidget(rect, {
+        prompt: userPrompt,
+        existingCode,
+        prefix: removePromptComments(prefix),
+        suffix: removePromptComments(suffix),
+        onRequestSubmitted: (prompt: string) => {
+          userPrompt = prompt;
+          generatedContent = '';
+          if (existingCode !== '') {
+            return;
+          }
+          removePopover();
+        },
+        onRequestCancelled: () => {
+          removePopover();
+          activeCell.editor.focus();
+        },
+        onContentStream: (content: string) => {
+          if (existingCode !== '') {
+            return;
+          }
+          generatedContent += content;
+          activeCell.model.sharedModel.source = generatedContent;
+        },
+        onContentStreamEnd: () => {
+          if (existingCode !== '') {
+            return;
+          }
+          applyGeneratedCode();
+          activeCell.editor.focus();
+        },
+        onUpdatedCodeChange: (content: string) => {
+          generatedContent = content;
+        },
+        onUpdatedCodeAccepted: () => {
+          applyGeneratedCode();
+          activeCell.editor.focus();
+        }
+      });
+      openPopover = inlinePrompt;
+      addPositionListeners();
+      Widget.attach(inlinePrompt, document.body);
+    };
+
+    const generateCodeForFileEditor = () => {
+      const currentWidget = app.shell.currentWidget;
+      const fe = currentWidget as FileEditorWidget;
+      const editor = fe.content.editor;
+
+      const getRectAtCursor = (): DOMRect => {
+        const cursor = editor.getCursorPosition();
+        const coords = editor.getCoordinateForPosition(cursor);
+        const editorRect = fe.node.getBoundingClientRect();
+        const yOffset = 30;
+        const rect: DOMRect = new DOMRect(
+          editorRect.left,
+          coords.top - yOffset,
+          editorRect.right - editorRect.left,
+          coords.bottom - coords.top
+        );
+        return rect;
+      };
+      
+      const input = fe.node;
+      if (!input) {
+        return;
+      }
+      const scrollEl = fe.node.querySelector(
+        '.cm-scroller'
+      );
+      const rect = getRectAtCursor();
+
+      const updatePopoverPosition = () => {
+        if (openPopover !== null) {
+          const rect = getRectAtCursor();
+          openPopover.updatePosition(rect);
+        }
+      };
+
+      const inputResizeObserver = new ResizeObserver(updatePopoverPosition);
+
+      const addPositionListeners = () => {
+        inputResizeObserver.observe(input);
+        if (scrollEl) {
+          scrollEl.addEventListener('scroll', updatePopoverPosition);
+        }
+      };
+
+      const removePositionListeners = () => {
+        inputResizeObserver.unobserve(input);
+        if (scrollEl) {
+          scrollEl.removeEventListener('scroll', updatePopoverPosition);
+        }
+      };
+
+      const removePopover = () => {
+        if (openPopover !== null) {
+          removePositionListeners();
+          openPopover = null;
+          Widget.detach(inlinePrompt);
+        }
+      };
+
+      let userPrompt = '';
+      let generatedContent = '';
+
+      const selection = editor.getSelection();
+      const startOffset = editor.getOffsetAt(selection.start);
+      const endOffset = editor.getOffsetAt(selection.end);
+      const existingCode =  editor.model.sharedModel
+        .getSource()
+        .substring(startOffset, endOffset);
+
+      const removePromptComments = (source: string): string => {
+        source = source.trim();
+        const existingLines = source.split('\n');
+        const newLines = existingLines.filter(
+          line => !line.startsWith(NBI_PROMPT_PREFIX)
+        );
+        return newLines.join('\n');
+      };
+
+      const { prefix, suffix } = getPrefixAndSuffixForFileEditor();
+
+      const applyGeneratedCode = () => {
+        // extract out code sections from markdown
+        generatedContent = extractCodeFromMarkdown(generatedContent);
+        // activeCell.model.sharedModel.source = generatedContent;
+        // const cursor = fe.content.editor.getCursorPosition();
+        // const offset = fe.content.editor.getOffsetAt(cursor);
+
+        const selection = editor.getSelection();
+        const startOffset = editor.getOffsetAt(selection.start);
+        const endOffset = editor.getOffsetAt(selection.end);
+
+        fe.content.editor.model.sharedModel.updateSource(startOffset, endOffset, generatedContent);
+        generatedContent = '';
+        removePopover();
+      };
+
+      removePopover();
+
+      const inlinePrompt = new InlinePromptWidget(rect, {
+        prompt: userPrompt,
+        existingCode,
+        prefix: removePromptComments(prefix),
+        suffix: removePromptComments(suffix),
+        onRequestSubmitted: (prompt: string) => {
+          userPrompt = prompt;
+          generatedContent = '';
+          if (existingCode !== '') {
+            return;
+          }
+          removePopover();
+        },
+        onRequestCancelled: () => {
+          removePopover();
+          editor.focus();
+        },
+        onContentStream: (content: string) => {
+          if (existingCode !== '') {
+            return;
+          }
+          generatedContent += content;
+          // activeCell.model.sharedModel.source = generatedContent;
+        },
+        onContentStreamEnd: () => {
+          if (existingCode !== '') {
+            return;
+          }
+          applyGeneratedCode();
+          editor.focus();
+        },
+        onUpdatedCodeChange: (content: string) => {
+          generatedContent = content;
+        },
+        onUpdatedCodeAccepted: () => {
+          applyGeneratedCode();
+          editor.focus();
+        }
+      });
+      openPopover = inlinePrompt;
+      addPositionListeners();
+      Widget.attach(inlinePrompt, document.body);
+    };
+
     const generateCellCodeCommand: CommandRegistry.ICommandOptions = {
       execute: args => {
-        const currentWidget = app.shell.currentWidget;
-        if (
-          !(
-            currentWidget instanceof NotebookPanel &&
-            currentWidget.content.activeCell
-          )
-        ) {
-          return;
+        if (isActiveCellCodeCell()) {
+          generateCodeForCell();
+        } else if (isCurrentWidgetFileEditor()) {
+          generateCodeForFileEditor();
         }
-        const activeCell = currentWidget.content.activeCell;
-        const input = activeCell.node.querySelector('.jp-InputArea-editor');
-        if (!input) {
-          return;
-        }
-        const scrollEl = currentWidget.node.querySelector(
-          '.jp-WindowedPanel-outer'
-        );
-        const rect = input.getBoundingClientRect();
-
-        const updatePopoverPosition = () => {
-          if (openPopover !== null) {
-            const rect = input.getBoundingClientRect();
-            openPopover.updatePosition(rect);
-          }
-        };
-
-        const inputResizeObserver = new ResizeObserver(updatePopoverPosition);
-
-        const addPositionListeners = () => {
-          inputResizeObserver.observe(input);
-          if (scrollEl) {
-            scrollEl.addEventListener('scroll', updatePopoverPosition);
-          }
-        };
-
-        const removePositionListeners = () => {
-          inputResizeObserver.unobserve(input);
-          if (scrollEl) {
-            scrollEl.removeEventListener('scroll', updatePopoverPosition);
-          }
-        };
-
-        const removePopover = () => {
-          if (openPopover !== null) {
-            removePositionListeners();
-            openPopover = null;
-            Widget.detach(inlinePrompt);
-          }
-        };
-
-        const NBI_PROMPT_PREFIX = '# nbi-prompt:';
-        let userPrompt = '';
-        let generatedContent = '';
-
-        let existingCode = activeCell.model.sharedModel.source.trim();
-        const existingLines = existingCode.split('\n');
-        if (existingLines.length > 0) {
-          if (existingLines[0].startsWith(NBI_PROMPT_PREFIX)) {
-            userPrompt = existingLines[0]
-              .substring(NBI_PROMPT_PREFIX.length)
-              .trim();
-            existingCode =
-              existingLines.length > 1 ? existingLines.slice(1).join('\n') : '';
-          }
-        }
-
-        const removePromptComments = (source: string): string => {
-          source = source.trim();
-          const existingLines = source.split('\n');
-          const newLines = existingLines.filter(
-            line => !line.startsWith(NBI_PROMPT_PREFIX)
-          );
-          return newLines.join('\n');
-        };
-
-        const { prefix, suffix } = getPrefixAndSuffixForActiveCell();
-
-        const applyGeneratedCode = () => {
-          // extract out code sections from markdown
-          generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
-          activeCell.model.sharedModel.source = generatedContent;
-          generatedContent = '';
-          removePopover();
-        };
-
-        removePopover();
-
-        const inlinePrompt = new InlinePromptWidget(rect, {
-          prompt: userPrompt,
-          existingCode,
-          prefix: removePromptComments(prefix),
-          suffix: removePromptComments(suffix),
-          onRequestSubmitted: (prompt: string) => {
-            userPrompt = prompt;
-            generatedContent = '';
-            if (existingCode !== '') {
-              return;
-            }
-            removePopover();
-          },
-          onRequestCancelled: () => {
-            removePopover();
-            activeCell.editor.focus();
-          },
-          onContentStream: (content: string) => {
-            if (existingCode !== '') {
-              return;
-            }
-            generatedContent += content;
-            activeCell.model.sharedModel.source = generatedContent;
-          },
-          onContentStreamEnd: () => {
-            if (existingCode !== '') {
-              return;
-            }
-            applyGeneratedCode();
-            activeCell.editor.focus();
-          },
-          onUpdatedCodeChange: (content: string) => {
-            generatedContent = content;
-          },
-          onUpdatedCodeAccepted: () => {
-            applyGeneratedCode();
-            activeCell.editor.focus();
-          }
-        });
-        openPopover = inlinePrompt;
-        addPositionListeners();
-        Widget.attach(inlinePrompt, document.body);
       },
       label: 'Generate code',
-      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
+      isEnabled: () => loggedInToGitHubCopilot() && (isActiveCellCodeCell() || isCurrentWidgetFileEditor())
     };
-    app.commands.addCommand(CommandIDs.editorGenerateCellCode, generateCellCodeCommand);
+    app.commands.addCommand(CommandIDs.editorGenerateCode, generateCellCodeCommand);
 
     const copilotMenuCommands = new CommandRegistry();
     copilotMenuCommands.addCommand(
-      CommandIDs.editorGenerateCellCode,
+      CommandIDs.editorGenerateCode,
       generateCellCodeCommand
     );
     copilotMenuCommands.addCommand(CommandIDs.editorExplainThisCode, {
@@ -1068,7 +1241,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     copilotContextMenu.id = 'notebook-intelligence:editor-context-menu';
     copilotContextMenu.title.label = 'Copilot';
     copilotContextMenu.title.icon = sidebarIcon;
-    copilotContextMenu.addItem({ command: CommandIDs.editorGenerateCellCode });
+    copilotContextMenu.addItem({ command: CommandIDs.editorGenerateCode });
     copilotContextMenu.addItem({ command: CommandIDs.editorExplainThisCode });
     copilotContextMenu.addItem({ command: CommandIDs.editorFixThisCode });
     copilotContextMenu.addItem({ command: CommandIDs.editorExplainThisOutput });
