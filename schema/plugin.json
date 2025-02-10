@@ -7,8 +7,8 @@
   "jupyter.lab.toolbars": {
     "Cell": [
       {
-        "name": "notebook-intelligence:editor-generate-code",
-        "command": "notebook-intelligence:editor-generate-code",
+        "name": "notebook-intelligence:editor-generate-cell-code",
+        "command": "notebook-intelligence:editor-generate-cell-code",
         "icon": "notebook-intelligence:sparkles-icon",
         "caption": "Generate code",
         "rank": 0
@@ -17,13 +17,13 @@
   },
   "jupyter.lab.shortcuts": [
     {
-      "command": "notebook-intelligence:editor-generate-code",
+      "command": "notebook-intelligence:editor-generate-cell-code",
       "keys": ["Accel G"],
       "selector": ".jp-Editor",
       "preventDefault": true
     },
     {
-      "command": "notebook-intelligence:editor-generate-code",
+      "command": "notebook-intelligence:editor-generate-cell-code",
       "keys": ["Accel G"],
       "selector": ".jp-CodeCell",
       "preventDefault": true

@@ -78,8 +78,8 @@ namespace CommandIDs {
     'notebook-intelligence:add-code-cell-to-notebook';
   export const addMarkdownCellToNotebook =
     'notebook-intelligence:add-markdown-cell-to-notebook';
-  export const editorGenerateCode =
-    'notebook-intelligence:editor-generate-code';
+  export const editorGenerateCellCode =
+    'notebook-intelligence:editor-generate-cell-code';
   export const editorExplainThisCode =
     'notebook-intelligence:editor-explain-this-code';
   export const editorFixThisCode = 'notebook-intelligence:editor-fix-this-code';
@@ -795,7 +795,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return { prefix, suffix };
     };
 
-    const generateCodeCommand: CommandRegistry.ICommandOptions = {
+    const generateCellCodeCommand: CommandRegistry.ICommandOptions = {
       execute: args => {
         const currentWidget = app.shell.currentWidget;
         if (
@@ -930,12 +930,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: 'Generate code',
       isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
     };
-    app.commands.addCommand(CommandIDs.editorGenerateCode, generateCodeCommand);
+    app.commands.addCommand(CommandIDs.editorGenerateCellCode, generateCellCodeCommand);
 
     const copilotMenuCommands = new CommandRegistry();
     copilotMenuCommands.addCommand(
-      CommandIDs.editorGenerateCode,
-      generateCodeCommand
+      CommandIDs.editorGenerateCellCode,
+      generateCellCodeCommand
     );
     copilotMenuCommands.addCommand(CommandIDs.editorExplainThisCode, {
       execute: () => {
@@ -1068,7 +1068,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     copilotContextMenu.id = 'notebook-intelligence:editor-context-menu';
     copilotContextMenu.title.label = 'Copilot';
     copilotContextMenu.title.icon = sidebarIcon;
-    copilotContextMenu.addItem({ command: CommandIDs.editorGenerateCode });
+    copilotContextMenu.addItem({ command: CommandIDs.editorGenerateCellCode });
     copilotContextMenu.addItem({ command: CommandIDs.editorExplainThisCode });
     copilotContextMenu.addItem({ command: CommandIDs.editorFixThisCode });
     copilotContextMenu.addItem({ command: CommandIDs.editorExplainThisOutput });
