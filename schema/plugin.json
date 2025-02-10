@@ -1,6 +1,6 @@
 {
-  "title": "@mbektas/notebook-intelligence",
-  "description": "@mbektas/notebook-intelligence settings.",
+  "title": "Notebook Intelligence",
+  "description": "Notebook Intelligence settings",
   "type": "object",
   "properties": {},
   "additionalProperties": false,
