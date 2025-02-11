@@ -1033,10 +1033,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const applyGeneratedCode = () => {
         // extract out code sections from markdown
         generatedContent = extractCodeFromMarkdown(generatedContent);
-        // activeCell.model.sharedModel.source = generatedContent;
-        // const cursor = fe.content.editor.getCursorPosition();
-        // const offset = fe.content.editor.getOffsetAt(cursor);
-
         const selection = editor.getSelection();
         const startOffset = editor.getOffsetAt(selection.start);
         const endOffset = editor.getOffsetAt(selection.end);
@@ -1070,7 +1066,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
             return;
           }
           generatedContent += content;
-          // activeCell.model.sharedModel.source = generatedContent;
         },
         onContentStreamEnd: () => {
           if (existingCode !== '') {
