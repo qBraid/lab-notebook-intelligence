@@ -807,11 +807,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       let prefix = '';
       let suffix = '';
       const currentWidget = app.shell.currentWidget;
-      if (
-        !(
-          currentWidget instanceof FileEditorWidget
-        )
-      ) {
+      if (!(currentWidget instanceof FileEditorWidget)) {
         return { prefix, suffix };
       }
 
@@ -834,9 +830,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       if (!input) {
         return;
       }
-      const scrollEl = np.node.querySelector(
-        '.jp-WindowedPanel-outer'
-      );
+      const scrollEl = np.node.querySelector('.jp-WindowedPanel-outer');
       const rect = input.getBoundingClientRect();
 
       const updatePopoverPosition = () => {
@@ -956,8 +950,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const editor = fe.content.editor;
 
       const getRectAtCursor = (): DOMRect => {
-        const cursor = editor.getCursorPosition();
-        const coords = editor.getCoordinateForPosition(cursor);
+        const selection = editor.getSelection();
+        const line = Math.min(selection.end.line + 1, editor.lineCount - 1);
+        const coords = editor.getCoordinateForPosition({
+          line,
+          column: selection.end.column
+        });
         const editorRect = fe.node.getBoundingClientRect();
         const yOffset = 30;
         const rect: DOMRect = new DOMRect(
@@ -968,14 +966,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
         return rect;
       };
-      
+
       const input = fe.node;
       if (!input) {
         return;
       }
-      const scrollEl = fe.node.querySelector(
-        '.cm-scroller'
-      );
+      const scrollEl = fe.node.querySelector('.cm-scroller');
       const rect = getRectAtCursor();
 
       const updatePopoverPosition = () => {
@@ -1015,7 +1011,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const selection = editor.getSelection();
       const startOffset = editor.getOffsetAt(selection.start);
       const endOffset = editor.getOffsetAt(selection.end);
-      const existingCode =  editor.model.sharedModel
+      const existingCode = editor.model.sharedModel
         .getSource()
         .substring(startOffset, endOffset);
 
@@ -1037,7 +1033,20 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const startOffset = editor.getOffsetAt(selection.start);
         const endOffset = editor.getOffsetAt(selection.end);
 
-        fe.content.editor.model.sharedModel.updateSource(startOffset, endOffset, generatedContent);
+        editor.model.sharedModel.updateSource(
+          startOffset,
+          endOffset,
+          generatedContent
+        );
+        const numAddedLines = generatedContent.split('\n').length;
+        editor.setCursorPosition({
+          line: Math.min(
+            selection.end.line + numAddedLines,
+            editor.lineCount - 1
+          ),
+          column: 0
+        });
+
         generatedContent = '';
         removePopover();
       };
@@ -1096,9 +1105,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }
       },
       label: 'Generate code',
-      isEnabled: () => loggedInToGitHubCopilot() && (isActiveCellCodeCell() || isCurrentWidgetFileEditor())
+      isEnabled: () =>
+        loggedInToGitHubCopilot() &&
+        (isActiveCellCodeCell() || isCurrentWidgetFileEditor())
     };
-    app.commands.addCommand(CommandIDs.editorGenerateCode, generateCellCodeCommand);
+    app.commands.addCommand(
+      CommandIDs.editorGenerateCode,
+      generateCellCodeCommand
+    );
 
     const copilotMenuCommands = new CommandRegistry();
     copilotMenuCommands.addCommand(
