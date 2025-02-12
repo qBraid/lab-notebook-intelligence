@@ -28,6 +28,7 @@ import {
 } from '@jupyterlab/completer';
 
 import { NotebookPanel } from '@jupyterlab/notebook';
+import { CodeEditor } from '@jupyterlab/codeeditor';
 import { FileEditorWidget } from '@jupyterlab/fileeditor';
 
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
@@ -39,7 +40,6 @@ import { LabIcon } from '@jupyterlab/ui-components';
 import { Menu, Panel, Widget } from '@lumino/widgets';
 import { CommandRegistry } from '@lumino/commands';
 import { IStatusBar } from '@jupyterlab/statusbar';
-import { CodeEditor } from '@jupyterlab/codeeditor';
 
 import {
   ChatSidebar,
@@ -62,7 +62,10 @@ import {
   cellOutputAsText,
   compareSelections,
   extractCodeFromMarkdown,
+  getSelectionInEditor,
   getTokenCount,
+  getWholeNotebookContent,
+  isSelectionEmpty,
   markdownToComment,
   waitForDuration
 } from './utils';
@@ -93,7 +96,6 @@ namespace CommandIDs {
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
 const MAX_TOKENS = 4096;
-const NBI_PROMPT_PREFIX = '# nbi-prompt:';
 const githuCopilotIcon = new LabIcon({
   name: 'notebook-intelligence:github-copilot-icon',
   svgstr: copilotSvgstr
@@ -208,36 +210,6 @@ class ActiveDocumentWatcher {
   }
 
   static getActiveSelectionContent(): string {
-    const isSelectionEmpty = (selection: CodeEditor.IRange): boolean => {
-      return (
-        selection.start.line === selection.end.line &&
-        selection.start.column === selection.end.column
-      );
-    };
-
-    const getSelectionInEditor = (editor: CodeEditor.IEditor): string => {
-      const selection = editor.getSelection();
-      const startOffset = editor.getOffsetAt(selection.start);
-      const endOffset = editor.getOffsetAt(selection.end);
-      return editor.model.sharedModel
-        .getSource()
-        .substring(startOffset, endOffset);
-    };
-
-    const getWholeNotebookContent = (np: NotebookPanel): string => {
-      let content = '';
-      for (const cell of np.content.widgets) {
-        const cellModel = cell.model.sharedModel;
-        if (cellModel.cell_type === 'code') {
-          content += cellModel.source + '\n';
-        } else if (cellModel.cell_type === 'markdown') {
-          content += markdownToComment(cellModel.source) + '\n';
-        }
-      }
-
-      return content;
-    };
-
     const activeDocumentInfo = ActiveDocumentWatcher.activeDocumentInfo;
     const activeWidget = activeDocumentInfo.activeWidget;
 
@@ -822,132 +794,27 @@ const plugin: JupyterFrontEndPlugin<void> = {
       return { prefix, suffix };
     };
 
-    const generateCodeForCell = () => {
+    const generateCodeForCellOrFileEditor = () => {
+      const isCodeCell = isActiveCellCodeCell();
       const currentWidget = app.shell.currentWidget;
-      const np = currentWidget as NotebookPanel;
-      const activeCell = np.content.activeCell;
-      const input = activeCell.node.querySelector('.jp-InputArea-editor');
-      if (!input) {
-        return;
+      let editor: CodeEditor.IEditor;
+      let codeInput: HTMLElement = null;
+      let scrollEl: HTMLElement = null;
+      if (isCodeCell) {
+        const np = currentWidget as NotebookPanel;
+        const activeCell = np.content.activeCell;
+        codeInput = activeCell.node.querySelector('.jp-InputArea-editor');
+        if (!codeInput) {
+          return;
+        }
+        scrollEl = np.node.querySelector('.jp-WindowedPanel-outer');
+        editor = activeCell.editor;
+      } else {
+        const fe = currentWidget as FileEditorWidget;
+        codeInput = fe.node;
+        scrollEl = fe.node.querySelector('.cm-scroller');
+        editor = fe.content.editor;
       }
-      const scrollEl = np.node.querySelector('.jp-WindowedPanel-outer');
-      const rect = input.getBoundingClientRect();
-
-      const updatePopoverPosition = () => {
-        if (openPopover !== null) {
-          const rect = input.getBoundingClientRect();
-          openPopover.updatePosition(rect);
-        }
-      };
-
-      const inputResizeObserver = new ResizeObserver(updatePopoverPosition);
-
-      const addPositionListeners = () => {
-        inputResizeObserver.observe(input);
-        if (scrollEl) {
-          scrollEl.addEventListener('scroll', updatePopoverPosition);
-        }
-      };
-
-      const removePositionListeners = () => {
-        inputResizeObserver.unobserve(input);
-        if (scrollEl) {
-          scrollEl.removeEventListener('scroll', updatePopoverPosition);
-        }
-      };
-
-      const removePopover = () => {
-        if (openPopover !== null) {
-          removePositionListeners();
-          openPopover = null;
-          Widget.detach(inlinePrompt);
-        }
-      };
-
-      let userPrompt = '';
-      let generatedContent = '';
-
-      let existingCode = activeCell.model.sharedModel.source.trim();
-      const existingLines = existingCode.split('\n');
-      if (existingLines.length > 0) {
-        if (existingLines[0].startsWith(NBI_PROMPT_PREFIX)) {
-          userPrompt = existingLines[0]
-            .substring(NBI_PROMPT_PREFIX.length)
-            .trim();
-          existingCode =
-            existingLines.length > 1 ? existingLines.slice(1).join('\n') : '';
-        }
-      }
-
-      const removePromptComments = (source: string): string => {
-        source = source.trim();
-        const existingLines = source.split('\n');
-        const newLines = existingLines.filter(
-          line => !line.startsWith(NBI_PROMPT_PREFIX)
-        );
-        return newLines.join('\n');
-      };
-
-      const { prefix, suffix } = getPrefixAndSuffixForActiveCell();
-
-      const applyGeneratedCode = () => {
-        // extract out code sections from markdown
-        generatedContent = `${NBI_PROMPT_PREFIX} ${userPrompt}\n${extractCodeFromMarkdown(generatedContent)}`;
-        activeCell.model.sharedModel.source = generatedContent;
-        generatedContent = '';
-        removePopover();
-      };
-
-      removePopover();
-
-      const inlinePrompt = new InlinePromptWidget(rect, {
-        prompt: userPrompt,
-        existingCode,
-        prefix: removePromptComments(prefix),
-        suffix: removePromptComments(suffix),
-        onRequestSubmitted: (prompt: string) => {
-          userPrompt = prompt;
-          generatedContent = '';
-          if (existingCode !== '') {
-            return;
-          }
-          removePopover();
-        },
-        onRequestCancelled: () => {
-          removePopover();
-          activeCell.editor.focus();
-        },
-        onContentStream: (content: string) => {
-          if (existingCode !== '') {
-            return;
-          }
-          generatedContent += content;
-          activeCell.model.sharedModel.source = generatedContent;
-        },
-        onContentStreamEnd: () => {
-          if (existingCode !== '') {
-            return;
-          }
-          applyGeneratedCode();
-          activeCell.editor.focus();
-        },
-        onUpdatedCodeChange: (content: string) => {
-          generatedContent = content;
-        },
-        onUpdatedCodeAccepted: () => {
-          applyGeneratedCode();
-          activeCell.editor.focus();
-        }
-      });
-      openPopover = inlinePrompt;
-      addPositionListeners();
-      Widget.attach(inlinePrompt, document.body);
-    };
-
-    const generateCodeForFileEditor = () => {
-      const currentWidget = app.shell.currentWidget;
-      const fe = currentWidget as FileEditorWidget;
-      const editor = fe.content.editor;
 
       const getRectAtCursor = (): DOMRect => {
         const selection = editor.getSelection();
@@ -956,7 +823,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
           line,
           column: selection.end.column
         });
-        const editorRect = fe.node.getBoundingClientRect();
+        const editorRect = codeInput.getBoundingClientRect();
+        if (!coords) {
+          return editorRect;
+        }
         const yOffset = 30;
         const rect: DOMRect = new DOMRect(
           editorRect.left,
@@ -967,11 +837,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         return rect;
       };
 
-      const input = fe.node;
-      if (!input) {
-        return;
-      }
-      const scrollEl = fe.node.querySelector('.cm-scroller');
       const rect = getRectAtCursor();
 
       const updatePopoverPosition = () => {
@@ -984,14 +849,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const inputResizeObserver = new ResizeObserver(updatePopoverPosition);
 
       const addPositionListeners = () => {
-        inputResizeObserver.observe(input);
+        inputResizeObserver.observe(codeInput);
         if (scrollEl) {
           scrollEl.addEventListener('scroll', updatePopoverPosition);
         }
       };
 
       const removePositionListeners = () => {
-        inputResizeObserver.unobserve(input);
+        inputResizeObserver.unobserve(codeInput);
         if (scrollEl) {
           scrollEl.removeEventListener('scroll', updatePopoverPosition);
         }
@@ -1006,28 +871,35 @@ const plugin: JupyterFrontEndPlugin<void> = {
       };
 
       let userPrompt = '';
+      let existingCode = '';
       let generatedContent = '';
 
+      let prefix = '',
+        suffix = '';
+      if (isCodeCell) {
+        const ps = getPrefixAndSuffixForActiveCell();
+        prefix = ps.prefix;
+        suffix = ps.suffix;
+      } else {
+        const ps = getPrefixAndSuffixForFileEditor();
+        prefix = ps.prefix;
+        suffix = ps.suffix;
+      }
       const selection = editor.getSelection();
+
       const startOffset = editor.getOffsetAt(selection.start);
       const endOffset = editor.getOffsetAt(selection.end);
-      const existingCode = editor.model.sharedModel
-        .getSource()
-        .substring(startOffset, endOffset);
+      const source = editor.model.sharedModel.getSource();
 
-      const removePromptComments = (source: string): string => {
-        source = source.trim();
-        const existingLines = source.split('\n');
-        const newLines = existingLines.filter(
-          line => !line.startsWith(NBI_PROMPT_PREFIX)
-        );
-        return newLines.join('\n');
-      };
-
-      const { prefix, suffix } = getPrefixAndSuffixForFileEditor();
+      if (isCodeCell) {
+        prefix += '\n' + source.substring(0, startOffset);
+        existingCode = source.substring(startOffset, endOffset);
+        suffix = source.substring(endOffset) + '\n' + suffix;
+      } else {
+        existingCode = source.substring(startOffset, endOffset);
+      }
 
       const applyGeneratedCode = () => {
-        // extract out code sections from markdown
         generatedContent = extractCodeFromMarkdown(generatedContent);
         const selection = editor.getSelection();
         const startOffset = editor.getOffsetAt(selection.start);
@@ -1056,8 +928,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const inlinePrompt = new InlinePromptWidget(rect, {
         prompt: userPrompt,
         existingCode,
-        prefix: removePromptComments(prefix),
-        suffix: removePromptComments(suffix),
+        prefix: prefix,
+        suffix: suffix,
         onRequestSubmitted: (prompt: string) => {
           userPrompt = prompt;
           generatedContent = '';
@@ -1098,11 +970,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     const generateCellCodeCommand: CommandRegistry.ICommandOptions = {
       execute: args => {
-        if (isActiveCellCodeCell()) {
-          generateCodeForCell();
-        } else if (isCurrentWidgetFileEditor()) {
-          generateCodeForFileEditor();
-        }
+        generateCodeForCellOrFileEditor();
       },
       label: 'Generate code',
       isEnabled: () =>
