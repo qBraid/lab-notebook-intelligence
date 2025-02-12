@@ -911,12 +911,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
           generatedContent
         );
         const numAddedLines = generatedContent.split('\n').length;
+        const cursorLine = Math.min(
+          selection.start.line + numAddedLines - 1,
+          editor.lineCount - 1
+        );
+        const cursorColumn = editor.getLine(cursorLine)?.length || 0;
         editor.setCursorPosition({
-          line: Math.min(
-            selection.end.line + numAddedLines,
-            editor.lineCount - 1
-          ),
-          column: 0
+          line: cursorLine,
+          column: cursorColumn
         });
 
         generatedContent = '';
