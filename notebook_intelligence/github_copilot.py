@@ -73,7 +73,8 @@ def login_with_existing_credentials(access_token_config=None):
             import keyring
             github_access_token_provided = keyring.get_password(KEYRING_SERVICE_NAME, GITHUB_ACCESS_TOKEN_KEYRING_NAME)
         except Exception as e:
-            log.error(f"Failed to get GitHub access token: {e}")
+            if access_token_config == "remember":
+                log.error(f"Failed to get GitHub access token: {e}")
         remember_github_access_token = access_token_config == "remember"
     elif access_token_config == "forget":
         try:

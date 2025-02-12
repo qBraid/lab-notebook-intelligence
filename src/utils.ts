@@ -4,6 +4,7 @@ import { CodeCell } from '@jupyterlab/cells';
 import { PartialJSONObject } from '@lumino/coreutils';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { encoding_for_model } from 'tiktoken';
+import { NotebookPanel } from '@jupyterlab/notebook';
 
 const tiktoken_encoding = encoding_for_model('gpt-4o');
 
@@ -128,4 +129,32 @@ export function compareSelections(
     (compareSelectionPoints(lhs.start, rhs.start) &&
       compareSelectionPoints(lhs.end, rhs.end))
   );
+}
+
+export function isSelectionEmpty(selection: CodeEditor.IRange): boolean {
+  return (
+    selection.start.line === selection.end.line &&
+    selection.start.column === selection.end.column
+  );
+}
+
+export function getSelectionInEditor(editor: CodeEditor.IEditor): string {
+  const selection = editor.getSelection();
+  const startOffset = editor.getOffsetAt(selection.start);
+  const endOffset = editor.getOffsetAt(selection.end);
+  return editor.model.sharedModel.getSource().substring(startOffset, endOffset);
+}
+
+export function getWholeNotebookContent(np: NotebookPanel): string {
+  let content = '';
+  for (const cell of np.content.widgets) {
+    const cellModel = cell.model.sharedModel;
+    if (cellModel.cell_type === 'code') {
+      content += cellModel.source + '\n';
+    } else if (cellModel.cell_type === 'markdown') {
+      content += markdownToComment(cellModel.source) + '\n';
+    }
+  }
+
+  return content;
 }

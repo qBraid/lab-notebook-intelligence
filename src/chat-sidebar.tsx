@@ -1466,9 +1466,9 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
       {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn && (
         <>
           <div>
-            Your GitHub tokens, code and data are directly transferred to GitHub
-            Copilot as needed without storing any copies other than keeping in
-            the process memory.
+            Your code and data are directly transferred to GitHub Copilot as
+            needed without storing any copies other than keeping in the process
+            memory.
           </div>
           <div>
             <a href="https://github.com/features/copilot" target="_blank">
