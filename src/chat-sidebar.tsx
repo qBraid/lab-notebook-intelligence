@@ -105,13 +105,11 @@ export class InlinePromptWidget extends ReactWidget {
   constructor(rect: DOMRect, options: IInlinePromptWidgetOptions) {
     super();
 
-    this.node.style.boxShadow = 'rgba(90, 76, 191, 0.8) 0px 0px 4px 4px';
+    this.node.classList.add('inline-prompt-widget');
     this.node.style.top = `${rect.top + 32}px`;
     this.node.style.left = `${rect.left}px`;
-    this.node.style.zIndex = '1000';
     this.node.style.width = rect.width + 'px';
-    this.node.style.height = '42px';
-    this.node.style.border = '1px solid var(--jp-border-color0)';
+    this.node.style.height = '45px';
     this._options = options;
 
     this.node.addEventListener('focusout', (event: any) => {
