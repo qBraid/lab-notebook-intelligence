@@ -158,3 +158,24 @@ export function getWholeNotebookContent(np: NotebookPanel): string {
 
   return content;
 }
+
+export function applyCodeToSelectionInEditor(
+  editor: CodeEditor.IEditor,
+  code: string
+) {
+  const selection = editor.getSelection();
+  const startOffset = editor.getOffsetAt(selection.start);
+  const endOffset = editor.getOffsetAt(selection.end);
+
+  editor.model.sharedModel.updateSource(startOffset, endOffset, code);
+  const numAddedLines = code.split('\n').length;
+  const cursorLine = Math.min(
+    selection.start.line + numAddedLines - 1,
+    editor.lineCount - 1
+  );
+  const cursorColumn = editor.getLine(cursorLine)?.length || 0;
+  editor.setCursorPosition({
+    line: cursorLine,
+    column: cursorColumn
+  });
+}

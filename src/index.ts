@@ -59,6 +59,7 @@ import sparklesSvgstr from '../style/icons/sparkles.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 
 import {
+  applyCodeToSelectionInEditor,
   cellOutputAsText,
   compareSelections,
   extractCodeFromMarkdown,
@@ -74,6 +75,7 @@ import { UUID } from '@lumino/coreutils';
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat-user-input';
   export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
+  export const addCodeAsNewCell = 'notebook-intelligence:apply-add-as-new-cell';
   export const createNewFile = 'notebook-intelligence:create-new-file';
   export const createNewNotebookFromPython =
     'notebook-intelligence:create-new-notebook-from-py';
@@ -518,6 +520,35 @@ const plugin: JupyterFrontEndPlugin<void> = {
       execute: args => {
         const currentWidget = app.shell.currentWidget;
         if (currentWidget instanceof NotebookPanel) {
+          const activeCell = currentWidget.content.activeCell;
+          if (activeCell) {
+            applyCodeToSelectionInEditor(
+              activeCell.editor,
+              args.code as string
+            );
+            return;
+          }
+        } else if (currentWidget instanceof FileEditorWidget) {
+          applyCodeToSelectionInEditor(
+            currentWidget.content.editor,
+            args.code as string
+          );
+          return;
+        }
+
+        app.commands.execute('apputils:notify', {
+          message:
+            'Failed to insert at cursor. Open a notebook or file to insert the code.',
+          type: 'error',
+          options: { autoClose: true }
+        });
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.addCodeAsNewCell, {
+      execute: args => {
+        const currentWidget = app.shell.currentWidget;
+        if (currentWidget instanceof NotebookPanel) {
           let activeCellIndex = currentWidget.content.activeCellIndex;
           activeCellIndex =
             activeCellIndex === -1
@@ -530,14 +561,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
             source: args.code as string
           });
           currentWidget.content.activeCellIndex = activeCellIndex;
-        } else if (currentWidget instanceof FileEditorWidget) {
-          const editor = currentWidget.content.editor;
-          const cursor = editor.getCursorPosition();
-          editor.setCursorPosition(cursor);
-          editor.replaceSelection?.(args.code as string);
         } else {
           app.commands.execute('apputils:notify', {
-            message: 'Open a notebook or file to insert the code at cursor',
+            message: 'Open a notebook to insert the code as new cell',
             type: 'error',
             options: { autoClose: true }
           });
@@ -901,26 +927,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
       const applyGeneratedCode = () => {
         generatedContent = extractCodeFromMarkdown(generatedContent);
-        const selection = editor.getSelection();
-        const startOffset = editor.getOffsetAt(selection.start);
-        const endOffset = editor.getOffsetAt(selection.end);
-
-        editor.model.sharedModel.updateSource(
-          startOffset,
-          endOffset,
-          generatedContent
-        );
-        const numAddedLines = generatedContent.split('\n').length;
-        const cursorLine = Math.min(
-          selection.start.line + numAddedLines - 1,
-          editor.lineCount - 1
-        );
-        const cursorColumn = editor.getLine(cursorLine)?.length || 0;
-        editor.setCursorPosition({
-          line: cursorLine,
-          column: cursorColumn
-        });
-
+        applyCodeToSelectionInEditor(editor, generatedContent);
         generatedContent = '';
         removePopover();
       };

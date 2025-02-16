@@ -8,20 +8,31 @@ import {
   oneLight,
   oneDark
 } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { VscNewFile, VscInsert, VscCopy, VscNotebook } from 'react-icons/vsc';
+import {
+  VscNewFile,
+  VscInsert,
+  VscCopy,
+  VscNotebook,
+  VscAdd
+} from 'react-icons/vsc';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { isDarkTheme } from './utils';
+import { IActiveDocumentInfo } from './tokens';
 
 type MarkdownRendererProps = {
   children: string;
   getApp: () => JupyterFrontEnd;
+  getActiveDocumentInfo(): IActiveDocumentInfo;
 };
 
 export function MarkdownRenderer({
   children: markdown,
-  getApp
+  getApp,
+  getActiveDocumentInfo
 }: MarkdownRendererProps) {
   const app = getApp();
+  const activeDocumentInfo = getActiveDocumentInfo();
+  const isNotebook = activeDocumentInfo.filename.endsWith('.ipynb');
 
   return (
     <Markdown
@@ -38,6 +49,13 @@ export function MarkdownRenderer({
 
           const handleInsertAtCursorClick = () => {
             app.commands.execute('notebook-intelligence:insert-at-cursor', {
+              language,
+              code: codeString
+            });
+          };
+
+          const handleAddCodeAsNewCell = () => {
+            app.commands.execute('notebook-intelligence:add-code-as-new-cell', {
               language,
               code: codeString
             });
@@ -76,6 +94,14 @@ export function MarkdownRenderer({
                 >
                   <VscInsert size={16} title="Insert at cursor" />
                 </div>
+                {isNotebook && (
+                  <div
+                    className="code-block-header-button"
+                    onClick={() => handleAddCodeAsNewCell()}
+                  >
+                    <VscAdd size={16} title="Add as new cell" />
+                  </div>
+                )}
                 <div
                   className="code-block-header-button"
                   onClick={() => handleCreateNewFileClick()}

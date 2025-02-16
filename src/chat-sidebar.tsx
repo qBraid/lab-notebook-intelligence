@@ -315,7 +315,11 @@ function ChatResponse(props: any) {
             case ResponseStreamDataType.Markdown:
             case ResponseStreamDataType.MarkdownPart:
               return (
-                <MarkdownRenderer key={`key-${index}`} getApp={props.getApp}>
+                <MarkdownRenderer
+                  key={`key-${index}`}
+                  getApp={props.getApp}
+                  getActiveDocumentInfo={props.getActiveDocumentInfo}
+                >
                   {item.content}
                 </MarkdownRenderer>
               );
@@ -1070,6 +1074,7 @@ function SidebarComponent(props: any) {
                 message={msg}
                 openFile={props.openFile}
                 getApp={props.getApp}
+                getActiveDocumentInfo={props.getActiveDocumentInfo}
                 showGenerating={
                   index === chatMessages.length - 1 &&
                   msg.from === 'copilot' &&

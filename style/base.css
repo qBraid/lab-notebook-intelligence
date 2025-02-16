@@ -411,10 +411,7 @@ button.send-button {
     #7c3ffe 350deg,
     #3b37ff 360deg
   );
-  top: -4px;
-  left: -4px;
-  bottom: -4px;
-  right: -4px;
+  inset: -4px;
   position: absolute;
   z-index: -1;
 }
