@@ -417,10 +417,12 @@ body[data-jp-theme-light='false'] .inline-popover {
     #7c3ffe 350deg,
     #3b37ff 360deg
   );
+  /* stylelint-disable */
   left: -1px;
   right: -1px;
   top: -1px;
   bottom: -1px;
+  /* stylelint-enable */
   position: absolute;
   z-index: -1;
 }
