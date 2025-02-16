@@ -417,7 +417,10 @@ body[data-jp-theme-light='false'] .inline-popover {
     #7c3ffe 350deg,
     #3b37ff 360deg
   );
-  inset: -4px;
+  left: -1px;
+  right: -1px;
+  top: -1px;
+  bottom: -1px;
   position: absolute;
   z-index: -1;
 }
