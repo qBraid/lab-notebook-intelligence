@@ -109,7 +109,7 @@ export class InlinePromptWidget extends ReactWidget {
     this.node.style.top = `${rect.top + 32}px`;
     this.node.style.left = `${rect.left}px`;
     this.node.style.width = rect.width + 'px';
-    this.node.style.height = '45px';
+    this.node.style.height = '48px';
     this._options = options;
 
     this.node.addEventListener('focusout', (event: any) => {

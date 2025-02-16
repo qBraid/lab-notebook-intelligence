@@ -329,12 +329,17 @@ button.send-button {
   display: flex;
   flex-direction: column;
   position: absolute;
-  background-color: var(--jp-toolbar-active-background);
+  background-color: #f2f3ff;
+}
+
+body[data-jp-theme-light='false'] .inline-popover {
+  background-color: #14162b;
 }
 
 .inline-prompt-container {
   width: 100%;
   height: 100%;
+  padding: 2px;
 }
 
 .monaco-editor-container {
@@ -347,12 +352,13 @@ button.send-button {
 
 .inline-popover-footer {
   height: 32px;
-  width: 100%;
+  width: calc(100% - 6px);
   display: flex;
   flex-direction: row;
   gap: 5px;
   align-items: center;
   padding-left: 5px;
+  background-color: var(--jp-layout-color2);
 }
 
 .inline-prompt-container textarea {
@@ -395,8 +401,8 @@ button.send-button {
 .inline-prompt-widget {
   border-radius: 4px;
   padding: 3px;
-  border: 1px solid var(--jp-border-color0);
   z-index: 1000;
+  box-shadow: rgba(90, 76, 191, 0.3) 0px 0px 10px 10px;
 }
 
 .inline-prompt-widget::before {
