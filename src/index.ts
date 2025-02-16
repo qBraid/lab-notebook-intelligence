@@ -75,7 +75,7 @@ import { UUID } from '@lumino/coreutils';
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat-user-input';
   export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
-  export const addCodeAsNewCell = 'notebook-intelligence:apply-add-as-new-cell';
+  export const addCodeAsNewCell = 'notebook-intelligence:add-code-as-new-cell';
   export const createNewFile = 'notebook-intelligence:create-new-file';
   export const createNewNotebookFromPython =
     'notebook-intelligence:create-new-notebook-from-py';
