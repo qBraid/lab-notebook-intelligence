@@ -105,13 +105,11 @@ export class InlinePromptWidget extends ReactWidget {
   constructor(rect: DOMRect, options: IInlinePromptWidgetOptions) {
     super();
 
-    this.node.style.boxShadow = 'rgba(90, 76, 191, 0.8) 0px 0px 4px 4px';
+    this.node.classList.add('inline-prompt-widget');
     this.node.style.top = `${rect.top + 32}px`;
     this.node.style.left = `${rect.left}px`;
-    this.node.style.zIndex = '1000';
     this.node.style.width = rect.width + 'px';
-    this.node.style.height = '42px';
-    this.node.style.border = '1px solid var(--jp-border-color0)';
+    this.node.style.height = '48px';
     this._options = options;
 
     this.node.addEventListener('focusout', (event: any) => {
@@ -317,7 +315,11 @@ function ChatResponse(props: any) {
             case ResponseStreamDataType.Markdown:
             case ResponseStreamDataType.MarkdownPart:
               return (
-                <MarkdownRenderer key={`key-${index}`} getApp={props.getApp}>
+                <MarkdownRenderer
+                  key={`key-${index}`}
+                  getApp={props.getApp}
+                  getActiveDocumentInfo={props.getActiveDocumentInfo}
+                >
                   {item.content}
                 </MarkdownRenderer>
               );
@@ -1072,6 +1074,7 @@ function SidebarComponent(props: any) {
                 message={msg}
                 openFile={props.openFile}
                 getApp={props.getApp}
+                getActiveDocumentInfo={props.getActiveDocumentInfo}
                 showGenerating={
                   index === chatMessages.length - 1 &&
                   msg.from === 'copilot' &&
