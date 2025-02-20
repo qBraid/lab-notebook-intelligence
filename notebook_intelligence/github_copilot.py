@@ -342,7 +342,9 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
 
     result = ''
 
-    resp_text = resp.text.split('\n')
+    decoded_response = resp.content.decode()
+
+    resp_text = decoded_response.split('\n')
     for line in resp_text:
         if line.startswith('data: {'):
             json_completion = json.loads(line[6:])
