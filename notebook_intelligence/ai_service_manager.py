@@ -6,8 +6,8 @@ import os
 import sys
 from typing import Dict
 import logging
-from notebook_intelligence.api import AIModel, CancelToken, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension, Tool
-from notebook_intelligence.github_copilot import completions
+from notebook_intelligence.api import AIModel, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension
+from notebook_intelligence.github_ai_model import GitHubAIModel
 
 log = logging.getLogger(__name__)
 
@@ -15,10 +15,6 @@ DEFAULT_CHAT_PARTICIPANT_ID = 'default'
 RESERVED_PARTICIPANT_IDS = set([
     'chat', 'copilot', 'jupyter', 'jupyterlab', 'jlab', 'notebook', 'intelligence', 'nb', 'nbi', 'terminal', 'vscode', 'workspace', 'help', 'ai', 'config', 'settings', 'ui', 'cell', 'code', 'file', 'data', 'new', 'run', 'search'
 ])
-
-class GitHubAIModel(AIModel):
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> None:
-        return completions(messages, tools, response, cancel_token, options)
 
 class AIServiceManager(Host):
     def __init__(self, default_chat_participant: ChatParticipant):

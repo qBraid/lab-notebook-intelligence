@@ -1,7 +1,6 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, Tool
-from notebook_intelligence.github_copilot import completions
 from notebook_intelligence.github_copilot_prompts import CopilotPrompts
 import base64
 import logging
@@ -53,7 +52,7 @@ class AddMarkdownCellToNotebookTool(Tool):
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
         markdown = tool_args.get('markdown_cell_source')
         ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': markdown, 'path': tool_context.get('file_path')})
-        return {}
+        return {"result": "Markdown cell added to notebook"}
 
 class AddCodeCellTool(Tool):
     @property
@@ -97,7 +96,7 @@ class AddCodeCellTool(Tool):
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
         code = tool_args.get('code_cell_source')
         ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
-        return {}
+        return {"result": "Code cell added to notebook"}
 
 # Fallback tool to handle GitHub Copilot tool errors
 class PythonTool(AddCodeCellTool):
@@ -142,7 +141,7 @@ class PythonTool(AddCodeCellTool):
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
         code = tool_args.get('code_cell_source')
         ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
-        return {}
+        return {"result": "Code cell added to notebook"}
 
 class GithubCopilotChatParticipant(ChatParticipant):
     @property
@@ -179,6 +178,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
         return set(["*"])
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
+        model = request.host.model
         if request.command == 'newNotebook':
             # create a new notebook
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
@@ -197,7 +197,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
             messages.pop()
             messages.insert(0, {"role": "system", "content": f"You are an assistant that creates Python code. You should return the code directly, without wrapping it inside ```."})
             messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
-            generated = completions(messages)
+            generated = model.completions(messages)
             code = generated['choices'][0]['message']['content']
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
             file_path = ui_cmd_response['path']
@@ -210,7 +210,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
         ] + request.chat_history
 
         try:
-            completions(messages, response=response, cancel_token=request.cancel_token)
+            model.completions(messages, response=response, cancel_token=request.cancel_token)
         except Exception as e:
             log.error(f"Error while handling chat request!\n{e}")
             response.stream(MarkdownData(f"Oops! There was a problem handling chat request. Please try again with a different prompt."))

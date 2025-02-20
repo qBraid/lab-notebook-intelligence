@@ -408,7 +408,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             response_emitter.finish()
             return
 
-        completions = github_copilot.inline_completions(prefix, suffix, language, filename, context, cancel_token)
+        completions = ai_service_manager.model.inline_completions(prefix, suffix, language, filename, context, cancel_token)
         if cancel_token.is_cancel_requested:
             response_emitter.finish()
             return

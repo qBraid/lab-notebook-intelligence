@@ -5,6 +5,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import os, json, time, requests, threading
+from typing import Any
 from pathlib import Path
 import uuid
 import secrets
@@ -294,7 +295,7 @@ def _generate_copilot_headers():
         'vscode-machineid': MACHINE_ID,
     }
 
-def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken):
+def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
     global github_auth
     token = github_auth['token']
 
@@ -356,7 +357,7 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
     
     return result
 
-def completions(messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}):
+def completions(messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
     stream = response is not None
 
     try:

@@ -2,9 +2,10 @@
 
 import asyncio
 import json
-from typing import Callable, Dict, Union
+from typing import Any, Callable, Dict, Union
 from dataclasses import dataclass
 from enum import Enum
+import uuid
 from fuzzy_json import loads as fuzzy_json_loads
 import logging
 
@@ -338,16 +339,21 @@ class ChatParticipant:
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
 
-                if 'tool_calls' in tool_response['choices'][0]['message']:
+                if tool_response['choices'][0]['message'].get('tool_calls', None) is not None:
                     for tool_call in tool_response['choices'][0]['message']['tool_calls']:
                         tool_call_rounds.append(tool_call)
-                elif 'content' in tool_response['choices'][0]['message']:
-                    messages.append(tool_response['choices'][0]['message'])
+                elif tool_response['choices'][0]['message'].get('content', None) is not None:
                     response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
 
-                # handle first tool call in tool_call_rounds
-                if len(tool_call_rounds) > 0:
+                messages.append(tool_response['choices'][0]['message'])
+
+                had_tool_call = len(tool_call_rounds) > 0
+
+                # handle first tool calls
+                while len(tool_call_rounds) > 0:
                     tool_call = tool_call_rounds[0]
+                    if "id" not in tool_call:
+                        tool_call['id'] = uuid.uuid4().hex
                     tool_call_rounds = tool_call_rounds[1:]
 
                     tool_name = tool_call['function']['name']
@@ -358,7 +364,9 @@ class ChatParticipant:
                         response.finish()
                         return
 
-                    if not tool_call['function']['arguments'].startswith('{'):
+                    if type(tool_call['function']['arguments']) is dict:
+                        args = tool_call['function']['arguments']
+                    elif not tool_call['function']['arguments'].startswith('{'):
                         args = tool_call['function']['arguments']
                     else:
                         args = fuzzy_json_loads(tool_call['function']['arguments'])
@@ -394,18 +402,15 @@ class ChatParticipant:
 
                     tool_call_response = await tool_to_call.handle_tool_call(request, response, tool_context, args)
 
-                    tool_call_args_resp = args.copy()
-                    tool_call_args_resp.update(tool_call_response)
-
                     function_call_result_message = {
                         "role": "tool",
-                        "content": json.dumps(tool_call_args_resp),
+                        "content": json.dumps(tool_call_response),
                         "tool_call_id": tool_call['id']
                     }
 
-                    # TODO: duplicate message?
-                    messages.append(tool_response['choices'][0]['message'])
                     messages.append(function_call_result_message)
+
+                if had_tool_call:
                     await _tool_call_loop(tool_call_rounds)
                     return
 
@@ -438,7 +443,10 @@ class CompletionContextProvider:
         raise NotImplemented
 
 class AIModel:
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> None:
+    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
+        raise NotImplemented
+
+    def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
         raise NotImplemented
 
 class Host:
