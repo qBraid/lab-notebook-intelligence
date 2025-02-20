@@ -6,8 +6,8 @@ import os
 import sys
 from typing import Dict
 import logging
-from notebook_intelligence.api import AIModel, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension
-from notebook_intelligence.github_ai_model import GitHubAIModel
+from notebook_intelligence.api import LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension
+from notebook_intelligence.github_copilot_llm_provider import GitHubCopilotLLMProvider
 
 log = logging.getLogger(__name__)
 
@@ -83,8 +83,8 @@ class AIServiceManager(Host):
         return self._default_chat_participant
 
     @property
-    def model(self) -> AIModel:
-        return GitHubAIModel()
+    def llm_provider(self) -> LLMProvider:
+        return GitHubCopilotLLMProvider()
 
     @staticmethod
     def parse_prompt(prompt: str) -> tuple[str, str, str]:

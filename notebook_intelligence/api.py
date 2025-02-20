@@ -323,7 +323,7 @@ class ChatParticipant:
         messages = request.chat_history.copy()
 
         if len(tools) == 0:
-            request.host.model.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
+            request.host.llm_provider.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
             return
 
         openai_tools = [tool.schema for tool in tools]
@@ -335,7 +335,7 @@ class ChatParticipant:
 
         async def _tool_call_loop(tool_call_rounds: list):
             try:
-                tool_response = request.host.model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
+                tool_response = request.host.llm_provider.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
 
@@ -442,7 +442,7 @@ class CompletionContextProvider:
     def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
         raise NotImplemented
 
-class AIModel:
+class LLMProvider:
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         raise NotImplemented
 
@@ -461,7 +461,7 @@ class Host:
         raise NotImplemented
     
     @property
-    def model(self) -> AIModel:
+    def llm_provider(self) -> LLMProvider:
         raise NotImplemented
 
 class NotebookIntelligenceExtension:

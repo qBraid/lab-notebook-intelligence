@@ -178,7 +178,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
         return set(["*"])
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
-        model = request.host.model
+        llm_provider = request.host.llm_provider
         if request.command == 'newNotebook':
             # create a new notebook
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
@@ -197,7 +197,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
             messages.pop()
             messages.insert(0, {"role": "system", "content": f"You are an assistant that creates Python code. You should return the code directly, without wrapping it inside ```."})
             messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
-            generated = model.completions(messages)
+            generated = llm_provider.completions(messages)
             code = generated['choices'][0]['message']['content']
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
             file_path = ui_cmd_response['path']
@@ -210,7 +210,7 @@ class GithubCopilotChatParticipant(ChatParticipant):
         ] + request.chat_history
 
         try:
-            model.completions(messages, response=response, cancel_token=request.cancel_token)
+            llm_provider.completions(messages, response=response, cancel_token=request.cancel_token)
         except Exception as e:
             log.error(f"Error while handling chat request!\n{e}")
             response.stream(MarkdownData(f"Oops! There was a problem handling chat request. Please try again with a different prompt."))
