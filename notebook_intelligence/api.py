@@ -323,7 +323,7 @@ class ChatParticipant:
         messages = request.chat_history.copy()
 
         if len(tools) == 0:
-            request.host.llm_provider.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
+            request.host.chat_model.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
             return
 
         openai_tools = [tool.schema for tool in tools]
@@ -335,7 +335,7 @@ class ChatParticipant:
 
         async def _tool_call_loop(tool_call_rounds: list):
             try:
-                tool_response = request.host.llm_provider.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
+                tool_response = request.host.chat_model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
 
@@ -442,11 +442,37 @@ class CompletionContextProvider:
     def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
         raise NotImplemented
 
-class LLMProvider:
+class ChatModel:
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         raise NotImplemented
 
+class InlineCompletionModel:
     def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
+        raise NotImplemented
+
+class EmbeddingModel:
+    def embeddings(self, inputs: list[str]) -> Any:
+        raise NotImplemented
+
+class LLMProvider:
+    @property
+    def id(self) -> str:
+        raise NotImplemented
+    
+    @property
+    def name(self) -> str:
+        raise NotImplemented
+
+    @property
+    def chat_models(self) -> list[ChatModel]:
+        raise NotImplemented
+    
+    @property
+    def inline_completion_models(self) -> list[InlineCompletionModel]:
+        raise NotImplemented
+    
+    @property
+    def embedding_models(self) -> list[EmbeddingModel]:
         raise NotImplemented
 
 class Host:
@@ -461,7 +487,15 @@ class Host:
         raise NotImplemented
     
     @property
-    def llm_provider(self) -> LLMProvider:
+    def chat_model(self) -> ChatModel:
+        raise NotImplemented
+    
+    @property
+    def inline_completion_model(self) -> InlineCompletionModel:
+        raise NotImplemented
+    
+    @property
+    def embedding_model(self) -> EmbeddingModel:
         raise NotImplemented
 
 class NotebookIntelligenceExtension:

@@ -6,7 +6,7 @@ import os
 import sys
 from typing import Dict
 import logging
-from notebook_intelligence.api import LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension
+from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension
 from notebook_intelligence.github_copilot_llm_provider import GitHubCopilotLLMProvider
 
 log = logging.getLogger(__name__)
@@ -21,6 +21,10 @@ class AIServiceManager(Host):
         self.chat_participants: Dict[str, ChatParticipant] = {}
         self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
         self._default_chat_participant = default_chat_participant
+        self._llm_provider = GitHubCopilotLLMProvider()
+        self._chat_model = self._llm_provider.chat_models[0]
+        self._inline_completion_model = self._llm_provider.inline_completion_models[0]
+        self._embedding_model = None
         self.initialize()
 
     def initialize(self):
@@ -83,8 +87,16 @@ class AIServiceManager(Host):
         return self._default_chat_participant
 
     @property
-    def llm_provider(self) -> LLMProvider:
-        return GitHubCopilotLLMProvider()
+    def chat_model(self) -> ChatModel:
+        return self._chat_model
+    
+    @property
+    def inline_completion_model(self) -> InlineCompletionModel:
+        return self._inline_completion_model
+    
+    @property
+    def embedding_model(self) -> EmbeddingModel:
+        return self._embedding_model
 
     @staticmethod
     def parse_prompt(prompt: str) -> tuple[str, str, str]:
