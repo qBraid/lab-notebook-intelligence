@@ -443,6 +443,14 @@ class CompletionContextProvider:
         raise NotImplemented
 
 class ChatModel:
+    @property
+    def id(self) -> str:
+        raise NotImplemented
+    
+    @property
+    def name(self) -> str:
+        raise NotImplemented
+
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         raise NotImplemented
 

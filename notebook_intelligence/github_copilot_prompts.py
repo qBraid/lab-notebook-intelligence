@@ -4,9 +4,9 @@
 IDE_NAME = "JupyterLab"
 OS_TYPE = "Linux"
 
-CHAT_SYSTEM_PROMPT = f"""
+CHAT_SYSTEM_PROMPT = """
 You are an AI programming assistant.
-When asked for your name, you must respond with "GitHub Copilot".
+When asked for your name, you must respond with "{AI_ASSISTANT_NAME}".
 Follow the user's requirements carefully & to the letter.
 Follow Microsoft content policies.
 Avoid content that violates copyrights.
@@ -38,6 +38,11 @@ The active document is the source code the user is looking at right now.
 You can only give one reply for each conversation turn.
 """
 
-class CopilotPrompts:
-    def chat_prompt():
-        return CHAT_SYSTEM_PROMPT
+class Prompts:
+    @staticmethod
+    def generic_chat_prompt() -> str:
+        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="Notebook Intelligence", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE)
+
+    @staticmethod
+    def github_copilot_chat_prompt() -> str:
+        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="GitHub Copilot", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE)
