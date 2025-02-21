@@ -21,8 +21,7 @@ from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, Co
 from notebook_intelligence.ai_service_manager import AIServiceManager
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 import notebook_intelligence.github_copilot as github_copilot
-from notebook_intelligence.github_copilot_llm_provider import GitHubCopilotChatModel
-from notebook_intelligence.github_copilot_participant import GithubCopilotChatParticipant
+from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
