@@ -455,10 +455,26 @@ class ChatModel:
         raise NotImplemented
 
 class InlineCompletionModel:
+    @property
+    def id(self) -> str:
+        raise NotImplemented
+    
+    @property
+    def name(self) -> str:
+        raise NotImplemented
+
     def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
         raise NotImplemented
 
 class EmbeddingModel:
+    @property
+    def id(self) -> str:
+        raise NotImplemented
+    
+    @property
+    def name(self) -> str:
+        raise NotImplemented
+
     def embeddings(self, inputs: list[str]) -> Any:
         raise NotImplemented
 
