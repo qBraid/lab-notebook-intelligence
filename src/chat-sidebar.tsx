@@ -21,12 +21,12 @@ import {
   IActiveDocumentInfo,
   ICellContents,
   IChatCompletionResponseEmitter,
+  IChatParticipant,
   IContextItem,
   RequestDataType,
   ResponseStreamDataType
 } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
-import { requestAPI } from './handler';
 import { MarkdownRenderer } from './markdown-renderer';
 
 import copySvgstr from '../style/icons/copy.svg';
@@ -237,14 +237,6 @@ interface IChatMessage {
   contents: IChatMessageContent[];
   notebookLink?: string;
   participant?: IChatParticipant;
-}
-
-interface IChatParticipant {
-  id: string;
-  name: string;
-  description: string;
-  iconPath: string;
-  commands: string[];
 }
 
 const answeredForms = new Map<string, string>();
@@ -510,36 +502,29 @@ function SidebarComponent(props: any) {
   const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
   const [chatId, setChatId] = useState(UUID.uuid4());
   const lastMessageId = useRef<string>('');
-  const chatParticipants = useRef<IChatParticipant[]>([]);
   const [contextOn, setContextOn] = useState(false);
   const [activeDocumentInfo, setActiveDocumentInfo] =
     useState<IActiveDocumentInfo | null>(null);
   const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
 
   useEffect(() => {
-    requestAPI<any>('capabilities', { method: 'GET' })
-      .then(data => {
-        chatParticipants.current = structuredClone(data.chat_participants);
-        const prefixes: string[] = [];
-        for (const participant of data.chat_participants) {
-          const id = participant.id;
-          const commands = participant.commands;
-          const participantPrefix = id === 'default' ? '' : `@${id}`;
-          if (participantPrefix !== '') {
-            prefixes.push(participantPrefix);
-          }
-          const commandPrefix =
-            participantPrefix === '' ? '' : `${participantPrefix} `;
-          for (const command of commands) {
-            prefixes.push(`${commandPrefix}/${command}`);
-          }
-        }
-        setOriginalPrefixes(prefixes);
-        setPrefixSuggestions(prefixes);
-      })
-      .catch(reason => {
-        console.error(`Failed to get extension capabilities.\n${reason}`);
-      });
+    const prefixes: string[] = [];
+    const chatParticipants = GitHubCopilot.config.chatParticipants;
+    for (const participant of chatParticipants) {
+      const id = participant.id;
+      const commands = participant.commands;
+      const participantPrefix = id === 'default' ? '' : `@${id}`;
+      if (participantPrefix !== '') {
+        prefixes.push(participantPrefix);
+      }
+      const commandPrefix =
+        participantPrefix === '' ? '' : `${participantPrefix} `;
+      for (const command of commands) {
+        prefixes.push(`${commandPrefix}/${command}`);
+      }
+    }
+    setOriginalPrefixes(prefixes);
+    setPrefixSuggestions(prefixes);
   }, []);
 
   useEffect(() => {
@@ -755,9 +740,11 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: chatParticipants.current?.find(participant => {
-                return participant.id === response.participant;
-              })
+              participant: GitHubCopilot.config.chatParticipants.find(
+                participant => {
+                  return participant.id === response.participant;
+                }
+              )
             }
           ]);
         }
@@ -975,9 +962,11 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: chatParticipants.current?.find(participant => {
-                return participant.id === response.participant;
-              })
+              participant: GitHubCopilot.config.chatParticipants.find(
+                participant => {
+                  return participant.id === response.participant;
+                }
+              )
             }
           ]);
         }
@@ -1643,7 +1632,6 @@ function ConfigurationDialogBodyComponent(props: any) {
       openai_compatible_inline_completion_model_api_key:
         openAICompatibleInlineCompletionModelApiKey
     });
-    await GitHubCopilot.fetchCapabilities();
     // TODO: trigger a refresh of the chat sidebar
 
     props.onSave();

@@ -764,7 +764,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
       execute: args => {
         let dialog: Dialog<unknown> | null = null;
         const dialogBody = new ConfigurationDialogBody({
-          onSave: () => dialog?.dispose()
+          onSave: () => {
+            dialog?.dispose();
+            GitHubCopilot.fetchCapabilities();
+          }
         });
         dialog = new Dialog({
           title: 'Notebook Intelligence Settings',
@@ -1210,6 +1213,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
           isActive: () => GitHubCopilot.config.usingGitHubCopilotModel
         }
       );
+
+      GitHubCopilot.configChanged.connect(() => {
+        if (GitHubCopilot.config.usingGitHubCopilotModel) {
+          githubCopilotStatusBarItem.show();
+        } else {
+          githubCopilotStatusBarItem.hide();
+        }
+      });
     }
 
     const jlabApp = app as JupyterLab;

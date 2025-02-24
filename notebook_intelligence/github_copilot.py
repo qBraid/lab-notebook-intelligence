@@ -69,6 +69,10 @@ def get_login_status():
 
 def login_with_existing_credentials(access_token_config=None):
     global github_access_token_provided, remember_github_access_token
+
+    if github_auth["status"] is not LoginStatus.NOT_LOGGED_IN:
+        return
+
     if access_token_config == "remember" or access_token_config is None:
         try:
             import keyring

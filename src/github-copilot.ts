@@ -8,6 +8,7 @@ import { Signal } from '@lumino/signaling';
 import {
   GITHUB_COPILOT_MODEL_ID_PREFIX,
   IChatCompletionResponseEmitter,
+  IChatParticipant,
   IContextItem,
   RequestDataType
 } from './tokens';
@@ -76,6 +77,9 @@ export class NBIConfig {
   }
 
   capabilities: any = {};
+  chatParticipants: IChatParticipant[] = [];
+
+  changed = new Signal<this, void>(this);
 }
 
 export class GitHubCopilot {
@@ -87,6 +91,7 @@ export class GitHubCopilot {
   static _webSocket: WebSocket;
   static _messageReceived = new Signal<unknown, any>(this);
   static config = new NBIConfig();
+  static configChanged = this.config.changed;
 
   static async initialize() {
     await this.fetchCapabilities();
@@ -179,6 +184,10 @@ export class GitHubCopilot {
       requestAPI<any>('capabilities', { method: 'GET' })
         .then(data => {
           this.config.capabilities = structuredClone(data);
+          this.config.chatParticipants = structuredClone(
+            data.chat_participants
+          );
+          this.configChanged.emit();
           resolve();
         })
         .catch(reason => {

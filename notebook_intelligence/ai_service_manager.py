@@ -47,9 +47,6 @@ class AIServiceManager(Host):
 
         self.update_models_from_config()
 
-        if self.nbi_config.using_github_copilot_service:
-            github_copilot.login_with_existing_credentials(self._options.get("github_access_token"))
-
         self.initialize_extensions()
 
     def update_models_from_config(self):
@@ -80,6 +77,9 @@ class AIServiceManager(Host):
         self._default_chat_participant = default_chat_participant
 
         self.chat_participants[DEFAULT_CHAT_PARTICIPANT_ID] = self._default_chat_participant
+
+        if self.nbi_config.using_github_copilot_service:
+            github_copilot.login_with_existing_credentials(self._options.get("github_access_token"))
 
     def initialize_extensions(self):
         extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbi_extensions")
