@@ -6,31 +6,80 @@ import os
 import sys
 from typing import Dict
 import logging
+from notebook_intelligence import github_copilot
 from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension
-from notebook_intelligence.github_copilot_llm_provider import GitHubCopilotLLMProvider
+from notebook_intelligence.base_chat_participant import BaseChatParticipant
+from notebook_intelligence.config import NBIConfig
+from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
+from notebook_intelligence.llm_providers.github_copilot_llm_provider import GitHubCopilotLLMProvider
+from notebook_intelligence.llm_providers.ollama_llm_provider import OllamaLLMProvider
+from notebook_intelligence.llm_providers.openai_compatible_llm_provider import OpenAICompatibleLLMProvider
 
 log = logging.getLogger(__name__)
 
 DEFAULT_CHAT_PARTICIPANT_ID = 'default'
+RESERVED_LLM_PROVIDER_IDS = set([
+    'openai', 'anthropic', 'chat', 'copilot', 'jupyter', 'jupyterlab', 'jlab', 'notebook', 'intelligence', 'nb', 'nbi', 'ai', 'config', 'settings', 'ui', 'cell', 'code', 'file', 'data', 'new'
+])
 RESERVED_PARTICIPANT_IDS = set([
     'chat', 'copilot', 'jupyter', 'jupyterlab', 'jlab', 'notebook', 'intelligence', 'nb', 'nbi', 'terminal', 'vscode', 'workspace', 'help', 'ai', 'config', 'settings', 'ui', 'cell', 'code', 'file', 'data', 'new', 'run', 'search'
 ])
 
 class AIServiceManager(Host):
-    def __init__(self, default_chat_participant: ChatParticipant):
+    def __init__(self, options: dict = {}):
+        self.llm_providers: Dict[str, LLMProvider] = {}
         self.chat_participants: Dict[str, ChatParticipant] = {}
         self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
-        self._default_chat_participant = default_chat_participant
-        self._llm_provider = GitHubCopilotLLMProvider()
-        self._chat_model = self._llm_provider.chat_models[0]
-        self._inline_completion_model = self._llm_provider.inline_completion_models[0]
-        self._embedding_model = None
+        self._nbi_config = NBIConfig()
+        self._options = options.copy()
+        self._openai_compatible_llm_provider = OpenAICompatibleLLMProvider()
         self.initialize()
+
+    @property
+    def nbi_config(self) -> NBIConfig:
+        return self._nbi_config
 
     def initialize(self):
         self.chat_participants = {}
-        self.register_chat_participant(self._default_chat_participant)
+        self.register_llm_provider(GitHubCopilotLLMProvider())
+        self.register_llm_provider(OllamaLLMProvider())
+        self.register_llm_provider(self._openai_compatible_llm_provider)
+
+        self.update_models_from_config()
+
+        if self.nbi_config.using_github_copilot_service:
+            github_copilot.login_with_existing_credentials(self._options.get("github_access_token"))
+
         self.initialize_extensions()
+
+    def update_models_from_config(self):
+        chat_model_ref = self.nbi_config.chat_model
+        inline_completion_model_ref = self.nbi_config.inline_completion_model
+
+        self._chat_model = self.get_chat_model(chat_model_ref)
+        # if self._chat_model:
+        #     print(f"Chat model: ref: {chat_model_ref}, id: {self._chat_model.id}")
+        self._inline_completion_model = self.get_inline_completion_model(inline_completion_model_ref)
+        # if self._inline_completion_model:
+        #     print(f"Inlline comple model: {self._inline_completion_model.id}")
+        self._embedding_model = None
+
+        chat_model_provider = self.get_llm_provider_for_model_ref(chat_model_ref)
+        # if chat_model_provider:
+        #     print(f"Chat model provider: {chat_model_provider.id}")
+
+        self._openai_compatible_llm_provider.chat_model_id = self.nbi_config.openai_compatible_chat_model_id
+        self._openai_compatible_llm_provider.chat_model_api_key = self.nbi_config.openai_compatible_chat_model_api_key
+        self._openai_compatible_llm_provider.chat_model_base_url = self.nbi_config.openai_compatible_chat_model_base_url
+        self._openai_compatible_llm_provider.inline_completion_model_id = self.nbi_config.openai_compatible_inline_completion_model_id
+        self._openai_compatible_llm_provider.inline_completion_model_api_key = self.nbi_config.openai_compatible_inline_completion_model_api_key
+        self._openai_compatible_llm_provider.inline_completion_model_base_url = self.nbi_config.openai_compatible_inline_completion_model_base_url
+
+        is_github_copilot_chat_model = isinstance(chat_model_provider, GitHubCopilotLLMProvider)
+        default_chat_participant = GithubCopilotChatParticipant() if is_github_copilot_chat_model else BaseChatParticipant()
+        self._default_chat_participant = default_chat_participant
+
+        self.chat_participants[DEFAULT_CHAT_PARTICIPANT_ID] = self._default_chat_participant
 
     def initialize_extensions(self):
         extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbi_extensions")
@@ -75,6 +124,15 @@ class AIServiceManager(Host):
             log.error(f"Participant ID '{participant.id}' is already in use!")
             return
         self.chat_participants[participant.id] = participant
+
+    def register_llm_provider(self, provider: LLMProvider) -> None:
+        if provider.id in RESERVED_LLM_PROVIDER_IDS:
+            log.error(f"LLM Provider ID '{provider.id}' is reserved!")
+            return
+        if provider.id in self.chat_participants:
+            log.error(f"LLM Provider ID '{provider.id}' is already in use!")
+            return
+        self.llm_providers[provider.id] = provider
 
     def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         if provider.id in self.completion_context_providers:
@@ -123,6 +181,72 @@ class AIServiceManager(Host):
 
         return [participant, command, input]
     
+    def get_llm_provider(self, provider_id: str) -> LLMProvider:
+        return self.llm_providers.get(provider_id)
+    
+    def get_llm_provider_for_model_ref(self, model_ref: str) -> LLMProvider:
+        parts = model_ref.split('::')
+        if len(parts) < 2:
+            return None
+
+        provider_id = parts[0]
+
+        return self.get_llm_provider(provider_id)
+
+    def get_chat_model(self, model_ref: str) -> ChatModel:
+        return self._get_provider_model(model_ref, 'chat')
+    
+    def get_inline_completion_model(self, model_ref: str) -> ChatModel:
+        return self._get_provider_model(model_ref, 'inline-completion')
+    
+    def get_embedding_model(self, model_ref: str) -> ChatModel:
+        return self._get_provider_model(model_ref, 'embedding')
+    
+    def _get_provider_model(self, model_ref: str, model_type: str) -> ChatModel:
+        parts = model_ref.split('::')
+        if len(parts) < 2:
+            return None
+
+        provider_id = parts[0]
+        model_id = parts[1]
+        llm_provider = self.get_llm_provider(provider_id)
+
+        # print(f"Provider ID: {provider_id}, Model ID {model_id}, {llm_provider}")
+
+        if llm_provider is None:
+            return None
+
+        model_list = llm_provider.chat_models if model_type == 'chat' else llm_provider.inline_completion_models if model_type == 'inline-completion' else llm_provider.embedding_models
+
+        # print(f"model_list: {model_list}")
+
+        for model in model_list:
+            if model.id == model_id:
+                return model
+
+        return None
+    
+    @property
+    def chat_model_ids(self) -> list[ChatModel]:
+        model_ids = []
+        for provider in self.llm_providers.values():
+            model_ids += [{"id": f"{provider.id}::{model.id}", "name": f"{provider.name} / {model.name}", "context_window": model.context_window} for model in provider.chat_models]
+        return model_ids
+
+    @property
+    def inline_completion_model_ids(self) -> list[InlineCompletionModel]:
+        model_ids = []
+        for provider in self.llm_providers.values():
+            model_ids +=[{"id": f"{provider.id}::{model.id}", "name": f"{provider.name} / {model.name}", "context_window": model.context_window} for model in provider.inline_completion_models]
+        return model_ids
+    
+    @property
+    def embedding_model_ids(self) -> list[EmbeddingModel]:
+        model_ids = []
+        for provider in self.llm_providers.values():
+            model_ids += [{"id": f"{provider.id}::{model.id}", "name": f"{provider.name} / {model.name}", "context_window": model.context_window} for model in provider.embedding_models]
+        return model_ids
+
     def get_chat_participant(self, prompt: str) -> ChatParticipant:
         (participant_id, command, input) = AIServiceManager.parse_prompt(prompt)
         return self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)

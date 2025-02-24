@@ -442,7 +442,10 @@ class CompletionContextProvider:
     def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
         raise NotImplemented
 
-class ChatModel:
+class AIModel:
+    def __init__(self, provider: 'LLMProvider'):
+        self._provider = provider
+
     @property
     def id(self) -> str:
         raise NotImplemented
@@ -450,31 +453,20 @@ class ChatModel:
     @property
     def name(self) -> str:
         raise NotImplemented
+    
+    @property
+    def context_window(self) -> int:
+        raise NotImplemented
 
+class ChatModel(AIModel):
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         raise NotImplemented
 
-class InlineCompletionModel:
-    @property
-    def id(self) -> str:
-        raise NotImplemented
-    
-    @property
-    def name(self) -> str:
-        raise NotImplemented
-
+class InlineCompletionModel(AIModel):
     def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
         raise NotImplemented
 
-class EmbeddingModel:
-    @property
-    def id(self) -> str:
-        raise NotImplemented
-    
-    @property
-    def name(self) -> str:
-        raise NotImplemented
-
+class EmbeddingModel(AIModel):
     def embeddings(self, inputs: list[str]) -> Any:
         raise NotImplemented
 
@@ -500,9 +492,12 @@ class LLMProvider:
         raise NotImplemented
 
 class Host:
+    def register_llm_provider(self, provider: LLMProvider) -> None:
+        raise NotImplemented
+
     def register_chat_participant(self, participant: ChatParticipant) -> None:
         raise NotImplemented
-    
+
     def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         raise NotImplemented
     

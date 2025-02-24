@@ -7,23 +7,39 @@ from notebook_intelligence.github_copilot import completions, inline_completions
 class GitHubCopilotChatModel(ChatModel):
     @property
     def id(self) -> str:
-        return "default"
+        return "gpt-4o"
     
     @property
     def name(self) -> str:
-        return "Default chat model"
+        return "gpt-4o"
+    
+    @property
+    def context_window(self) -> int:
+        return 128000
 
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         return completions(messages, tools, response, cancel_token, options)
 
 class GitHubCopilotInlineCompletionModel(InlineCompletionModel):
+    @property
+    def id(self) -> str:
+        return "copilot-codex"
+    
+    @property
+    def name(self) -> str:
+        return "copilot-codex"
+    
+    @property
+    def context_window(self) -> int:
+        return 4096
+
     def inline_completions(self, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
         return inline_completions(prefix, suffix, language, filename, context, cancel_token)
 
 class GitHubCopilotLLMProvider(LLMProvider):
     def __init__(self):
-        self._chat_model = GitHubCopilotChatModel()
-        self._inline_completion_model = GitHubCopilotInlineCompletionModel()
+        self._chat_model = GitHubCopilotChatModel(self)
+        self._inline_completion_model = GitHubCopilotInlineCompletionModel(self)
 
     @property
     def id(self) -> str:

@@ -398,6 +398,54 @@ body[data-jp-theme-light='false'] .inline-popover {
   color: var(--jp-brand-color1);
 }
 
+.config-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 500px;
+  height: 100%;
+}
+
+.config-dialog-container .jp-Dialog-footer {
+  display: none;
+}
+
+.config-dialog-body {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.config-dialog-footer {
+  height: 32px;
+  display: flex;
+  margin-top: 10px;
+}
+
+.config-dialog-body select.jp-mod-styled {
+  appearance: auto;
+}
+
+.config-dialog-body input.jp-mod-styled {
+  width: 100%;
+}
+
+.model-config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-field-description {
+  color: var(--jp-ui-font-color2);
+  margin-bottom: 5px;
+}
+
+.model-config-section-header {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
 .inline-prompt-widget {
   border-radius: 4px;
   padding: 3px;

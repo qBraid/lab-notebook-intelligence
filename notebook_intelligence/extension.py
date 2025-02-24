@@ -19,9 +19,8 @@ from tornado import websocket
 from traitlets import Unicode
 from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
-from notebook_intelligence.base_chat_participant import BaseChatParticipant
+from notebook_intelligence.config import NBIConfig
 import notebook_intelligence.github_copilot as github_copilot
-from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
@@ -31,7 +30,21 @@ MAX_TOKENS = 4096
 class GetCapabilitiesHandler(APIHandler):
     @tornado.web.authenticated
     def get(self):
+        nbi_config = ai_service_manager.nbi_config
         response = {
+            "using_github_copilot_service": nbi_config.using_github_copilot_service,
+            "chat_models": ai_service_manager.chat_model_ids,
+            "inline_completion_models": ai_service_manager.inline_completion_model_ids,
+            "embedding_models": ai_service_manager.embedding_model_ids,
+            "chat_model": nbi_config.chat_model,
+            "openai_compatible_chat_model_id": nbi_config.openai_compatible_chat_model_id,
+            "openai_compatible_chat_model_base_url": nbi_config.openai_compatible_chat_model_base_url,
+            "openai_compatible_chat_model_api_key": nbi_config.openai_compatible_chat_model_api_key,
+            "inline_completion_model": nbi_config.inline_completion_model,
+            "openai_compatible_inline_completion_model_id": nbi_config.openai_compatible_inline_completion_model_id,
+            "openai_compatible_inline_completion_model_base_url": nbi_config.openai_compatible_inline_completion_model_base_url,
+            "openai_compatible_inline_completion_model_api_key": nbi_config.openai_compatible_inline_completion_model_api_key,
+            "embedding_model": nbi_config.embedding_model_id,
             "chat_participants": []
         }
         for participant_id in ai_service_manager.chat_participants:
@@ -44,6 +57,18 @@ class GetCapabilitiesHandler(APIHandler):
                 "commands": [command.name for command in participant.commands]
             })
         self.finish(json.dumps(response))
+
+class ConfigHandler(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        data = json.loads(self.request.body)
+        valid_keys = set(["chat_model", "openai_compatible_chat_model_id", "openai_compatible_chat_model_base_url", "openai_compatible_chat_model_api_key", "inline_completion_model", "openai_compatible_inline_completion_model_id", "openai_compatible_inline_completion_model_base_url", "openai_compatible_inline_completion_model_api_key"])
+        for key in data:
+            if key in valid_keys:
+                ai_service_manager.nbi_config.set(key, data[key])
+        ai_service_manager.nbi_config.save()
+        ai_service_manager.update_models_from_config()
+        self.finish(json.dumps({}))
 
 class GetGitHubLoginStatusHandler(APIHandler):
     # The following decorator should be present on all verb methods (head, get, post,
@@ -417,13 +442,6 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
         response_emitter.stream({"completions": completions})
         response_emitter.finish()
 
-def initialize_extensions():
-    global ai_service_manager
-    is_github_copilot_chat_model = True
-    default_chat_participant = GithubCopilotChatParticipant() if is_github_copilot_chat_model else BaseChatParticipant()
-    ai_service_manager = AIServiceManager(default_chat_participant)
-
-
 class NotebookIntelligence(ExtensionApp):
     name = "notebook_intelligence"
     default_url = "/notebook-intelligence"
@@ -455,10 +473,13 @@ class NotebookIntelligence(ExtensionApp):
 
     def initialize_handlers(self):
         NotebookIntelligence.root_dir = self.serverapp.root_dir
-        initialize_extensions()
+        self.initialize_ai_service()
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")
-        github_copilot.login_with_existing_credentials(self.github_access_token)
+    
+    def initialize_ai_service(self):
+        global ai_service_manager
+        ai_service_manager = AIServiceManager({"github_access_token": self.github_access_token})
 
     def initialize_templates(self):
         pass
@@ -472,12 +493,14 @@ class NotebookIntelligence(ExtensionApp):
 
         base_url = web_app.settings["base_url"]
         route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
+        route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
         route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
         route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
         NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
+            (route_pattern_config, ConfigHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),
             (route_pattern_github_logout, GetGitHubLogoutHandler),

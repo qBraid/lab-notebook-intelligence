@@ -63,3 +63,5 @@ export interface ICellContents {
   input: string;
   output: string;
 }
+
+export const GITHUB_COPILOT_MODEL_ID_PREFIX = 'github-copilot';

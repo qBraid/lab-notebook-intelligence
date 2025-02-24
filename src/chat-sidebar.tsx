@@ -35,6 +35,10 @@ import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
 import { VscSend, VscStopCircle, VscEye, VscEyeClosed } from 'react-icons/vsc';
 import { extractCodeFromMarkdown, isDarkTheme } from './utils';
 
+const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible::chat-model';
+const OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID =
+  'openai-compatible::inline-completion-model';
+
 export enum RunChatCompletionType {
   Chat,
   ExplainThis,
@@ -203,6 +207,20 @@ export class GitHubCopilotLoginDialogBody extends ReactWidget {
   }
 
   private _onLoggedIn: () => void;
+}
+
+export class ConfigurationDialogBody extends ReactWidget {
+  constructor(options: { onSave: () => void }) {
+    super();
+
+    this._onSave = options.onSave;
+  }
+
+  render(): JSX.Element {
+    return <ConfigurationDialogBodyComponent onSave={this._onSave} />;
+  }
+
+  private _onSave: () => void;
 }
 
 interface IChatMessageContent {
@@ -475,7 +493,7 @@ function SidebarComponent(props: any) {
   const [prompt, setPrompt] = useState<string>('');
   const [draftPrompt, setDraftPrompt] = useState<string>('');
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const [ghLoginStatus, setGHLoginStatus] = useState(
+  const [_ghLoginStatus, setGHLoginStatus] = useState(
     GitHubCopilotLoginStatus.NotLoggedIn
   );
   const [loginClickCount, _setLoginClickCount] = useState(0);
@@ -868,6 +886,12 @@ function SidebarComponent(props: any) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleConfigurationClick = async () => {
+    props
+      .getApp()
+      .commands.execute('notebook-intelligence:open-configuration-dialog');
+  };
+
   const handleLoginClick = async () => {
     props
       .getApp()
@@ -1035,12 +1059,29 @@ function SidebarComponent(props: any) {
     return `${activeDocumentInfo.filename}${cellAndLineIndicator}`;
   };
 
+  const nbiConfig = GitHubCopilot.config;
+  const ghLoginRequired =
+    nbiConfig.usingGitHubCopilotModel &&
+    GitHubCopilot.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn;
+  const chatEnabled = nbiConfig.chatModel !== '' && !ghLoginRequired;
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-title">Copilot Chat</div>
       </div>
-      {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn && (
+      {!chatEnabled && !ghLoginRequired && (
+        <div className="sidebar-login-info">
+          Chat is disabled as you don't have a model available to use.
+          <button
+            className="jp-Dialog-button jp-mod-accept jp-mod-styled"
+            onClick={handleConfigurationClick}
+          >
+            <div className="jp-Dialog-buttonLabel">Configure models</div>
+          </button>
+        </div>
+      )}
+      {ghLoginRequired && (
         <div className="sidebar-login-info">
           <div>
             You are not logged in to GitHub Copilot. Please login now to
@@ -1055,11 +1096,18 @@ function SidebarComponent(props: any) {
                 Login to GitHub Copilot
               </div>
             </button>
+
+            <button
+              className="jp-Dialog-button jp-mod-reject jp-mod-styled"
+              onClick={handleConfigurationClick}
+            >
+              <div className="jp-Dialog-buttonLabel">Change provider</div>
+            </button>
           </div>
         </div>
       )}
 
-      {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&
+      {chatEnabled &&
         (chatMessages.length === 0 ? (
           <div className="sidebar-messages">
             <div className="sidebar-greeting">
@@ -1085,7 +1133,7 @@ function SidebarComponent(props: any) {
             <div ref={messagesEndRef} />
           </div>
         ))}
-      {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn && (
+      {chatEnabled && (
         <div className="sidebar-user-input">
           <textarea
             ref={promptInputRef}
@@ -1571,6 +1619,211 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ConfigurationDialogBodyComponent(props: any) {
+  const nbiConfig = GitHubCopilot.config;
+  const chatModels = nbiConfig.chatModels;
+  const inlineCompletionModels = nbiConfig.inlineCompletionModels;
+
+  const handleTestConnectionClick = async () => {};
+  const handleSaveClick = async () => {
+    await GitHubCopilot.setConfig({
+      chat_model: chatModel,
+      openai_compatible_chat_model_id: openAICompatibleChatModelId,
+      openai_compatible_chat_model_base_url: openAICompatibleChatModelBaseUrl,
+      openai_compatible_chat_model_api_key: openAICompatibleChatModelApiKey,
+      inline_completion_model: inlineCompletionModel,
+      openai_compatible_inline_completion_model_id:
+        openAICompatibleInlineCompletionModelId,
+      openai_compatible_inline_completion_model_base_url:
+        openAICompatibleInlineCompletionModelBaseUrl,
+      openai_compatible_inline_completion_model_api_key:
+        openAICompatibleInlineCompletionModelApiKey
+    });
+    await GitHubCopilot.fetchCapabilities();
+    // TODO: trigger a refresh of the chat sidebar
+
+    props.onSave();
+  };
+
+  const [chatModel, setChatModel] = useState(nbiConfig.chatModel);
+  const [inlineCompletionModel, setInlineCompletionModel] = useState(
+    nbiConfig.inlineCompletionModel
+  );
+  const [openAICompatibleChatModelId, setOpenAICompatibleChatModelId] =
+    useState(nbiConfig.openAICompatibleChatModelId || '');
+  const [
+    openAICompatibleChatModelBaseUrl,
+    setOpenAICompatibleChatModelBaseUrl
+  ] = useState(nbiConfig.openAICompatibleChatModelBaseUrl || '');
+  const [openAICompatibleChatModelApiKey, setOpenAICompatibleChatModelApiKey] =
+    useState(nbiConfig.openAICompatibleChatModelApiKey || '');
+  const [
+    openAICompatibleInlineCompletionModelId,
+    setOpenAICompatibleInlineCompletionModelId
+  ] = useState(nbiConfig.openAICompatibleInlineCompletionModelId || '');
+  const [
+    openAICompatibleInlineCompletionModelBaseUrl,
+    setOpenAICompatibleInlineCompletionModelBaseUrl
+  ] = useState(nbiConfig.openAICompatibleInlineCompletionModelBaseUrl || '');
+  const [
+    openAICompatibleInlineCompletionModelApiKey,
+    setOpenAICompatibleInlineCompletionModelApiKey
+  ] = useState(nbiConfig.openAICompatibleInlineCompletionModelApiKey || '');
+
+  return (
+    <div className="config-dialog">
+      <div className="config-dialog-body">
+        <div className="model-config-section">
+          <div className="model-config-section-header">Chat model</div>
+          <div>
+            <select
+              className="jp-mod-styled"
+              onChange={event => setChatModel(event.target.value)}
+            >
+              {chatModels.map((model: any, index: number) => (
+                <option
+                  key={index}
+                  value={model.id}
+                  selected={model.id === chatModel}
+                >
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {chatModel === OPENAI_COMPATIBLE_CHAT_MODEL_ID && (
+            <>
+              <div>
+                <div className="form-field-description">
+                  Chat model (needs to be capable of handling tool calling)
+                </div>
+                <input
+                  name="chat-model-id-input"
+                  placeholder="gpt-4o"
+                  className="jp-mod-styled"
+                  value={openAICompatibleChatModelId}
+                  onChange={event =>
+                    setOpenAICompatibleChatModelId(event.target.value)
+                  }
+                />
+              </div>
+              <div>
+                <div className="form-field-description">Service base URL</div>
+                <input
+                  name="chat-model-base-url"
+                  placeholder="https://api.openai.com/v1"
+                  className="jp-mod-styled"
+                  value={openAICompatibleChatModelBaseUrl}
+                  onChange={event =>
+                    setOpenAICompatibleChatModelBaseUrl(event.target.value)
+                  }
+                />
+              </div>
+              <div>
+                <div className="form-field-description">API key</div>
+                <input
+                  name="chat-model-api-key"
+                  className="jp-mod-styled"
+                  value={openAICompatibleChatModelApiKey}
+                  onChange={event =>
+                    setOpenAICompatibleChatModelApiKey(event.target.value)
+                  }
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="model-config-section">
+          <div className="model-config-section-header">
+            Inline completion model
+          </div>
+          <div>
+            <select
+              className="jp-mod-styled"
+              value={inlineCompletionModel}
+              onChange={event => setInlineCompletionModel(event.target.value)}
+            >
+              {inlineCompletionModels.map((model: any, index: number) => (
+                <option
+                  key={index}
+                  value={model.id}
+                  selected={model.id === inlineCompletionModel}
+                >
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {inlineCompletionModel ===
+            OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
+            <>
+              <div>
+                <div className="form-field-description">
+                  Model (needs to be capable of handling filling in the middle)
+                </div>
+                <input
+                  name="inline-completion-model-id-input"
+                  placeholder="gpt-3.5-turbo-instruct"
+                  className="jp-mod-styled"
+                  value={openAICompatibleInlineCompletionModelId}
+                  onChange={event =>
+                    setOpenAICompatibleInlineCompletionModelId(
+                      event.target.value
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <div className="form-field-description">Service base URL</div>
+                <input
+                  name="inline-completion-model-base-url"
+                  placeholder="https://api.openai.com/v1"
+                  className="jp-mod-styled"
+                  value={openAICompatibleInlineCompletionModelBaseUrl}
+                  onChange={event =>
+                    setOpenAICompatibleInlineCompletionModelBaseUrl(
+                      event.target.value
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <div className="form-field-description">API key</div>
+                <input
+                  name="inline-completion-model-api-key"
+                  className="jp-mod-styled"
+                  value={openAICompatibleInlineCompletionModelApiKey}
+                  onChange={event =>
+                    setOpenAICompatibleInlineCompletionModelApiKey(
+                      event.target.value
+                    )
+                  }
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="config-dialog-footer">
+        <button
+          className="jp-Dialog-button jp-mod-reject jp-mod-styled"
+          onClick={handleTestConnectionClick}
+        >
+          <div className="jp-Dialog-buttonLabel">Test</div>
+        </button>
+        <button
+          className="jp-Dialog-button jp-mod-accept jp-mod-styled"
+          onClick={handleSaveClick}
+        >
+          <div className="jp-Dialog-buttonLabel">Save</div>
+        </button>
+      </div>
     </div>
   );
 }

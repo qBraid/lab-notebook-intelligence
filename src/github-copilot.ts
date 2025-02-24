@@ -6,6 +6,7 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import {
+  GITHUB_COPILOT_MODEL_ID_PREFIX,
   IChatCompletionResponseEmitter,
   IContextItem,
   RequestDataType
@@ -25,6 +26,58 @@ export interface IDeviceVerificationInfo {
   userCode: string;
 }
 
+export class NBIConfig {
+  get chatModels(): [any] {
+    return this.capabilities.chat_models;
+  }
+
+  get inlineCompletionModels(): [any] {
+    return this.capabilities.inline_completion_models;
+  }
+
+  get chatModel(): string {
+    return this.capabilities.chat_model;
+  }
+
+  get inlineCompletionModel(): string {
+    return this.capabilities.inline_completion_model;
+  }
+
+  get openAICompatibleChatModelId(): string {
+    return this.capabilities.openai_compatible_chat_model_id;
+  }
+
+  get openAICompatibleChatModelBaseUrl(): string {
+    return this.capabilities.openai_compatible_chat_model_base_url;
+  }
+
+  get openAICompatibleChatModelApiKey(): string {
+    return this.capabilities.openai_compatible_chat_model_api_key;
+  }
+
+  get openAICompatibleInlineCompletionModelId(): string {
+    return this.capabilities.openai_compatible_inline_completion_model_id;
+  }
+
+  get openAICompatibleInlineCompletionModelBaseUrl(): string {
+    return this.capabilities.openai_compatible_inline_completion_model_base_url;
+  }
+
+  get openAICompatibleInlineCompletionModelApiKey(): string {
+    return this.capabilities.openai_compatible_inline_completion_model_api_key;
+  }
+
+  get usingGitHubCopilotModel(): boolean {
+    const prefix = `${GITHUB_COPILOT_MODEL_ID_PREFIX}::`;
+    return (
+      this.chatModel.startsWith(prefix) ||
+      this.inlineCompletionModel.startsWith(prefix)
+    );
+  }
+
+  capabilities: any = {};
+}
+
 export class GitHubCopilot {
   static _loginStatus = GitHubCopilotLoginStatus.NotLoggedIn;
   static _deviceVerificationInfo: IDeviceVerificationInfo = {
@@ -33,8 +86,10 @@ export class GitHubCopilot {
   };
   static _webSocket: WebSocket;
   static _messageReceived = new Signal<unknown, any>(this);
+  static config = new NBIConfig();
 
-  static initialize() {
+  static async initialize() {
+    await this.fetchCapabilities();
     this.updateGitHubLoginStatus();
 
     setInterval(() => {
@@ -117,6 +172,33 @@ export class GitHubCopilot {
           reject(reason);
         });
     });
+  }
+
+  static async fetchCapabilities(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      requestAPI<any>('capabilities', { method: 'GET' })
+        .then(data => {
+          this.config.capabilities = structuredClone(data);
+          resolve();
+        })
+        .catch(reason => {
+          console.error(`Failed to get extension capabilities.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
+  static async setConfig(config: any) {
+    requestAPI<any>('config', {
+      method: 'POST',
+      body: JSON.stringify(config)
+    })
+      .then(data => {
+        //
+      })
+      .catch(reason => {
+        console.error(`Failed to set NBI config.\n${reason}`);
+      });
   }
 
   static async chatRequest(
