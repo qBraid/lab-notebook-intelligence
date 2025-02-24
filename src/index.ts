@@ -671,9 +671,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     };
 
     const loggedInToGitHubCopilot = (): boolean => {
-      return (
-        NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
-      );
+      return NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn;
     };
 
     const isActiveCellCodeCell = (): boolean => {

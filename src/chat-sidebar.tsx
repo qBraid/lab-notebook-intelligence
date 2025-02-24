@@ -740,11 +740,9 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: NBIAPI.config.chatParticipants.find(
-                participant => {
-                  return participant.id === response.participant;
-                }
-              )
+              participant: NBIAPI.config.chatParticipants.find(participant => {
+                return participant.id === response.participant;
+              })
             }
           ]);
         }
@@ -962,11 +960,9 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: NBIAPI.config.chatParticipants.find(
-                participant => {
-                  return participant.id === response.participant;
-                }
-              )
+              participant: NBIAPI.config.chatParticipants.find(participant => {
+                return participant.id === response.participant;
+              })
             }
           ]);
         }
