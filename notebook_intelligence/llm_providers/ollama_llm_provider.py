@@ -35,10 +35,28 @@ Do not include any additional text, explanations, placeholders, ellipses, or cod
 
 
 class OllamaChatModel(ChatModel):
+    def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int):
+        super().__init__(provider)
+        self._model_id = model_id
+        self._model_name = model_name
+        self._context_window = context_window
+
+    @property
+    def id(self) -> str:
+        return self._model_id
+    
+    @property
+    def name(self) -> str:
+        return self._model_name
+    
+    @property
+    def context_window(self) -> int:
+        return self._context_window
+
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         stream = response is not None
         completion_args = {
-            "model": self.id, 
+            "model": self._model_id, 
             "messages": messages.copy(),
             "stream": stream,
         }
@@ -74,13 +92,31 @@ class OllamaChatModel(ChatModel):
 
 
 class OllamaInlineCompletionModel(InlineCompletionModel):
+    def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int):
+        super().__init__(provider)
+        self._model_id = model_id
+        self._model_name = model_name
+        self._context_window = context_window
+
+    @property
+    def id(self) -> str:
+        return self._model_id
+    
+    @property
+    def name(self) -> str:
+        return self._model_name
+    
+    @property
+    def context_window(self) -> int:
+        return self._context_window
+
     def inline_completions(self, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
         context = ""
         prompt = QWEN_INLINE_COMPL_PROMPT.format(prefix=prefix, suffix=suffix, context=context)
 
         try:
             response = requests.post(url="http://localhost:11434/api/generate", json={
-                "model": self.id,
+                "model": self._model_id,
                 "prompt": prompt,
                 "options": {
                     "temperature":0.6,
@@ -125,32 +161,6 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
         except Exception as e:
             return ""
 
-class Qwen25CoderChatModel(OllamaChatModel):
-    @property
-    def id(self) -> str:
-        return "qwen2.5-coder:latest"
-
-    @property
-    def name(self) -> str:
-        return "Qwen 2.5 Coder"
-    
-    @property
-    def context_window(self) -> str:
-        return 32768
-
-class Qwen25CoderInlineCompletionModel(OllamaInlineCompletionModel):
-    @property
-    def id(self) -> str:
-        return "qwen2.5-coder:latest"
-
-    @property
-    def name(self) -> str:
-        return "Qwen 2.5 Coder"
-
-    @property
-    def context_window(self) -> str:
-        return 32768
-
 class OllamaLLMProvider(LLMProvider):
     @property
     def id(self) -> str:
@@ -162,11 +172,15 @@ class OllamaLLMProvider(LLMProvider):
 
     @property
     def chat_models(self) -> list[ChatModel]:
-        return [Qwen25CoderChatModel(self)]
+        return [
+            OllamaChatModel(self, "qwen2.5-coder:latest", "Qwen 2.5 Coder", 32768)
+        ]
     
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
-        return [Qwen25CoderInlineCompletionModel(self)]
+        return [
+            OllamaInlineCompletionModel(self, "qwen2.5-coder:latest", "Qwen 2.5 Coder", 32768)
+        ]
     
     @property
     def embedding_models(self) -> list[EmbeddingModel]:
