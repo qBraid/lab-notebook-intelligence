@@ -50,7 +50,7 @@ import {
   InlinePromptWidget,
   RunChatCompletionType
 } from './chat-sidebar';
-import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
+import { GitHubCopilot, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
   GITHUB_COPILOT_MODEL_ID_PREFIX,

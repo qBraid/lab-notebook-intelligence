@@ -14,7 +14,7 @@ import { UUID } from '@lumino/coreutils';
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 
-import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
+import { GitHubCopilot, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
   ContextType,
