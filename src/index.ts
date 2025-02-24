@@ -670,8 +670,15 @@ const plugin: JupyterFrontEndPlugin<void> = {
       );
     };
 
-    const loggedInToGitHubCopilot = (): boolean => {
-      return NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn;
+    const githubLoginRequired = () => {
+      return (
+        NBIAPI.config.usingGitHubCopilotModel &&
+        NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn
+      );
+    };
+
+    const isChatEnabled = (): boolean => {
+      return NBIAPI.config.chatModel !== '' && !githubLoginRequired();
     };
 
     const isActiveCellCodeCell = (): boolean => {
@@ -1031,7 +1038,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       label: 'Generate code',
       isEnabled: () =>
-        loggedInToGitHubCopilot() &&
+        isChatEnabled() &&
         (isActiveCellCodeCell() || isCurrentWidgetFileEditor())
     };
     app.commands.addCommand(
@@ -1063,7 +1070,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
       },
       label: 'Explain code',
-      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
+      isEnabled: () => isChatEnabled() && isActiveCellCodeCell()
     });
     copilotMenuCommands.addCommand(CommandIDs.editorFixThisCode, {
       execute: () => {
@@ -1084,7 +1091,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
       },
       label: 'Fix code',
-      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
+      isEnabled: () => isChatEnabled() && isActiveCellCodeCell()
     });
     copilotMenuCommands.addCommand(CommandIDs.editorExplainThisOutput, {
       execute: () => {
@@ -1110,10 +1117,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: 'Explain output',
       isEnabled: () => {
         if (
-          !(
-            loggedInToGitHubCopilot() &&
-            app.shell.currentWidget instanceof NotebookPanel
-          )
+          !(isChatEnabled() && app.shell.currentWidget instanceof NotebookPanel)
         ) {
           return false;
         }
@@ -1150,10 +1154,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: 'Troubleshoot errors in output',
       isEnabled: () => {
         if (
-          !(
-            loggedInToGitHubCopilot() &&
-            app.shell.currentWidget instanceof NotebookPanel
-          )
+          !(isChatEnabled() && app.shell.currentWidget instanceof NotebookPanel)
         ) {
           return false;
         }
