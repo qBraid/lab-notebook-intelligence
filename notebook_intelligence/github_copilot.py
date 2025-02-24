@@ -299,7 +299,7 @@ def _generate_copilot_headers():
         'vscode-machineid': MACHINE_ID,
     }
 
-def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
+def inline_completions(model_id, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
     global github_auth
     token = github_auth['token']
 
@@ -318,7 +318,7 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
     try:
         if cancel_token.is_cancel_requested:
             return ''
-        resp = requests.post(f"{PROXY_ENDPOINT}/v1/engines/copilot-codex/completions",
+        resp = requests.post(f"{PROXY_ENDPOINT}/v1/engines/{model_id}/completions",
             headers={'authorization': f'Bearer {token}'},
                 json={
                 'prompt': prompt,
@@ -361,11 +361,12 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
     
     return result
 
-def completions(messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
+def completions(model_id, messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
     stream = response is not None
 
     try:
         data = {
+            'model': model_id,
             'messages': messages,
             'tools': tools,
             'max_tokens': 1000,

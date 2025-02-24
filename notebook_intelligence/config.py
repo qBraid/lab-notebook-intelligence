@@ -29,7 +29,7 @@ class NBIConfig:
 
     @property
     def chat_model(self):
-        return self.get('chat_model', '')
+        return self.get('chat_model', 'github-copilot::gpt-4o')
     
     @chat_model.setter
     def chat_model(self, value):
@@ -61,7 +61,7 @@ class NBIConfig:
 
     @property
     def inline_completion_model(self):
-        return self.get('inline_completion_model', '')
+        return self.get('inline_completion_model', 'github-copilot::copilot-codex')
     
     @inline_completion_model.setter
     def inline_completion_model(self, value):

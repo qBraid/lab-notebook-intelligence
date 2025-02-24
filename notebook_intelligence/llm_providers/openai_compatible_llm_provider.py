@@ -7,6 +7,7 @@ import litellm
 
 class OpenAICompatibleChatModel(ChatModel):
     def __init__(self, provider: "OpenAICompatibleLLMProvider"):
+        super().__init__(provider)
         self._provider = provider
 
     @property
@@ -51,6 +52,7 @@ class OpenAICompatibleChatModel(ChatModel):
     
 class OpenAICompatibleInlineCompletionModel(InlineCompletionModel):
     def __init__(self, provider: "OpenAICompatibleLLMProvider"):
+        super().__init__(provider)
         self._provider = provider
 
     @property
