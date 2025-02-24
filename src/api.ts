@@ -82,7 +82,7 @@ export class NBIConfig {
   changed = new Signal<this, void>(this);
 }
 
-export class GitHubCopilot {
+export class NBIAPI {
   static _loginStatus = GitHubCopilotLoginStatus.NotLoggedIn;
   static _deviceVerificationInfo: IDeviceVerificationInfo = {
     verificationURI: '',
@@ -101,7 +101,7 @@ export class GitHubCopilot {
       this.updateGitHubLoginStatus();
     }, LOGIN_STATUS_UPDATE_INTERVAL);
 
-    GitHubCopilot.initializeWebsocket();
+    NBIAPI.initializeWebsocket();
   }
 
   static async initializeWebsocket() {

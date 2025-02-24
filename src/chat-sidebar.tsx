@@ -14,7 +14,7 @@ import { UUID } from '@lumino/coreutils';
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 
-import { GitHubCopilot, GitHubCopilotLoginStatus } from './api';
+import { NBIAPI, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
   ContextType,
@@ -443,7 +443,7 @@ async function submitCompletionRequest(
 ): Promise<any> {
   switch (request.type) {
     case RunChatCompletionType.Chat:
-      return GitHubCopilot.chatRequest(
+      return NBIAPI.chatRequest(
         request.messageId,
         request.chatId,
         request.content,
@@ -456,7 +456,7 @@ async function submitCompletionRequest(
     case RunChatCompletionType.FixThis:
     case RunChatCompletionType.ExplainThisOutput:
     case RunChatCompletionType.TroubleshootThisOutput: {
-      return GitHubCopilot.chatRequest(
+      return NBIAPI.chatRequest(
         request.messageId,
         request.chatId,
         request.content,
@@ -467,7 +467,7 @@ async function submitCompletionRequest(
       );
     }
     case RunChatCompletionType.GenerateCode:
-      return GitHubCopilot.generateCode(
+      return NBIAPI.generateCode(
         request.chatId,
         request.content,
         request.prefix || '',
@@ -509,7 +509,7 @@ function SidebarComponent(props: any) {
 
   useEffect(() => {
     const prefixes: string[] = [];
-    const chatParticipants = GitHubCopilot.config.chatParticipants;
+    const chatParticipants = NBIAPI.config.chatParticipants;
     for (const participant of chatParticipants) {
       const id = participant.id;
       const commands = participant.commands;
@@ -529,7 +529,7 @@ function SidebarComponent(props: any) {
 
   useEffect(() => {
     const fetchData = () => {
-      setGHLoginStatus(GitHubCopilot.getLoginStatus());
+      setGHLoginStatus(NBIAPI.getLoginStatus());
     };
 
     fetchData();
@@ -630,7 +630,7 @@ function SidebarComponent(props: any) {
       resetPrefixSuggestions();
       setPromptHistory([]);
       setPromptHistoryIndex(0);
-      GitHubCopilot.sendWebSocketMessage(
+      NBIAPI.sendWebSocketMessage(
         UUID.uuid4(),
         RequestDataType.ClearChatHistory,
         { chatId }
@@ -727,7 +727,7 @@ function SidebarComponent(props: any) {
               data.result = 'Could not serialize the result';
             }
 
-            GitHubCopilot.sendWebSocketMessage(
+            NBIAPI.sendWebSocketMessage(
               messageId,
               RequestDataType.RunUICommandResponse,
               data
@@ -740,7 +740,7 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: GitHubCopilot.config.chatParticipants.find(
+              participant: NBIAPI.config.chatParticipants.find(
                 participant => {
                   return participant.id === response.participant;
                 }
@@ -755,7 +755,7 @@ function SidebarComponent(props: any) {
   };
 
   const handleUserInputCancel = async () => {
-    GitHubCopilot.sendWebSocketMessage(
+    NBIAPI.sendWebSocketMessage(
       lastMessageId.current,
       RequestDataType.CancelChatRequest,
       { chatId }
@@ -962,7 +962,7 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: GitHubCopilot.config.chatParticipants.find(
+              participant: NBIAPI.config.chatParticipants.find(
                 participant => {
                   return participant.id === response.participant;
                 }
@@ -1048,10 +1048,10 @@ function SidebarComponent(props: any) {
     return `${activeDocumentInfo.filename}${cellAndLineIndicator}`;
   };
 
-  const nbiConfig = GitHubCopilot.config;
+  const nbiConfig = NBIAPI.config;
   const ghLoginRequired =
     nbiConfig.usingGitHubCopilotModel &&
-    GitHubCopilot.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn;
+    NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn;
   const chatEnabled = nbiConfig.chatModel !== '' && !ghLoginRequired;
 
   return (
@@ -1407,7 +1407,7 @@ function GitHubCopilotStatusComponent(props: any) {
 
   useEffect(() => {
     const fetchData = () => {
-      setGHLoginStatus(GitHubCopilot.getLoginStatus());
+      setGHLoginStatus(NBIAPI.getLoginStatus());
     };
 
     fetchData();
@@ -1451,7 +1451,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
 
   useEffect(() => {
     const fetchData = () => {
-      const status = GitHubCopilot.getLoginStatus();
+      const status = NBIAPI.getLoginStatus();
       setGHLoginStatus(status);
       if (status === GitHubCopilotLoginStatus.LoggedIn && loginClicked) {
         setTimeout(() => {
@@ -1468,7 +1468,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
   }, [loginClickCount]);
 
   const handleLoginClick = async () => {
-    const response = await GitHubCopilot.loginToGitHub();
+    const response = await NBIAPI.loginToGitHub();
     setDeviceActivationURL((response as any).verificationURI);
     setDeviceActivationCode((response as any).userCode);
     setLoginClickCount(loginClickCount + 1);
@@ -1476,7 +1476,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
   };
 
   const handleLogoutClick = async () => {
-    await GitHubCopilot.logoutFromGitHub();
+    await NBIAPI.logoutFromGitHub();
     setLoginClickCount(loginClickCount + 1);
   };
 
@@ -1613,13 +1613,13 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
 }
 
 function ConfigurationDialogBodyComponent(props: any) {
-  const nbiConfig = GitHubCopilot.config;
+  const nbiConfig = NBIAPI.config;
   const chatModels = nbiConfig.chatModels;
   const inlineCompletionModels = nbiConfig.inlineCompletionModels;
 
   const handleTestConnectionClick = async () => {};
   const handleSaveClick = async () => {
-    await GitHubCopilot.setConfig({
+    await NBIAPI.setConfig({
       chat_model: chatModel,
       openai_compatible_chat_model_id: openAICompatibleChatModelId,
       openai_compatible_chat_model_base_url: openAICompatibleChatModelBaseUrl,

@@ -50,7 +50,7 @@ import {
   InlinePromptWidget,
   RunChatCompletionType
 } from './chat-sidebar';
-import { GitHubCopilot, GitHubCopilotLoginStatus } from './api';
+import { NBIAPI, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
   GITHUB_COPILOT_MODEL_ID_PREFIX,
@@ -336,11 +336,11 @@ class GitHubInlineCompletionProvider
       }
     }
 
-    const nbiConfig = GitHubCopilot.config;
+    const nbiConfig = NBIAPI.config;
     const prefix = `${GITHUB_COPILOT_MODEL_ID_PREFIX}::`;
     const inlineCompletionsEnabled =
       !nbiConfig.inlineCompletionModel.startsWith(prefix) ||
-      GitHubCopilot.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn;
+      NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn;
 
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
@@ -351,7 +351,7 @@ class GitHubInlineCompletionProvider
       }
 
       if (this._lastRequestInfo) {
-        GitHubCopilot.sendWebSocketMessage(
+        NBIAPI.sendWebSocketMessage(
           this._lastRequestInfo.messageId,
           RequestDataType.CancelInlineCompletionRequest,
           { chatId: this._lastRequestInfo.chatId }
@@ -362,7 +362,7 @@ class GitHubInlineCompletionProvider
       const chatId = UUID.uuid4();
       this._lastRequestInfo = { chatId, messageId };
 
-      GitHubCopilot.inlineCompletionsRequest(
+      NBIAPI.inlineCompletionsRequest(
         chatId,
         messageId,
         preContent + preCursor,
@@ -398,7 +398,7 @@ class GitHubInlineCompletionProvider
   }
 
   get icon(): LabIcon.ILabIcon {
-    return GitHubCopilot.config.usingGitHubCopilotModel
+    return NBIAPI.config.usingGitHubCopilotModel
       ? githubCopilotIcon
       : sparkleIcon;
   }
@@ -437,7 +437,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       'JupyterLab extension @mbektas/notebook-intelligence is activated!'
     );
 
-    await GitHubCopilot.initialize();
+    await NBIAPI.initialize();
 
     let openPopover: InlinePromptWidget | null = null;
 
@@ -529,7 +529,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.commands.addCommand(CommandIDs.chatuserInput, {
       execute: args => {
-        GitHubCopilot.sendChatUserInput(args.id as string, args.data);
+        NBIAPI.sendChatUserInput(args.id as string, args.data);
       }
     });
 
@@ -672,7 +672,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     const loggedInToGitHubCopilot = (): boolean => {
       return (
-        GitHubCopilot.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
+        NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
       );
     };
 
@@ -766,7 +766,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const dialogBody = new ConfigurationDialogBody({
           onSave: () => {
             dialog?.dispose();
-            GitHubCopilot.fetchCapabilities();
+            NBIAPI.fetchCapabilities();
           }
         });
         dialog = new Dialog({
@@ -1210,12 +1210,12 @@ const plugin: JupyterFrontEndPlugin<void> = {
           item: githubCopilotStatusBarItem,
           align: 'right',
           rank: 100,
-          isActive: () => GitHubCopilot.config.usingGitHubCopilotModel
+          isActive: () => NBIAPI.config.usingGitHubCopilotModel
         }
       );
 
-      GitHubCopilot.configChanged.connect(() => {
-        if (GitHubCopilot.config.usingGitHubCopilotModel) {
+      NBIAPI.configChanged.connect(() => {
+        if (NBIAPI.config.usingGitHubCopilotModel) {
           githubCopilotStatusBarItem.show();
         } else {
           githubCopilotStatusBarItem.hide();
