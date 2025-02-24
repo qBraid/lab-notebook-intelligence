@@ -1681,7 +1681,7 @@ function ConfigurationDialogBodyComponent(props: any) {
           </div>
           {chatModel === OPENAI_COMPATIBLE_CHAT_MODEL_ID && (
             <>
-              <div>
+              <div className="form-field-row">
                 <div className="form-field-description">
                   Chat model (needs to be capable of handling tool calling)
                 </div>
@@ -1689,29 +1689,32 @@ function ConfigurationDialogBodyComponent(props: any) {
                   name="chat-model-id-input"
                   placeholder="gpt-4o"
                   className="jp-mod-styled"
+                  spellCheck={false}
                   value={openAICompatibleChatModelId}
                   onChange={event =>
                     setOpenAICompatibleChatModelId(event.target.value)
                   }
                 />
               </div>
-              <div>
+              <div className="form-field-row">
                 <div className="form-field-description">Service base URL</div>
                 <input
                   name="chat-model-base-url"
                   placeholder="https://api.openai.com/v1"
                   className="jp-mod-styled"
+                  spellCheck={false}
                   value={openAICompatibleChatModelBaseUrl}
                   onChange={event =>
                     setOpenAICompatibleChatModelBaseUrl(event.target.value)
                   }
                 />
               </div>
-              <div>
+              <div className="form-field-row">
                 <div className="form-field-description">API key</div>
                 <input
                   name="chat-model-api-key"
                   className="jp-mod-styled"
+                  spellCheck={false}
                   value={openAICompatibleChatModelApiKey}
                   onChange={event =>
                     setOpenAICompatibleChatModelApiKey(event.target.value)
@@ -1746,7 +1749,7 @@ function ConfigurationDialogBodyComponent(props: any) {
           {inlineCompletionModel ===
             OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
             <>
-              <div>
+              <div className="form-field-row">
                 <div className="form-field-description">
                   Model (needs to be capable of handling filling in the middle)
                 </div>
@@ -1754,6 +1757,7 @@ function ConfigurationDialogBodyComponent(props: any) {
                   name="inline-completion-model-id-input"
                   placeholder="gpt-3.5-turbo-instruct"
                   className="jp-mod-styled"
+                  spellCheck={false}
                   value={openAICompatibleInlineCompletionModelId}
                   onChange={event =>
                     setOpenAICompatibleInlineCompletionModelId(
@@ -1762,12 +1766,13 @@ function ConfigurationDialogBodyComponent(props: any) {
                   }
                 />
               </div>
-              <div>
+              <div className="form-field-row">
                 <div className="form-field-description">Service base URL</div>
                 <input
                   name="inline-completion-model-base-url"
                   placeholder="https://api.openai.com/v1"
                   className="jp-mod-styled"
+                  spellCheck={false}
                   value={openAICompatibleInlineCompletionModelBaseUrl}
                   onChange={event =>
                     setOpenAICompatibleInlineCompletionModelBaseUrl(
@@ -1776,11 +1781,12 @@ function ConfigurationDialogBodyComponent(props: any) {
                   }
                 />
               </div>
-              <div>
+              <div className="form-field-row">
                 <div className="form-field-description">API key</div>
                 <input
                   name="inline-completion-model-api-key"
                   className="jp-mod-styled"
+                  spellCheck={false}
                   value={openAICompatibleInlineCompletionModelApiKey}
                   onChange={event =>
                     setOpenAICompatibleInlineCompletionModelApiKey(

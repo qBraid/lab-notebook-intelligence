@@ -436,6 +436,10 @@ body[data-jp-theme-light='false'] .inline-popover {
   gap: 10px;
 }
 
+.form-field-row {
+  padding-left: 15px;
+}
+
 .form-field-description {
   color: var(--jp-ui-font-color2);
   margin-bottom: 5px;
