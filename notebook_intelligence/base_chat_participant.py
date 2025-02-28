@@ -185,19 +185,67 @@ class BaseChatParticipant(ChatParticipant):
     def chat_prompt(self) -> str:
         return self._chat_prompt
 
+    def extract_llm_generated_code(self, code: str) -> str:
+        lines = code.split("\n")
+        if len(lines) < 2:
+            return code
+
+        num_lines = len(lines)
+        start_line = -1
+        end_line = num_lines - 1
+
+        for i in range(num_lines):
+            if start_line == -1:
+                if lines[i].startswith("```"):
+                    start_line = i
+                    continue
+            else:
+                if lines[i].startswith("```"):
+                    end_line = i
+                    break
+
+        if start_line != -1:
+            lines = lines[start_line+1:end_line]
+
+        return "\n".join(lines)
+
+    async def generate_code_cell(self, request: ChatRequest) -> str:
+        chat_model = request.host._chat_model
+        messages = request.chat_history.copy()
+        messages.pop()
+        messages.insert(0, {"role": "system", "content": f"You are an assistant that creates Python code which will be used in a Jupyter notebook. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```."})
+        messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
+        generated = chat_model.completions(messages)
+        code = generated['choices'][0]['message']['content']
+        
+        return self.extract_llm_generated_code(code)
+    
+    async def generate_markdown_for_code(self, request: ChatRequest, code: str) -> str:
+        chat_model = request.host._chat_model
+        messages = request.chat_history.copy()
+        messages.pop()
+        messages.insert(0, {"role": "system", "content": f"You are an assistant that explains the provided code using markdown. Don't include any code, just narrative markdown text. Keep it concise, only generate few lines. First create a title that suits the code and then explain the code briefly. You should return the markdown directly, without wrapping it inside ```."})
+        messages.append({"role": "user", "content": f"Generate markdown that explains this code: {code}"})
+        generated = chat_model.completions(messages)
+        markdown = generated['choices'][0]['message']['content']
+
+        return self.extract_llm_generated_code(markdown)
+
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         chat_model = request.host._chat_model
         if request.command == 'newNotebook':
             # create a new notebook
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
             file_path = ui_cmd_response['path']
-            request.chat_history = request.chat_history.copy()
-            request.chat_history.pop()
-            request.chat_history.append({"role": "user", "content":  f"Generate notebook for: {request.prompt}"})
-            request.chat_history.insert(0, {"role": "system", "content": f"You are an assistant that creates Jupyter notebooks. Notebooks are composed of markdown and code cells. You create markdown cells and code cells. Markdown cells usually come before the code cells and explain the code below. Make sure to generate at least one markdown cell and one code cell."})
-            await self.handle_chat_request_with_tools(request, response, options, tool_context={
-                'file_path': file_path
-            }, tool_choice='required')
+
+            code = await self.generate_code_cell(request)
+            markdown = await self.generate_markdown_for_code(request, code)
+
+            ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': markdown, 'path': file_path})
+            ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': file_path})
+
+            response.stream(MarkdownData(f"Notebook '{file_path}' created and opened successfully"))
+            response.finish()
             return
         elif request.command == 'newPythonFile':
             # create a new python file
@@ -207,6 +255,7 @@ class BaseChatParticipant(ChatParticipant):
             messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
             generated = chat_model.completions(messages)
             code = generated['choices'][0]['message']['content']
+            code = self.extract_llm_generated_code(code)
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
             file_path = ui_cmd_response['path']
             response.stream(MarkdownData(f"File '{file_path}' created successfully"))
