@@ -4,6 +4,13 @@ import json
 from typing import Any
 from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext
 import ollama
+import logging
+
+log = logging.getLogger(__name__)
+
+OLLAMA_EMBEDDING_FAMILIES = set([
+    "nomic-bert", "bert"
+])
 
 QWEN_INLINE_COMPL_PROMPT = """<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>"""
 
@@ -144,10 +151,15 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
                 code = code[len(prefix_last_line):]
             return code
         except Exception as e:
-            print(f"Error occurred while generating using completions ollama: {e}")
+            log.error(f"Error occurred while generating using completions ollama: {e}")
             return ""
 
 class OllamaLLMProvider(LLMProvider):
+    def __init__(self):
+        super().__init__()
+        self._chat_models = []
+        self.update_chat_model_list()
+
     @property
     def id(self) -> str:
         return "ollama"
@@ -158,18 +170,8 @@ class OllamaLLMProvider(LLMProvider):
 
     @property
     def chat_models(self) -> list[ChatModel]:
-        return [
-            OllamaChatModel(self, "qwen2.5-coder", "Qwen 2.5 Coder", 32768),
-            OllamaChatModel(self, "qwen2.5", "qwen2.5", 32768),
-            OllamaChatModel(self, "deepseek-coder-v2", "deepseek-coder-v2", 163840),
-            OllamaChatModel(self, "deepseek-r1", "deepseek-r1", 131072),
-            OllamaChatModel(self, "phi4", "phi4", 16384),
-            OllamaChatModel(self, "llama3.3", "llama3.3", 131072),
-            OllamaChatModel(self, "llama3.2", "llama3.2", 131072),
-            OllamaChatModel(self, "llama3.1", "llama3.1", 131072),
-            OllamaChatModel(self, "mistral", "mistral", 32768),
-        ]
-    
+        return self._chat_models
+
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
         return [
@@ -183,3 +185,24 @@ class OllamaLLMProvider(LLMProvider):
     @property
     def embedding_models(self) -> list[EmbeddingModel]:
         return []
+    
+    def update_chat_model_list(self):
+        try:
+            response = ollama.list()
+            models = response.models
+            self._chat_models = []
+            for model in models:
+                try:
+                    model_family = model.details.family
+                    if model_family in OLLAMA_EMBEDDING_FAMILIES:
+                        continue
+                    model_show = ollama.show(model.model)
+                    model_info = model_show.modelinfo
+                    context_window = model_info[f"{model_family}.context_length"]
+                    self._chat_models.append(
+                        OllamaChatModel(self, model.model, model.model, context_window)
+                    )
+                except Exception as e:
+                    log.error(f"Error getting Ollama model info {model}: {e}")
+        except Exception as e:          
+            log.error(f"Error updating supported Ollama models: {e}")
