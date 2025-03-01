@@ -1674,14 +1674,16 @@ function ConfigurationDialogBodyComponent(props: any) {
       (model: any) => model.id === selectedModelId
     );
     if (!selectedModel) {
-      selectedModel = providerModels[0];
+      selectedModel = providerModels?.[0];
     }
-    if (modelType === 'chat') {
-      setChatModel(selectedModel.id);
-      setChatModelProperties(selectedModel.properties);
-    } else {
-      setInlineCompletionModel(selectedModel.id);
-      setInlineCompletionModelProperties(selectedModel.properties);
+    if (selectedModel) {
+      if (modelType === 'chat') {
+        setChatModel(selectedModel.id);
+        setChatModelProperties(selectedModel.properties);
+      } else {
+        setInlineCompletionModel(selectedModel.id);
+        setInlineCompletionModelProperties(selectedModel.properties);
+      }
     }
   };
 
@@ -1720,136 +1722,154 @@ function ConfigurationDialogBodyComponent(props: any) {
       <div className="config-dialog-body">
         <div className="model-config-section">
           <div className="model-config-section-header">Chat model</div>
-          <div className="model-config-section-header">Provider</div>
-          <div>
-            <select
-              className="jp-mod-styled"
-              onChange={event =>
-                updateModelOptionsForProvider(event.target.value, 'chat')
-              }
-            >
-              {llmProviders.map((provider: any, index: number) => (
-                <option
-                  key={index}
-                  value={provider.id}
-                  selected={provider.id === chatModelProvider}
-                >
-                  {provider.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID && (
+          <div className="model-config-section-body">
+            <div>Provider</div>
             <div>
               <select
                 className="jp-mod-styled"
-                onChange={event => setChatModel(event.target.value)}
+                onChange={event =>
+                  updateModelOptionsForProvider(event.target.value, 'chat')
+                }
               >
-                {chatModels.map((model: any, index: number) => (
+                {llmProviders.map((provider: any, index: number) => (
                   <option
                     key={index}
-                    value={model.id}
-                    selected={model.id === chatModel}
+                    value={provider.id}
+                    selected={provider.id === chatModelProvider}
                   >
-                    {model.name}
+                    {provider.name}
                   </option>
                 ))}
               </select>
             </div>
-          )}
-          <>
-            {chatModelProperties.map((property: any, index: number) => (
-              <div className="form-field-row" key={index}>
-                <div className="form-field-description">
-                  {property.name} {property.optionanl ? '(optional)' : ''}
-                </div>
-                <input
-                  name="chat-model-id-input"
-                  placeholder={property.description}
-                  className="jp-mod-styled"
-                  spellCheck={false}
-                  value={property.value}
-                  onChange={event =>
-                    onModelPropertyChange(
-                      'chat',
-                      property.id,
-                      event.target.value
-                    )
-                  }
-                />
+            {chatModels.length === 0 && chatModelProvider === 'ollama' && (
+              <div style={{ color: "var(--jp-warn-color0)" }}>
+                No Ollama models found! Make sure{' '}
+                <a href="https://ollama.com/" target="_blank">
+                  Ollama
+                </a>{' '}
+                is running and models are downloaded to your computer.
               </div>
-            ))}
-          </>
-        </div>
-
-        <div className="model-config-section">
-          <div className="model-config-section-header">
-            Inline completion model
-          </div>
-          <div className="model-config-section-header">Provider</div>
-          <div>
-            <select
-              className="jp-mod-styled"
-              onChange={event =>
-                updateModelOptionsForProvider(
-                  event.target.value,
-                  'inline-completion'
-                )
-              }
-            >
-              {llmProviders.map((provider: any, index: number) => (
-                <option
-                  key={index}
-                  value={provider.id}
-                  selected={provider.id === inlineCompletionModelProvider}
-                >
-                  {provider.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {inlineCompletionModel !==
-            OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
-            <div>
-              <select
-                className="jp-mod-styled"
-                onChange={event => setInlineCompletionModel(event.target.value)}
-              >
-                {inlineCompletionModels.map((model: any, index: number) => (
-                  <option
-                    key={index}
-                    value={model.id}
-                    selected={model.id === inlineCompletionModel}
+            )}
+            {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID &&
+              chatModels.length > 0 && (
+                <div>
+                  <select
+                    className="jp-mod-styled"
+                    onChange={event => setChatModel(event.target.value)}
                   >
-                    {model.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <>
-            {inlineCompletionModelProperties.map(
-              (property: any, index: number) => (
+                    {chatModels.map((model: any, index: number) => (
+                      <option
+                        key={index}
+                        value={model.id}
+                        selected={model.id === chatModel}
+                      >
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            <>
+              {chatModelProperties.map((property: any, index: number) => (
                 <div className="form-field-row" key={index}>
-                  <div className="form-field-description">{property.name}</div>
+                  <div className="form-field-description">
+                    {property.name} {property.optionanl ? '(optional)' : ''}
+                  </div>
                   <input
-                    name="inline-completion-model-id-input"
-                    placeholder="gpt-4o"
+                    name="chat-model-id-input"
+                    placeholder={property.description}
                     className="jp-mod-styled"
                     spellCheck={false}
                     value={property.value}
                     onChange={event =>
                       onModelPropertyChange(
-                        'inline-completion',
+                        'chat',
                         property.id,
                         event.target.value
                       )
                     }
                   />
                 </div>
-              )
+              ))}
+            </>
+          </div>
+        </div>
+
+        <div className="model-config-section">
+          <div className="model-config-section-header">
+            Inline completion model
+          </div>
+          <div className="model-config-section-body">
+            <div>Provider</div>
+            <div>
+              <select
+                className="jp-mod-styled"
+                onChange={event =>
+                  updateModelOptionsForProvider(
+                    event.target.value,
+                    'inline-completion'
+                  )
+                }
+              >
+                {llmProviders.map((provider: any, index: number) => (
+                  <option
+                    key={index}
+                    value={provider.id}
+                    selected={provider.id === inlineCompletionModelProvider}
+                  >
+                    {provider.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {inlineCompletionModel !==
+              OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
+              <div>
+                <select
+                  className="jp-mod-styled"
+                  onChange={event =>
+                    setInlineCompletionModel(event.target.value)
+                  }
+                >
+                  {inlineCompletionModels.map((model: any, index: number) => (
+                    <option
+                      key={index}
+                      value={model.id}
+                      selected={model.id === inlineCompletionModel}
+                    >
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
-          </>
+            <>
+              {inlineCompletionModelProperties.map(
+                (property: any, index: number) => (
+                  <div className="form-field-row" key={index}>
+                    <div className="form-field-description">
+                      {property.name}
+                    </div>
+                    <input
+                      name="inline-completion-model-id-input"
+                      placeholder="gpt-4o"
+                      className="jp-mod-styled"
+                      spellCheck={false}
+                      value={property.value}
+                      onChange={event =>
+                        onModelPropertyChange(
+                          'inline-completion',
+                          property.id,
+                          event.target.value
+                        )
+                      }
+                    />
+                  </div>
+                )
+              )}
+            </>
+          </div>
         </div>
       </div>
 
