@@ -9,6 +9,8 @@ import logging
 
 log = logging.getLogger(__name__)
 
+GH_COPILOT_EXCLUDED_MODELS = set(["o1"])
+
 class GitHubCopilotChatModel(ChatModel):
     def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int, supports_tools: bool):
         super().__init__(provider)
@@ -58,7 +60,12 @@ class GitHubCopilotInlineCompletionModel(InlineCompletionModel):
 
 class GitHubCopilotLLMProvider(LLMProvider):
     def __init__(self):
-        self._chat_models = [GitHubCopilotChatModel(self, "gpt-4o", "GPT-4o", 128000, True)]
+        self._chat_models = [
+            GitHubCopilotChatModel(self, "gpt-4o", "GPT-4o", 128000, True),
+            GitHubCopilotChatModel(self, "o3-mini", "o3-mini (Preview)", 200000, True),
+            GitHubCopilotChatModel(self, "claude-3.5-sonnet", "Claude 3.5 Sonnet (Preview)", 90000, True),
+            GitHubCopilotChatModel(self, "claude-3.7-sonnet", "Claude 3.7 Sonnet (Preview)", 200000, True),
+        ]
         self._inline_completion_model_codex = GitHubCopilotInlineCompletionModel(self, "copilot-codex")
         self._inline_completion_model_gpt4o = GitHubCopilotInlineCompletionModel(self, "gpt-4o-copilot")
 
@@ -94,9 +101,10 @@ class GitHubCopilotLLMProvider(LLMProvider):
                 if not model["model_picker_enabled"]:
                     continue
                 capabilities = model["capabilities"]
-                is_chat_model = capabilities["type"] == "chat"
-                supports_tools = capabilities["supports"].get("tool_calls", False)
-                if not (is_chat_model and supports_tools):
+
+                if capabilities["type"] != "chat" or \
+                    not capabilities["supports"].get("tool_calls", False) or \
+                    model["id"] in GH_COPILOT_EXCLUDED_MODELS:
                     continue
                 self._chat_models.append(
                     GitHubCopilotChatModel(self, model["id"], model["name"], capabilities["limits"]["max_context_window_tokens"], True)

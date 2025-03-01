@@ -50,19 +50,22 @@ class AIServiceManager(Host):
         self.initialize_extensions()
 
     def update_models_from_config(self):
+        if self.nbi_config.using_github_copilot_service:
+            github_copilot.login_with_existing_credentials(self._options.get("github_access_token"))
+
         chat_model_cfg = self.nbi_config.chat_model
         chat_model_provider_id = chat_model_cfg.get('provider', 'github-copilot')
         chat_model_id = chat_model_cfg.get('model', 'gpt-4o')
         chat_model_provider = self.get_llm_provider(chat_model_provider_id)
         self._chat_model = chat_model_provider.get_chat_model(chat_model_id) if chat_model_provider is not None else None
-        print(f"Chat model updated to: {self._chat_model.name}")
+        print(f"Chat model updated to: {self._chat_model.name if self._chat_model is not None else None}")
 
         inline_completion_model_cfg = self.nbi_config.inline_completion_model
         inline_completion_model_provider_id = inline_completion_model_cfg.get('provider', 'github-copilot')
         inline_completion_model_id = inline_completion_model_cfg.get('model', 'gpt-4o')
         inline_completion_model_provider = self.get_llm_provider(inline_completion_model_provider_id)
         self._inline_completion_model = inline_completion_model_provider.get_inline_completion_model(inline_completion_model_id) if inline_completion_model_provider is not None else None
-        print(f"Inline completion model updated to: {self._inline_completion_model.name}")
+        print(f"Inline completion model updated to: {self._inline_completion_model.name if self._inline_completion_model is not None else None}")
 
 
         # inline_completion_model_ref = self.nbi_config.inline_completion_model
@@ -94,13 +97,6 @@ class AIServiceManager(Host):
         self._default_chat_participant = default_chat_participant
 
         self.chat_participants[DEFAULT_CHAT_PARTICIPANT_ID] = self._default_chat_participant
-
-        if self.nbi_config.using_github_copilot_service:
-            github_copilot.login_with_existing_credentials(self._options.get("github_access_token"))
-            github_copilot_provider = self.get_llm_provider('github-copilot')
-            if github_copilot_provider:
-                github_copilot_provider.update_supported_models()
-                # TODO: what if model does not exist anymore
 
 
     def initialize_extensions(self):
