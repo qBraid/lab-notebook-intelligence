@@ -1723,76 +1723,89 @@ function ConfigurationDialogBodyComponent(props: any) {
         <div className="model-config-section">
           <div className="model-config-section-header">Chat model</div>
           <div className="model-config-section-body">
-            <div>Provider</div>
-            <div>
-              <select
-                className="jp-mod-styled"
-                onChange={event =>
-                  updateModelOptionsForProvider(event.target.value, 'chat')
-                }
-              >
-                {llmProviders.map((provider: any, index: number) => (
-                  <option
-                    key={index}
-                    value={provider.id}
-                    selected={provider.id === chatModelProvider}
-                  >
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {chatModels.length === 0 && chatModelProvider === 'ollama' && (
-              <div style={{ color: "var(--jp-warn-color0)" }}>
-                No Ollama models found! Make sure{' '}
-                <a href="https://ollama.com/" target="_blank">
-                  Ollama
-                </a>{' '}
-                is running and models are downloaded to your computer.
-              </div>
-            )}
-            {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID &&
-              chatModels.length > 0 && (
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <div>Provider</div>
                 <div>
                   <select
                     className="jp-mod-styled"
-                    onChange={event => setChatModel(event.target.value)}
+                    onChange={event =>
+                      updateModelOptionsForProvider(event.target.value, 'chat')
+                    }
                   >
-                    {chatModels.map((model: any, index: number) => (
+                    {llmProviders.map((provider: any, index: number) => (
                       <option
                         key={index}
-                        value={model.id}
-                        selected={model.id === chatModel}
+                        value={provider.id}
+                        selected={provider.id === chatModelProvider}
                       >
-                        {model.name}
+                        {provider.name}
                       </option>
                     ))}
                   </select>
                 </div>
-              )}
-            <>
-              {chatModelProperties.map((property: any, index: number) => (
-                <div className="form-field-row" key={index}>
-                  <div className="form-field-description">
-                    {property.name} {property.optionanl ? '(optional)' : ''}
-                  </div>
-                  <input
-                    name="chat-model-id-input"
-                    placeholder={property.description}
-                    className="jp-mod-styled"
-                    spellCheck={false}
-                    value={property.value}
-                    onChange={event =>
-                      onModelPropertyChange(
-                        'chat',
-                        property.id,
-                        event.target.value
-                      )
-                    }
-                  />
+              </div>
+              {chatModelProvider !== 'openai-compatible' && (
+                <div className="model-config-section-column">
+                  <div>Model</div>
+                  {chatModels.length === 0 &&
+                    chatModelProvider === 'ollama' && (
+                      <div style={{ color: 'var(--jp-warn-color0)' }}>
+                        No Ollama models found! Make sure{' '}
+                        <a href="https://ollama.com/" target="_blank">
+                          Ollama
+                        </a>{' '}
+                        is running and models are downloaded to your computer.
+                      </div>
+                    )}
+                  {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID &&
+                    chatModels.length > 0 && (
+                      <div>
+                        <select
+                          className="jp-mod-styled"
+                          onChange={event => setChatModel(event.target.value)}
+                        >
+                          {chatModels.map((model: any, index: number) => (
+                            <option
+                              key={index}
+                              value={model.id}
+                              selected={model.id === chatModel}
+                            >
+                              {model.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                 </div>
-              ))}
-            </>
+              )}
+            </div>
+
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {chatModelProperties.map((property: any, index: number) => (
+                  <div className="form-field-row" key={index}>
+                    <div className="form-field-description">
+                      {property.name} {property.optional ? '(optional)' : ''}
+                    </div>
+                    <input
+                      name="chat-model-id-input"
+                      placeholder={property.description}
+                      className="jp-mod-styled"
+                      spellCheck={false}
+                      value={property.value}
+                      onChange={event =>
+                        onModelPropertyChange(
+                          'chat',
+                          property.id,
+                          event.target.value
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1801,74 +1814,88 @@ function ConfigurationDialogBodyComponent(props: any) {
             Inline completion model
           </div>
           <div className="model-config-section-body">
-            <div>Provider</div>
-            <div>
-              <select
-                className="jp-mod-styled"
-                onChange={event =>
-                  updateModelOptionsForProvider(
-                    event.target.value,
-                    'inline-completion'
-                  )
-                }
-              >
-                {llmProviders.map((provider: any, index: number) => (
-                  <option
-                    key={index}
-                    value={provider.id}
-                    selected={provider.id === inlineCompletionModelProvider}
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <div>Provider</div>
+                <div>
+                  <select
+                    className="jp-mod-styled"
+                    onChange={event =>
+                      updateModelOptionsForProvider(
+                        event.target.value,
+                        'inline-completion'
+                      )
+                    }
                   >
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {inlineCompletionModel !==
-              OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
-              <div>
-                <select
-                  className="jp-mod-styled"
-                  onChange={event =>
-                    setInlineCompletionModel(event.target.value)
-                  }
-                >
-                  {inlineCompletionModels.map((model: any, index: number) => (
-                    <option
-                      key={index}
-                      value={model.id}
-                      selected={model.id === inlineCompletionModel}
-                    >
-                      {model.name}
-                    </option>
-                  ))}
-                </select>
+                    {llmProviders.map((provider: any, index: number) => (
+                      <option
+                        key={index}
+                        value={provider.id}
+                        selected={provider.id === inlineCompletionModelProvider}
+                      >
+                        {provider.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            )}
-            <>
-              {inlineCompletionModelProperties.map(
-                (property: any, index: number) => (
-                  <div className="form-field-row" key={index}>
-                    <div className="form-field-description">
-                      {property.name}
+              {inlineCompletionModelProvider !== 'openai-compatible' && (
+                <div className="model-config-section-column">
+                  <div>Model</div>
+                  {inlineCompletionModel !==
+                    OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
+                    <div>
+                      <select
+                        className="jp-mod-styled"
+                        onChange={event =>
+                          setInlineCompletionModel(event.target.value)
+                        }
+                      >
+                        {inlineCompletionModels.map(
+                          (model: any, index: number) => (
+                            <option
+                              key={index}
+                              value={model.id}
+                              selected={model.id === inlineCompletionModel}
+                            >
+                              {model.name}
+                            </option>
+                          )
+                        )}
+                      </select>
                     </div>
-                    <input
-                      name="inline-completion-model-id-input"
-                      placeholder="gpt-4o"
-                      className="jp-mod-styled"
-                      spellCheck={false}
-                      value={property.value}
-                      onChange={event =>
-                        onModelPropertyChange(
-                          'inline-completion',
-                          property.id,
-                          event.target.value
-                        )
-                      }
-                    />
-                  </div>
-                )
+                  )}
+                </div>
               )}
-            </>
+            </div>
+
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {inlineCompletionModelProperties.map(
+                  (property: any, index: number) => (
+                    <div className="form-field-row" key={index}>
+                      <div className="form-field-description">
+                        {property.name} {property.optional ? '(optional)' : ''}
+                      </div>
+                      <input
+                        name="inline-completion-model-id-input"
+                        placeholder={property.description}
+                        className="jp-mod-styled"
+                        spellCheck={false}
+                        value={property.value}
+                        onChange={event =>
+                          onModelPropertyChange(
+                            'inline-completion',
+                            property.id,
+                            event.target.value
+                          )
+                        }
+                      />
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
