@@ -1684,6 +1684,8 @@ function ConfigurationDialogBodyComponent(props: any) {
         setInlineCompletionModel(selectedModel.id);
         setInlineCompletionModelProperties(selectedModel.properties);
       }
+    } else {
+      setChatModelProperties([]);
     }
   };
 
@@ -1745,40 +1747,45 @@ function ConfigurationDialogBodyComponent(props: any) {
                   </select>
                 </div>
               </div>
-              {chatModelProvider !== 'openai-compatible' && (
-                <div className="model-config-section-column">
-                  <div>Model</div>
-                  {chatModels.length === 0 &&
-                    chatModelProvider === 'ollama' && (
-                      <div style={{ color: 'var(--jp-warn-color0)' }}>
-                        No Ollama models found! Make sure{' '}
-                        <a href="https://ollama.com/" target="_blank">
-                          Ollama
-                        </a>{' '}
-                        is running and models are downloaded to your computer.
-                      </div>
-                    )}
-                  {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID &&
-                    chatModels.length > 0 && (
-                      <div>
-                        <select
-                          className="jp-mod-styled"
-                          onChange={event => setChatModel(event.target.value)}
-                        >
-                          {chatModels.map((model: any, index: number) => (
-                            <option
-                              key={index}
-                              value={model.id}
-                              selected={model.id === chatModel}
-                            >
-                              {model.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                </div>
-              )}
+              {chatModelProvider !== 'openai-compatible' &&
+                chatModels.length > 0 && (
+                  <div className="model-config-section-column">
+                    <div>Model</div>
+                    {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID &&
+                      chatModels.length > 0 && (
+                        <div>
+                          <select
+                            className="jp-mod-styled"
+                            onChange={event => setChatModel(event.target.value)}
+                          >
+                            {chatModels.map((model: any, index: number) => (
+                              <option
+                                key={index}
+                                value={model.id}
+                                selected={model.id === chatModel}
+                              >
+                                {model.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                  </div>
+                )}
+            </div>
+
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {chatModelProvider === 'ollama' && chatModels.length === 0 && (
+                  <div style={{ color: 'var(--jp-warn-color0)' }}>
+                    No Ollama models found! Make sure{' '}
+                    <a href="https://ollama.com/" target="_blank">
+                      Ollama
+                    </a>{' '}
+                    is running and models are downloaded to your computer.
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="model-config-section-row">
