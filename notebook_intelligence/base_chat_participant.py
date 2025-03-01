@@ -1,7 +1,7 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, Tool
-from notebook_intelligence.github_copilot_prompts import Prompts
+from notebook_intelligence.prompts import Prompts
 import base64
 import logging
 
