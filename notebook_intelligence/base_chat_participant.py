@@ -180,8 +180,8 @@ class BaseChatParticipant(ChatParticipant):
         # any context provider can be used
         return set(["*"])
     
-    def chat_prompt(self, model_name: str) -> str:
-        return Prompts.generic_chat_prompt(model_name)
+    def chat_prompt(self, model_provider: str, model_name: str) -> str:
+        return Prompts.generic_chat_prompt(model_provider, model_name)
 
     def extract_llm_generated_code(self, code: str) -> str:
         lines = code.split("\n")
@@ -261,7 +261,7 @@ class BaseChatParticipant(ChatParticipant):
             return
 
         messages = [
-            {"role": "system", "content": options.get("system_prompt", self.chat_prompt(chat_model.name))},
+            {"role": "system", "content": options.get("system_prompt", self.chat_prompt(chat_model.provider.name, chat_model.name))},
         ] + request.chat_history
 
         try:

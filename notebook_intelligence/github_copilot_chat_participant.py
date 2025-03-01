@@ -29,5 +29,5 @@ class GithubCopilotChatParticipant(BaseChatParticipant):
     def icon_path(self) -> str:
         return COPILOT_ICON_URL
     
-    def chat_prompt(self, model_name: str) -> str:
-        return Prompts.github_copilot_chat_prompt(model_name)
+    def chat_prompt(self, model_provider: str, model_name: str) -> str:
+        return Prompts.github_copilot_chat_prompt(model_provider, model_name)

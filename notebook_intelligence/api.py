@@ -484,6 +484,10 @@ class AIModel(LLMPropertyProvider):
     @property
     def name(self) -> str:
         raise NotImplemented
+
+    @property
+    def provider(self) -> str:
+        return self._provider
     
     @property
     def context_window(self) -> int:
