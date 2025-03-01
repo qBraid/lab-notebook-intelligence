@@ -339,7 +339,7 @@ class GitHubInlineCompletionProvider
     const nbiConfig = NBIAPI.config;
     const prefix = `${GITHUB_COPILOT_MODEL_ID_PREFIX}::`;
     const inlineCompletionsEnabled =
-      !nbiConfig.inlineCompletionModel.startsWith(prefix) ||
+      !nbiConfig.inlineCompletionModel.model.startsWith(prefix) ||
       NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn;
 
     return new Promise((resolve, reject) => {

@@ -281,7 +281,7 @@ def wait_for_tokens():
         get_token_thread = threading.Thread(target=get_token_thread_func)
         get_token_thread.start()
 
-def _generate_copilot_headers():
+def generate_copilot_headers():
     global github_auth
     token = github_auth['token']
 
@@ -386,7 +386,7 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
 
         request = requests.post(
             f"{API_ENDPOINT}/chat/completions",
-            headers = _generate_copilot_headers(),
+            headers = generate_copilot_headers(),
             json = data,
             stream = stream
         )

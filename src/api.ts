@@ -28,6 +28,10 @@ export interface IDeviceVerificationInfo {
 }
 
 export class NBIConfig {
+  get llmProviders(): [any] {
+    return this.capabilities.llm_providers;
+  }
+
   get chatModels(): [any] {
     return this.capabilities.chat_models;
   }
@@ -36,43 +40,19 @@ export class NBIConfig {
     return this.capabilities.inline_completion_models;
   }
 
-  get chatModel(): string {
+  get chatModel(): any {
     return this.capabilities.chat_model;
   }
 
-  get inlineCompletionModel(): string {
+  get inlineCompletionModel(): any {
     return this.capabilities.inline_completion_model;
-  }
-
-  get openAICompatibleChatModelId(): string {
-    return this.capabilities.openai_compatible_chat_model_id;
-  }
-
-  get openAICompatibleChatModelBaseUrl(): string {
-    return this.capabilities.openai_compatible_chat_model_base_url;
-  }
-
-  get openAICompatibleChatModelApiKey(): string {
-    return this.capabilities.openai_compatible_chat_model_api_key;
-  }
-
-  get openAICompatibleInlineCompletionModelId(): string {
-    return this.capabilities.openai_compatible_inline_completion_model_id;
-  }
-
-  get openAICompatibleInlineCompletionModelBaseUrl(): string {
-    return this.capabilities.openai_compatible_inline_completion_model_base_url;
-  }
-
-  get openAICompatibleInlineCompletionModelApiKey(): string {
-    return this.capabilities.openai_compatible_inline_completion_model_api_key;
   }
 
   get usingGitHubCopilotModel(): boolean {
     const prefix = `${GITHUB_COPILOT_MODEL_ID_PREFIX}::`;
     return (
-      this.chatModel.startsWith(prefix) ||
-      this.inlineCompletionModel.startsWith(prefix)
+      this.chatModel.model.startsWith(prefix) ||
+      this.inlineCompletionModel.model.startsWith(prefix)
     );
   }
 
@@ -203,7 +183,7 @@ export class NBIAPI {
       body: JSON.stringify(config)
     })
       .then(data => {
-        //
+        NBIAPI.fetchCapabilities();
       })
       .catch(reason => {
         console.error(`Failed to set NBI config.\n${reason}`);

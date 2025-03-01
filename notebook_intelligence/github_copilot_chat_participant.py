@@ -12,7 +12,6 @@ COPILOT_ICON_URL = f"data:image/svg+xml;base64,{base64.b64encode(COPILOT_ICON_SV
 class GithubCopilotChatParticipant(BaseChatParticipant):
     def __init__(self):
         super().__init__()
-        self._chat_prompt = Prompts.github_copilot_chat_prompt()
 
     @property
     def id(self) -> str:
@@ -30,6 +29,5 @@ class GithubCopilotChatParticipant(BaseChatParticipant):
     def icon_path(self) -> str:
         return COPILOT_ICON_URL
     
-    @property
-    def chat_prompt(self) -> str:
-        return self._chat_prompt
+    def chat_prompt(self, model_name: str) -> str:
+        return Prompts.github_copilot_chat_prompt(model_name)

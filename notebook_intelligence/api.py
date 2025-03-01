@@ -3,7 +3,7 @@
 import asyncio
 import json
 from typing import Any, Callable, Dict, Union
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 import uuid
 from fuzzy_json import loads as fuzzy_json_loads
@@ -442,8 +442,39 @@ class CompletionContextProvider:
     def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
         raise NotImplemented
 
-class AIModel:
+@dataclass
+class LLMProviderProperty:
+    id: str
+    name: str
+    description: str
+    value: str
+    optional: bool = False
+
+    def to_dict(self):
+        return asdict(self)
+
+class LLMPropertyProvider:
+    def __init__(self):
+        self._properties = []
+
+    @property
+    def properties(self) -> list[LLMProviderProperty]:
+        return self._properties
+
+    def get_property(self, property_id: str) -> LLMProviderProperty:
+        for prop in self.properties:
+            if prop.id == property_id:
+                return prop
+        return None
+
+    def set_property_value(self, property_id: str, value: str):
+        for prop in self.properties:
+            if prop.id == property_id:
+                prop.value = value
+
+class AIModel(LLMPropertyProvider):
     def __init__(self, provider: 'LLMProvider'):
+        super().__init__()
         self._provider = provider
 
     @property
@@ -458,6 +489,10 @@ class AIModel:
     def context_window(self) -> int:
         raise NotImplemented
 
+    @property
+    def supports_tools(self) -> bool:
+        return False
+
 class ChatModel(AIModel):
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         raise NotImplemented
@@ -470,7 +505,10 @@ class EmbeddingModel(AIModel):
     def embeddings(self, inputs: list[str]) -> Any:
         raise NotImplemented
 
-class LLMProvider:
+class LLMProvider(LLMPropertyProvider):
+    def __init__(self):
+        super().__init__()
+
     @property
     def id(self) -> str:
         raise NotImplemented
@@ -490,6 +528,24 @@ class LLMProvider:
     @property
     def embedding_models(self) -> list[EmbeddingModel]:
         raise NotImplemented
+
+    def get_chat_model(self, model_id: str) -> ChatModel:
+        for model in self.chat_models:
+            if model.id == model_id:
+                return model
+        return None
+    
+    def get_inline_completion_model(self, model_id: str) -> InlineCompletionModel:
+        for model in self.inline_completion_models:
+            if model.id == model_id:
+                return model
+        return None
+    
+    def get_embedding_model(self, model_id: str) -> EmbeddingModel:
+        for model in self.embedding_models:
+            if model.id == model_id:
+                return model
+        return None
 
 class Host:
     def register_llm_provider(self, provider: LLMProvider) -> None:

@@ -50,27 +50,44 @@ class AIServiceManager(Host):
         self.initialize_extensions()
 
     def update_models_from_config(self):
-        chat_model_ref = self.nbi_config.chat_model
-        inline_completion_model_ref = self.nbi_config.inline_completion_model
+        chat_model_cfg = self.nbi_config.chat_model
+        chat_model_provider_id = chat_model_cfg.get('provider', 'github-copilot')
+        chat_model_id = chat_model_cfg.get('model', 'gpt-4o')
+        chat_model_provider = self.get_llm_provider(chat_model_provider_id)
+        self._chat_model = chat_model_provider.get_chat_model(chat_model_id) if chat_model_provider is not None else None
+        print(f"Chat model updated to: {self._chat_model.name}")
 
-        self._chat_model = self.get_chat_model(chat_model_ref)
+        inline_completion_model_cfg = self.nbi_config.inline_completion_model
+        inline_completion_model_provider_id = inline_completion_model_cfg.get('provider', 'github-copilot')
+        inline_completion_model_id = inline_completion_model_cfg.get('model', 'gpt-4o')
+        inline_completion_model_provider = self.get_llm_provider(inline_completion_model_provider_id)
+        self._inline_completion_model = inline_completion_model_provider.get_inline_completion_model(inline_completion_model_id) if inline_completion_model_provider is not None else None
+        print(f"Inline completion model updated to: {self._inline_completion_model.name}")
+
+
+        # inline_completion_model_ref = self.nbi_config.inline_completion_model
+
         # if self._chat_model:
         #     print(f"Chat model: ref: {chat_model_ref}, id: {self._chat_model.id}")
-        self._inline_completion_model = self.get_inline_completion_model(inline_completion_model_ref)
+        # self._inline_completion_model = self.get_inline_completion_model(inline_completion_model_ref)
         # if self._inline_completion_model:
         #     print(f"Inlline comple model: {self._inline_completion_model.id}")
         self._embedding_model = None
-
-        chat_model_provider = self.get_llm_provider_for_model_ref(chat_model_ref)
+        
         # if chat_model_provider:
         #     print(f"Chat model provider: {chat_model_provider.id}")
 
-        self._openai_compatible_llm_provider.chat_model_id = self.nbi_config.openai_compatible_chat_model_id
-        self._openai_compatible_llm_provider.chat_model_api_key = self.nbi_config.openai_compatible_chat_model_api_key
-        self._openai_compatible_llm_provider.chat_model_base_url = self.nbi_config.openai_compatible_chat_model_base_url
-        self._openai_compatible_llm_provider.inline_completion_model_id = self.nbi_config.openai_compatible_inline_completion_model_id
-        self._openai_compatible_llm_provider.inline_completion_model_api_key = self.nbi_config.openai_compatible_inline_completion_model_api_key
-        self._openai_compatible_llm_provider.inline_completion_model_base_url = self.nbi_config.openai_compatible_inline_completion_model_base_url
+        if chat_model_provider_id == 'openai-compatible':
+            chat_model = self._openai_compatible_llm_provider.chat_models[0]
+            properties = chat_model_cfg.get('properties', [])
+            for property in properties:
+                chat_model.set_property_value(property['id'], property['value'])
+
+        if inline_completion_model_provider_id == 'openai-compatible':
+            inline_completion_model = self._openai_compatible_llm_provider.inline_completion_models[0]
+            properties = inline_completion_model_cfg.get('properties', [])
+            for property in properties:
+                inline_completion_model.set_property_value(property['id'], property['value'])
 
         is_github_copilot_chat_model = isinstance(chat_model_provider, GitHubCopilotLLMProvider)
         default_chat_participant = GithubCopilotChatParticipant() if is_github_copilot_chat_model else BaseChatParticipant()
@@ -80,6 +97,11 @@ class AIServiceManager(Host):
 
         if self.nbi_config.using_github_copilot_service:
             github_copilot.login_with_existing_credentials(self._options.get("github_access_token"))
+            github_copilot_provider = self.get_llm_provider('github-copilot')
+            if github_copilot_provider:
+                github_copilot_provider.update_supported_models()
+                # TODO: what if model does not exist anymore
+
 
     def initialize_extensions(self):
         extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbi_extensions")
@@ -230,14 +252,14 @@ class AIServiceManager(Host):
     def chat_model_ids(self) -> list[ChatModel]:
         model_ids = []
         for provider in self.llm_providers.values():
-            model_ids += [{"id": f"{provider.id}::{model.id}", "name": f"{provider.name} / {model.name}", "context_window": model.context_window} for model in provider.chat_models]
+            model_ids += [{"provider": provider.id, "id": model.id, "name": model.name, "context_window": model.context_window, "properties": [property.to_dict() for property in model.properties]} for model in provider.chat_models]
         return model_ids
 
     @property
     def inline_completion_model_ids(self) -> list[InlineCompletionModel]:
         model_ids = []
         for provider in self.llm_providers.values():
-            model_ids +=[{"id": f"{provider.id}::{model.id}", "name": f"{provider.name} / {model.name}", "context_window": model.context_window} for model in provider.inline_completion_models]
+            model_ids += [{"provider": provider.id, "id": model.id, "name": model.name, "context_window": model.context_window, "properties": [property.to_dict() for property in model.properties]} for model in provider.inline_completion_models]
         return model_ids
     
     @property

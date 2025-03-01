@@ -146,7 +146,6 @@ class PythonTool(AddCodeCellTool):
 class BaseChatParticipant(ChatParticipant):
     def __init__(self):
         super().__init__()
-        self._chat_prompt = Prompts.generic_chat_prompt()
 
     @property
     def id(self) -> str:
@@ -181,9 +180,8 @@ class BaseChatParticipant(ChatParticipant):
         # any context provider can be used
         return set(["*"])
     
-    @property
-    def chat_prompt(self) -> str:
-        return self._chat_prompt
+    def chat_prompt(self, model_name: str) -> str:
+        return Prompts.generic_chat_prompt(model_name)
 
     def extract_llm_generated_code(self, code: str) -> str:
         lines = code.split("\n")
@@ -210,7 +208,7 @@ class BaseChatParticipant(ChatParticipant):
         return "\n".join(lines)
 
     async def generate_code_cell(self, request: ChatRequest) -> str:
-        chat_model = request.host._chat_model
+        chat_model = request.host.chat_model
         messages = request.chat_history.copy()
         messages.pop()
         messages.insert(0, {"role": "system", "content": f"You are an assistant that creates Python code which will be used in a Jupyter notebook. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```."})
@@ -221,7 +219,7 @@ class BaseChatParticipant(ChatParticipant):
         return self.extract_llm_generated_code(code)
     
     async def generate_markdown_for_code(self, request: ChatRequest, code: str) -> str:
-        chat_model = request.host._chat_model
+        chat_model = request.host.chat_model
         messages = request.chat_history.copy()
         messages.pop()
         messages.insert(0, {"role": "system", "content": f"You are an assistant that explains the provided code using markdown. Don't include any code, just narrative markdown text. Keep it concise, only generate few lines. First create a title that suits the code and then explain the code briefly. You should return the markdown directly, without wrapping it inside ```."})
@@ -232,7 +230,7 @@ class BaseChatParticipant(ChatParticipant):
         return self.extract_llm_generated_code(markdown)
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
-        chat_model = request.host._chat_model
+        chat_model = request.host.chat_model
         if request.command == 'newNotebook':
             # create a new notebook
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
@@ -263,7 +261,7 @@ class BaseChatParticipant(ChatParticipant):
             return
 
         messages = [
-            {"role": "system", "content": options.get("system_prompt", self.chat_prompt)},
+            {"role": "system", "content": options.get("system_prompt", self.chat_prompt(chat_model.name))},
         ] + request.chat_history
 
         try:

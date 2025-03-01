@@ -35,9 +35,9 @@ import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
 import { VscSend, VscStopCircle, VscEye, VscEyeClosed } from 'react-icons/vsc';
 import { extractCodeFromMarkdown, isDarkTheme } from './utils';
 
-const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible::chat-model';
+const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
 const OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID =
-  'openai-compatible::inline-completion-model';
+  'openai-compatible-inline-completion-model';
 
 export enum RunChatCompletionType {
   Chat,
@@ -1610,203 +1610,250 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
 
 function ConfigurationDialogBodyComponent(props: any) {
   const nbiConfig = NBIAPI.config;
-  const chatModels = nbiConfig.chatModels;
-  const inlineCompletionModels = nbiConfig.inlineCompletionModels;
+  const llmProviders = nbiConfig.llmProviders;
+  const [chatModels, setChatModels] = useState([]);
+  const [inlineCompletionModels, setInlineCompletionModels] = useState([]);
 
-  const handleTestConnectionClick = async () => {};
   const handleSaveClick = async () => {
     await NBIAPI.setConfig({
-      chat_model: chatModel,
-      openai_compatible_chat_model_id: openAICompatibleChatModelId,
-      openai_compatible_chat_model_base_url: openAICompatibleChatModelBaseUrl,
-      openai_compatible_chat_model_api_key: openAICompatibleChatModelApiKey,
-      inline_completion_model: inlineCompletionModel,
-      openai_compatible_inline_completion_model_id:
-        openAICompatibleInlineCompletionModelId,
-      openai_compatible_inline_completion_model_base_url:
-        openAICompatibleInlineCompletionModelBaseUrl,
-      openai_compatible_inline_completion_model_api_key:
-        openAICompatibleInlineCompletionModelApiKey
+      chat_model: {
+        provider: chatModelProvider,
+        model: chatModel,
+        properties: chatModelProperties
+      },
+      inline_completion_model: {
+        provider: inlineCompletionModelProvider,
+        model: inlineCompletionModel,
+        properties: inlineCompletionModelProperties
+      }
     });
-    // TODO: trigger a refresh of the chat sidebar
 
     props.onSave();
   };
 
-  const [chatModel, setChatModel] = useState(nbiConfig.chatModel);
-  const [inlineCompletionModel, setInlineCompletionModel] = useState(
-    nbiConfig.inlineCompletionModel
+  const [chatModelProvider, setChatModelProvider] = useState(
+    nbiConfig.chatModel.provider
   );
-  const [openAICompatibleChatModelId, setOpenAICompatibleChatModelId] =
-    useState(nbiConfig.openAICompatibleChatModelId || '');
-  const [
-    openAICompatibleChatModelBaseUrl,
-    setOpenAICompatibleChatModelBaseUrl
-  ] = useState(nbiConfig.openAICompatibleChatModelBaseUrl || '');
-  const [openAICompatibleChatModelApiKey, setOpenAICompatibleChatModelApiKey] =
-    useState(nbiConfig.openAICompatibleChatModelApiKey || '');
-  const [
-    openAICompatibleInlineCompletionModelId,
-    setOpenAICompatibleInlineCompletionModelId
-  ] = useState(nbiConfig.openAICompatibleInlineCompletionModelId || '');
-  const [
-    openAICompatibleInlineCompletionModelBaseUrl,
-    setOpenAICompatibleInlineCompletionModelBaseUrl
-  ] = useState(nbiConfig.openAICompatibleInlineCompletionModelBaseUrl || '');
-  const [
-    openAICompatibleInlineCompletionModelApiKey,
-    setOpenAICompatibleInlineCompletionModelApiKey
-  ] = useState(nbiConfig.openAICompatibleInlineCompletionModelApiKey || '');
+  const [inlineCompletionModelProvider, setInlineCompletionModelProvider] =
+    useState(nbiConfig.inlineCompletionModel.provider);
+  const [chatModel, setChatModel] = useState<string>(nbiConfig.chatModel.model);
+  const [chatModelProperties, setChatModelProperties] = useState<any[]>([]);
+  const [inlineCompletionModelProperties, setInlineCompletionModelProperties] =
+    useState<any[]>([]);
+  const [inlineCompletionModel, setInlineCompletionModel] = useState(
+    nbiConfig.inlineCompletionModel.model
+  );
+
+  const updateModelOptionsForProvider = (
+    providerId: string,
+    modelType: 'chat' | 'inline-completion'
+  ) => {
+    if (modelType === 'chat') {
+      setChatModelProvider(providerId);
+    } else {
+      setInlineCompletionModelProvider(providerId);
+    }
+    const models =
+      modelType === 'chat'
+        ? nbiConfig.chatModels
+        : nbiConfig.inlineCompletionModels;
+    const selectedModelId =
+      modelType === 'chat'
+        ? nbiConfig.chatModel.model
+        : nbiConfig.inlineCompletionModel.model;
+
+    const providerModels = models.filter(
+      (model: any) => model.provider === providerId
+    );
+    if (modelType === 'chat') {
+      setChatModels(providerModels);
+    } else {
+      setInlineCompletionModels(providerModels);
+    }
+    let selectedModel = providerModels.find(
+      (model: any) => model.id === selectedModelId
+    );
+    if (!selectedModel) {
+      selectedModel = providerModels[0];
+    }
+    if (modelType === 'chat') {
+      setChatModel(selectedModel.id);
+      setChatModelProperties(selectedModel.properties);
+    } else {
+      setInlineCompletionModel(selectedModel.id);
+      setInlineCompletionModelProperties(selectedModel.properties);
+    }
+  };
+
+  const onModelPropertyChange = (
+    modelType: 'chat' | 'inline-completion',
+    propertyId: string,
+    value: string
+  ) => {
+    const modelProperties =
+      modelType === 'chat'
+        ? chatModelProperties
+        : inlineCompletionModelProperties;
+    const updatedProperties = modelProperties.map((property: any) => {
+      if (property.id === propertyId) {
+        return { ...property, value };
+      }
+      return property;
+    });
+    if (modelType === 'chat') {
+      setChatModelProperties(updatedProperties);
+    } else {
+      setInlineCompletionModelProperties(updatedProperties);
+    }
+  };
+
+  useEffect(() => {
+    updateModelOptionsForProvider(chatModelProvider, 'chat');
+    updateModelOptionsForProvider(
+      inlineCompletionModelProvider,
+      'inline-completion'
+    );
+  }, [chatModelProvider, inlineCompletionModelProvider]);
 
   return (
     <div className="config-dialog">
       <div className="config-dialog-body">
         <div className="model-config-section">
           <div className="model-config-section-header">Chat model</div>
+          <div className="model-config-section-header">Provider</div>
           <div>
             <select
               className="jp-mod-styled"
-              onChange={event => setChatModel(event.target.value)}
+              onChange={event =>
+                updateModelOptionsForProvider(event.target.value, 'chat')
+              }
             >
-              {chatModels.map((model: any, index: number) => (
+              {llmProviders.map((provider: any, index: number) => (
                 <option
                   key={index}
-                  value={model.id}
-                  selected={model.id === chatModel}
+                  value={provider.id}
+                  selected={provider.id === chatModelProvider}
                 >
-                  {model.name}
+                  {provider.name}
                 </option>
               ))}
             </select>
           </div>
-          {chatModel === OPENAI_COMPATIBLE_CHAT_MODEL_ID && (
-            <>
-              <div className="form-field-row">
+          {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID && (
+            <div>
+              <select
+                className="jp-mod-styled"
+                onChange={event => setChatModel(event.target.value)}
+              >
+                {chatModels.map((model: any, index: number) => (
+                  <option
+                    key={index}
+                    value={model.id}
+                    selected={model.id === chatModel}
+                  >
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <>
+            {chatModelProperties.map((property: any, index: number) => (
+              <div className="form-field-row" key={index}>
                 <div className="form-field-description">
-                  Chat model (needs to be capable of handling tool calling)
+                  {property.name} {property.optionanl ? '(optional)' : ''}
                 </div>
                 <input
                   name="chat-model-id-input"
-                  placeholder="gpt-4o"
+                  placeholder={property.description}
                   className="jp-mod-styled"
                   spellCheck={false}
-                  value={openAICompatibleChatModelId}
+                  value={property.value}
                   onChange={event =>
-                    setOpenAICompatibleChatModelId(event.target.value)
+                    onModelPropertyChange(
+                      'chat',
+                      property.id,
+                      event.target.value
+                    )
                   }
                 />
               </div>
-              <div className="form-field-row">
-                <div className="form-field-description">Service base URL</div>
-                <input
-                  name="chat-model-base-url"
-                  placeholder="https://api.openai.com/v1"
-                  className="jp-mod-styled"
-                  spellCheck={false}
-                  value={openAICompatibleChatModelBaseUrl}
-                  onChange={event =>
-                    setOpenAICompatibleChatModelBaseUrl(event.target.value)
-                  }
-                />
-              </div>
-              <div className="form-field-row">
-                <div className="form-field-description">API key</div>
-                <input
-                  name="chat-model-api-key"
-                  className="jp-mod-styled"
-                  spellCheck={false}
-                  value={openAICompatibleChatModelApiKey}
-                  onChange={event =>
-                    setOpenAICompatibleChatModelApiKey(event.target.value)
-                  }
-                />
-              </div>
-            </>
-          )}
+            ))}
+          </>
         </div>
 
         <div className="model-config-section">
           <div className="model-config-section-header">
             Inline completion model
           </div>
+          <div className="model-config-section-header">Provider</div>
           <div>
             <select
               className="jp-mod-styled"
-              value={inlineCompletionModel}
-              onChange={event => setInlineCompletionModel(event.target.value)}
+              onChange={event =>
+                updateModelOptionsForProvider(
+                  event.target.value,
+                  'inline-completion'
+                )
+              }
             >
-              {inlineCompletionModels.map((model: any, index: number) => (
+              {llmProviders.map((provider: any, index: number) => (
                 <option
                   key={index}
-                  value={model.id}
-                  selected={model.id === inlineCompletionModel}
+                  value={provider.id}
+                  selected={provider.id === inlineCompletionModelProvider}
                 >
-                  {model.name}
+                  {provider.name}
                 </option>
               ))}
             </select>
           </div>
-          {inlineCompletionModel ===
+          {inlineCompletionModel !==
             OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
-            <>
-              <div className="form-field-row">
-                <div className="form-field-description">
-                  Model (needs to be capable of handling filling in the middle)
-                </div>
-                <input
-                  name="inline-completion-model-id-input"
-                  placeholder="gpt-3.5-turbo-instruct"
-                  className="jp-mod-styled"
-                  spellCheck={false}
-                  value={openAICompatibleInlineCompletionModelId}
-                  onChange={event =>
-                    setOpenAICompatibleInlineCompletionModelId(
-                      event.target.value
-                    )
-                  }
-                />
-              </div>
-              <div className="form-field-row">
-                <div className="form-field-description">Service base URL</div>
-                <input
-                  name="inline-completion-model-base-url"
-                  placeholder="https://api.openai.com/v1"
-                  className="jp-mod-styled"
-                  spellCheck={false}
-                  value={openAICompatibleInlineCompletionModelBaseUrl}
-                  onChange={event =>
-                    setOpenAICompatibleInlineCompletionModelBaseUrl(
-                      event.target.value
-                    )
-                  }
-                />
-              </div>
-              <div className="form-field-row">
-                <div className="form-field-description">API key</div>
-                <input
-                  name="inline-completion-model-api-key"
-                  className="jp-mod-styled"
-                  spellCheck={false}
-                  value={openAICompatibleInlineCompletionModelApiKey}
-                  onChange={event =>
-                    setOpenAICompatibleInlineCompletionModelApiKey(
-                      event.target.value
-                    )
-                  }
-                />
-              </div>
-            </>
+            <div>
+              <select
+                className="jp-mod-styled"
+                onChange={event => setInlineCompletionModel(event.target.value)}
+              >
+                {inlineCompletionModels.map((model: any, index: number) => (
+                  <option
+                    key={index}
+                    value={model.id}
+                    selected={model.id === inlineCompletionModel}
+                  >
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
+          <>
+            {inlineCompletionModelProperties.map(
+              (property: any, index: number) => (
+                <div className="form-field-row" key={index}>
+                  <div className="form-field-description">{property.name}</div>
+                  <input
+                    name="inline-completion-model-id-input"
+                    placeholder="gpt-4o"
+                    className="jp-mod-styled"
+                    spellCheck={false}
+                    value={property.value}
+                    onChange={event =>
+                      onModelPropertyChange(
+                        'inline-completion',
+                        property.id,
+                        event.target.value
+                      )
+                    }
+                  />
+                </div>
+              )
+            )}
+          </>
         </div>
       </div>
 
       <div className="config-dialog-footer">
-        <button
-          className="jp-Dialog-button jp-mod-reject jp-mod-styled"
-          onClick={handleTestConnectionClick}
-        >
-          <div className="jp-Dialog-buttonLabel">Test</div>
-        </button>
         <button
           className="jp-Dialog-button jp-mod-accept jp-mod-styled"
           onClick={handleSaveClick}

@@ -1,13 +1,21 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 from typing import Any
+
+import requests
 from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext
-from notebook_intelligence.github_copilot import completions, inline_completions
+from notebook_intelligence.github_copilot import generate_copilot_headers, completions, inline_completions
+import logging
+
+log = logging.getLogger(__name__)
 
 class GitHubCopilotChatModel(ChatModel):
-    def __init__(self, provider: LLMProvider, model_id: str):
+    def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int, supports_tools: bool):
         super().__init__(provider)
         self._model_id = model_id
+        self._model_name = model_name
+        self._context_window = context_window
+        self._supports_tools = supports_tools
 
     @property
     def id(self) -> str:
@@ -15,11 +23,15 @@ class GitHubCopilotChatModel(ChatModel):
     
     @property
     def name(self) -> str:
-        return self._model_id
+        return self._model_name
     
     @property
     def context_window(self) -> int:
-        return 128000
+        return self._context_window
+
+    @property
+    def supports_tools(self) -> bool:
+        return self._supports_tools
 
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         return completions(self._model_id, messages, tools, response, cancel_token, options)
@@ -46,7 +58,7 @@ class GitHubCopilotInlineCompletionModel(InlineCompletionModel):
 
 class GitHubCopilotLLMProvider(LLMProvider):
     def __init__(self):
-        self._chat_model_gpt4o = GitHubCopilotChatModel(self, "gpt-4o")
+        self._chat_models = [GitHubCopilotChatModel(self, "gpt-4o", "GPT-4o", 128000, True)]
         self._inline_completion_model_codex = GitHubCopilotInlineCompletionModel(self, "copilot-codex")
         self._inline_completion_model_gpt4o = GitHubCopilotInlineCompletionModel(self, "gpt-4o-copilot")
 
@@ -60,7 +72,7 @@ class GitHubCopilotLLMProvider(LLMProvider):
 
     @property
     def chat_models(self) -> list[ChatModel]:
-        return [self._chat_model_gpt4o]
+        return self._chat_models
     
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
@@ -69,3 +81,25 @@ class GitHubCopilotLLMProvider(LLMProvider):
     @property
     def embedding_models(self) -> list[EmbeddingModel]:
         return []
+
+    def update_supported_models(self):
+        try:
+            response = requests.get(f"https://api.githubcopilot.com/models",
+                headers = generate_copilot_headers()
+            )
+            resp_json = response.json()
+            models = resp_json["data"]
+            self._chat_models = []
+            for model in models:
+                if not model["model_picker_enabled"]:
+                    continue
+                capabilities = model["capabilities"]
+                is_chat_model = capabilities["type"] == "chat"
+                supports_tools = capabilities["supports"].get("tool_calls", False)
+                if not (is_chat_model and supports_tools):
+                    continue
+                self._chat_models.append(
+                    GitHubCopilotChatModel(self, model["id"], model["name"], capabilities["limits"]["max_context_window_tokens"], True)
+                )
+        except Exception as e:
+            log.error(f"Error updating supported GitHub Copilot models: {e}")

@@ -5,21 +5,15 @@ from typing import Any
 from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext
 import ollama
 
-QWEN_INLINE_COMPL_PROMPT = """
-<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>
-"""
+QWEN_INLINE_COMPL_PROMPT = """<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>"""
 
-DEEPSEEK_INLINE_COMPL_PROMPT = """
-<|fim▁begin|>{prefix}<|fim▁hole|>{suffix}<|fim▁end|>
-"""
+DEEPSEEK_INLINE_COMPL_PROMPT = """<｜fim▁begin｜>{prefix}<｜fim▁hole｜>{suffix}<｜fim▁end｜>"""
 
-CODELLAMA_INLINE_COMPL_PROMPT = """
-<PRE>{prefix}<SUF>{suffix}<MID>
-"""
+CODELLAMA_INLINE_COMPL_PROMPT = """<PRE> {prefix} <SUF>{suffix} <MID>"""
 
-STARCODER_INLINE_COMPL_PROMPT = """
-<fim_prefix>{prefix}<fim_suffix>{suffix}<fim_middle>
-"""
+STARCODER_INLINE_COMPL_PROMPT = """<fim_prefix>{prefix}<fim_suffix>{suffix}<fim_middle>"""
+
+CODEGEMMA_INLINE_COMPL_PROMPT = """<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>"""
 
 class OllamaChatModel(ChatModel):
     def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int):
@@ -99,21 +93,24 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
         return self._context_window
 
     def inline_completions(self, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
-        prompt = self._prompt_template.format(prefix=prefix, suffix=suffix)
+        if suffix.strip() == "":
+            prompt = prefix
+        else:
+            prompt = self._prompt_template.format(prefix=prefix, suffix=suffix.strip())
 
         try:
             generate_args = {
                 "model": self._model_id, 
-                "prompt": prefix,
-                "suffix": suffix,
+                "prompt": prompt,
                 "options": {
+                    'num_predict': 64,
                     "temperature": 0.6,
-                    "top_k": 30,
-                    "top_p": 0.2,
                     "repeat_penalty": 1.1,
                     "stop" : [
                         "<|end▁of▁sentence|>",
+                        "<｜end▁of▁sentence｜>",
                         "<|EOT|>",
+                        "<EOT>",
                         "\\n",
                         "</s>",
                         "<|eot_id|>",
@@ -165,6 +162,8 @@ class OllamaLLMProvider(LLMProvider):
             OllamaChatModel(self, "qwen2.5-coder", "Qwen 2.5 Coder", 32768),
             OllamaChatModel(self, "qwen2.5", "qwen2.5", 32768),
             OllamaChatModel(self, "deepseek-coder-v2", "deepseek-coder-v2", 163840),
+            OllamaChatModel(self, "deepseek-r1", "deepseek-r1", 131072),
+            OllamaChatModel(self, "phi4", "phi4", 16384),
             OllamaChatModel(self, "llama3.3", "llama3.3", 131072),
             OllamaChatModel(self, "llama3.2", "llama3.2", 131072),
             OllamaChatModel(self, "llama3.1", "llama3.1", 131072),
@@ -174,10 +173,11 @@ class OllamaLLMProvider(LLMProvider):
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
         return [
+            OllamaInlineCompletionModel(self, "codellama:7b-code", "codellama:7b-code", 16384, CODELLAMA_INLINE_COMPL_PROMPT),
             OllamaInlineCompletionModel(self, "qwen2.5-coder", "Qwen 2.5 Coder", 32768, QWEN_INLINE_COMPL_PROMPT),
             OllamaInlineCompletionModel(self, "deepseek-coder-v2", "deepseek-coder-v2", 163840, DEEPSEEK_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "codellama", "codellama", 16384, CODELLAMA_INLINE_COMPL_PROMPT),
             OllamaInlineCompletionModel(self, "starcoder2", "StarCoder2", 16384, STARCODER_INLINE_COMPL_PROMPT),
+            OllamaInlineCompletionModel(self, "codegemma", "codegemma", 8192, CODEGEMMA_INLINE_COMPL_PROMPT),
         ]
     
     @property

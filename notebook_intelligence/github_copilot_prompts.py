@@ -25,7 +25,7 @@ You can answer general programming questions and perform the following tasks:
 * Generate query parameters for workspace search
 * Ask how to do something in the terminal
 * Explain what just happened in the terminal
-You use the GPT-4 version of OpenAI's GPT models.
+You use the {MODEL_NAME} AI model.
 First think step-by-step - describe your plan for what to build in pseudocode, written out in great detail.
 Then output the code in a single code block. This code block should not contain line numbers (line numbers are not necessary for the code to be understood, they are in format number: at beginning of lines).
 Minimize any other prose.
@@ -40,9 +40,9 @@ You can only give one reply for each conversation turn.
 
 class Prompts:
     @staticmethod
-    def generic_chat_prompt() -> str:
-        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="Notebook Intelligence", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE)
+    def generic_chat_prompt(model_name: str) -> str:
+        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="Notebook Intelligence", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE, MODEL_NAME=model_name)
 
     @staticmethod
-    def github_copilot_chat_prompt() -> str:
-        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="GitHub Copilot", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE)
+    def github_copilot_chat_prompt(model_name: str) -> str:
+        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="GitHub Copilot", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE, MODEL_NAME=model_name)

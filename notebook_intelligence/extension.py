@@ -30,20 +30,17 @@ MAX_TOKENS = 4096
 class GetCapabilitiesHandler(APIHandler):
     @tornado.web.authenticated
     def get(self):
+        ai_service_manager.update_models_from_config()
         nbi_config = ai_service_manager.nbi_config
+        llm_providers = ai_service_manager.llm_providers.values()
         response = {
             "using_github_copilot_service": nbi_config.using_github_copilot_service,
+            "llm_providers": [{"id": provider.id, "name": provider.name} for provider in llm_providers],
             "chat_models": ai_service_manager.chat_model_ids,
             "inline_completion_models": ai_service_manager.inline_completion_model_ids,
             "embedding_models": ai_service_manager.embedding_model_ids,
             "chat_model": nbi_config.chat_model,
-            "openai_compatible_chat_model_id": nbi_config.openai_compatible_chat_model_id,
-            "openai_compatible_chat_model_base_url": nbi_config.openai_compatible_chat_model_base_url,
-            "openai_compatible_chat_model_api_key": nbi_config.openai_compatible_chat_model_api_key,
             "inline_completion_model": nbi_config.inline_completion_model,
-            "openai_compatible_inline_completion_model_id": nbi_config.openai_compatible_inline_completion_model_id,
-            "openai_compatible_inline_completion_model_base_url": nbi_config.openai_compatible_inline_completion_model_base_url,
-            "openai_compatible_inline_completion_model_api_key": nbi_config.openai_compatible_inline_completion_model_api_key,
             "embedding_model": nbi_config.embedding_model_id,
             "chat_participants": []
         }
@@ -62,7 +59,7 @@ class ConfigHandler(APIHandler):
     @tornado.web.authenticated
     def post(self):
         data = json.loads(self.request.body)
-        valid_keys = set(["chat_model", "openai_compatible_chat_model_id", "openai_compatible_chat_model_base_url", "openai_compatible_chat_model_api_key", "inline_completion_model", "openai_compatible_inline_completion_model_id", "openai_compatible_inline_completion_model_base_url", "openai_compatible_inline_completion_model_api_key"])
+        valid_keys = set(["chat_model", "inline_completion_model"])
         for key in data:
             if key in valid_keys:
                 ai_service_manager.nbi_config.set(key, data[key])
