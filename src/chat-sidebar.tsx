@@ -1685,7 +1685,11 @@ function ConfigurationDialogBodyComponent(props: any) {
         setInlineCompletionModelProperties(selectedModel.properties);
       }
     } else {
-      setChatModelProperties([]);
+      if (modelType === 'chat') {
+        setChatModelProperties([]);
+      } else {
+        setInlineCompletionModelProperties([]);
+      }
     }
   };
 
