@@ -12,7 +12,7 @@ import secrets
 import sseclient
 import datetime as dt
 import logging
-from notebook_intelligence.api import CancelToken, ChatResponse, CompletionContext
+from notebook_intelligence.api import CancelToken, ChatResponse, CompletionContext, MarkdownData
 
 from ._version import __version__ as NBI_VERSION
 
@@ -392,8 +392,10 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
         )
 
         if request.status_code != 200:
-            msg = f"Failed to get completions from GitHub Copilot: {request.status_code}: {request.text}"
+            msg = f"Failed to get completions from GitHub Copilot: [{request.status_code}]: {request.text}"
             log.error(msg)
+            response.stream(MarkdownData(msg))
+            response.finish()
             raise Exception(msg)
 
         if stream:
