@@ -1635,10 +1635,10 @@ function ConfigurationDialogBodyComponent(props: any) {
   };
 
   const [chatModelProvider, setChatModelProvider] = useState(
-    nbiConfig.chatModel.provider
+    nbiConfig.chatModel.provider || 'none'
   );
   const [inlineCompletionModelProvider, setInlineCompletionModelProvider] =
-    useState(nbiConfig.inlineCompletionModel.provider);
+    useState(nbiConfig.inlineCompletionModel.provider || 'none');
   const [chatModel, setChatModel] = useState<string>(nbiConfig.chatModel.model);
   const [chatModelProperties, setChatModelProperties] = useState<any[]>([]);
   const [inlineCompletionModelProperties, setInlineCompletionModelProperties] =
@@ -1751,10 +1751,17 @@ function ConfigurationDialogBodyComponent(props: any) {
                         {provider.name}
                       </option>
                     ))}
+                    <option
+                      key={-1}
+                      value="none"
+                      selected={chatModelProvider === 'none'}
+                    >
+                      None
+                    </option>
                   </select>
                 </div>
               </div>
-              {!['openai-compatible', 'litellm-compatible'].includes(
+              {!['openai-compatible', 'litellm-compatible', 'none'].includes(
                 chatModelProvider
               ) &&
                 chatModels.length > 0 && (
@@ -1855,10 +1862,17 @@ function ConfigurationDialogBodyComponent(props: any) {
                         {provider.name}
                       </option>
                     ))}
+                    <option
+                      key={-1}
+                      value="none"
+                      selected={inlineCompletionModelProvider === 'none'}
+                    >
+                      None
+                    </option>
                   </select>
                 </div>
               </div>
-              {!['openai-compatible', 'litellm-compatible'].includes(
+              {!['openai-compatible', 'litellm-compatible', 'none'].includes(
                 inlineCompletionModelProvider
               ) && (
                 <div className="model-config-section-column">

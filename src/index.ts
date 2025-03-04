@@ -450,10 +450,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       settingRegistry
         .load(plugin.id)
         .then(settings => {
-          console.log(
-            '@mbektas/notebook-intelligence settings loaded:',
-            settings.composite
-          );
+          //
         })
         .catch(reason => {
           console.error(

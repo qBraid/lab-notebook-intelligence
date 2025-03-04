@@ -7,7 +7,7 @@ import sys
 from typing import Dict
 import logging
 from notebook_intelligence import github_copilot
-from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, NotebookIntelligenceExtension
+from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MarkdownData, NotebookIntelligenceExtension
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 from notebook_intelligence.config import NBIConfig
 from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
@@ -271,6 +271,11 @@ class AIServiceManager(Host):
         return self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
+        if self.chat_model is None:
+            response.stream(MarkdownData("Chat model is not set!"))
+            response.stream(ButtonData("Configure", "notebook-intelligence:open-configuration-dialog"))
+            response.finish()
+            return
         request.host = self
         (participant_id, command, prompt) = AIServiceManager.parse_prompt(request.prompt)
         participant = self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)

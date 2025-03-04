@@ -425,6 +425,10 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
         pass
 
     async def handle_inline_completions(prefix, suffix, language, filename, response_emitter, cancel_token):
+        if ai_service_manager.inline_completion_model is None:
+            response_emitter.finish()
+            return
+
         context = await ai_service_manager.get_completion_context(ContextRequest(ContextRequestType.InlineCompletion, prefix, suffix, language, filename, participant=ai_service_manager.get_chat_participant(prefix), cancel_token=cancel_token))
 
         if cancel_token.is_cancel_requested:
