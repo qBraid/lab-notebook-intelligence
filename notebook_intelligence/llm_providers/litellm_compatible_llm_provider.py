@@ -3,24 +3,24 @@
 import json
 from typing import Any
 from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext, LLMProviderProperty
-from openai import OpenAI
+import litellm
 
 DEFAULT_CONTEXT_WINDOW = 4096
 
-class OpenAICompatibleChatModel(ChatModel):
-    def __init__(self, provider: "OpenAICompatibleLLMProvider"):
+class LiteLLMCompatibleChatModel(ChatModel):
+    def __init__(self, provider: "LiteLLMCompatibleLLMProvider"):
         super().__init__(provider)
         self._provider = provider
         self._properties = [
-            LLMProviderProperty("api_key", "API key", "API key", "", False),
             LLMProviderProperty("model_id", "Model", "Model (must support streaming)", "", False),
-            LLMProviderProperty("base_url", "Base URL", "Base URL", "", True),
+            LLMProviderProperty("base_url", "Base URL", "Base URL", "", False),
+            LLMProviderProperty("api_key", "API key", "API key", "", True),
             LLMProviderProperty("context_window", "Context window", "Context window length", "", True),
         ]
 
     @property
     def id(self) -> str:
-        return "openai-compatible-chat-model"
+        return "litellm-compatible-chat-model"
     
     @property
     def name(self) -> str:
@@ -39,22 +39,21 @@ class OpenAICompatibleChatModel(ChatModel):
     def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
         stream = response is not None
         model_id = self.get_property("model_id").value
-        base_url_prop = self.get_property("base_url")
-        base_url = base_url_prop.value if base_url_prop is not None else None
-        base_url = base_url if base_url.strip() != "" else None
-        api_key = self.get_property("api_key").value
-
-        client = OpenAI(base_url=base_url, api_key=api_key)
-        resp = client.chat.completions.create(
+        base_url = self.get_property("base_url").value
+        api_key_prop = self.get_property("api_key")
+        api_key = api_key_prop.value if api_key_prop is not None else None
+        litellm_resp = litellm.completion(
             model=model_id,
             messages=messages.copy(),
             tools=tools,
             tool_choice=options.get("tool_choice", None),
+            api_base=base_url,
+            api_key=api_key,
             stream=stream,
         )
 
         if stream:
-            for chunk in resp:
+            for chunk in litellm_resp:
                 response.stream({
                         "choices": [{
                             "delta": {
@@ -66,23 +65,23 @@ class OpenAICompatibleChatModel(ChatModel):
             response.finish()
             return
         else:
-            json_resp = json.loads(resp.model_dump_json())
+            json_resp = json.loads(litellm_resp.model_dump_json())
             return json_resp
     
-class OpenAICompatibleInlineCompletionModel(InlineCompletionModel):
-    def __init__(self, provider: "OpenAICompatibleLLMProvider"):
+class LiteLLMCompatibleInlineCompletionModel(InlineCompletionModel):
+    def __init__(self, provider: "LiteLLMCompatibleLLMProvider"):
         super().__init__(provider)
         self._provider = provider
         self._properties = [
-            LLMProviderProperty("api_key", "API key", "API key", "", False),
             LLMProviderProperty("model_id", "Model", "Model", "", False),
-            LLMProviderProperty("base_url", "Base URL", "Base URL", "", True),
+            LLMProviderProperty("base_url", "Base URL", "Base URL", "", False),
+            LLMProviderProperty("api_key", "API key", "API key", "", True),
             LLMProviderProperty("context_window", "Context window", "Context window length", "", True),
         ]
 
     @property
     def id(self) -> str:
-        return "openai-compatible-inline-completion-model"
+        return "litellm-compatible-inline-completion-model"
     
     @property
     def name(self) -> str:
@@ -100,34 +99,35 @@ class OpenAICompatibleInlineCompletionModel(InlineCompletionModel):
 
     def inline_completions(self, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
         model_id = self.get_property("model_id").value
-        base_url_prop = self.get_property("base_url")
-        base_url = base_url_prop.value if base_url_prop is not None else None
-        base_url = base_url if base_url.strip() != "" else None
-        api_key = self.get_property("api_key").value
-
-        client = OpenAI(base_url=base_url, api_key=api_key)
-        resp = client.completions.create(
+        base_url = self.get_property("base_url").value
+        api_key_prop = self.get_property("api_key")
+        api_key = api_key_prop.value if api_key_prop is not None else None
+        # TODO: remove this and check if suffix parameter is standardized
+        prompt = f"# the code below is written in {language}\n{prefix}"
+        litellm_resp = litellm.completion(
             model=model_id,
-            prompt=prefix,
+            prompt=prompt,
             suffix=suffix,
             stream=False,
+            api_base=base_url,
+            api_key=api_key,
         )
 
-        return resp.choices[0].text
+        return litellm_resp.choices[0].message.content
 
-class OpenAICompatibleLLMProvider(LLMProvider):
+class LiteLLMCompatibleLLMProvider(LLMProvider):
     def __init__(self):
         super().__init__()
-        self._chat_model = OpenAICompatibleChatModel(self)
-        self._inline_completion_model = OpenAICompatibleInlineCompletionModel(self)
+        self._chat_model = LiteLLMCompatibleChatModel(self)
+        self._inline_completion_model = LiteLLMCompatibleInlineCompletionModel(self)
 
     @property
     def id(self) -> str:
-        return "openai-compatible"
+        return "litellm-compatible"
     
     @property
     def name(self) -> str:
-        return "OpenAI Compatible"
+        return "LiteLLM Compatible"
 
     @property
     def chat_models(self) -> list[ChatModel]:

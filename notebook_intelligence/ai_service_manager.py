@@ -12,6 +12,7 @@ from notebook_intelligence.base_chat_participant import BaseChatParticipant
 from notebook_intelligence.config import NBIConfig
 from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
 from notebook_intelligence.llm_providers.github_copilot_llm_provider import GitHubCopilotLLMProvider
+from notebook_intelligence.llm_providers.litellm_compatible_llm_provider import LiteLLMCompatibleLLMProvider
 from notebook_intelligence.llm_providers.ollama_llm_provider import OllamaLLMProvider
 from notebook_intelligence.llm_providers.openai_compatible_llm_provider import OpenAICompatibleLLMProvider
 
@@ -33,6 +34,7 @@ class AIServiceManager(Host):
         self._nbi_config = NBIConfig()
         self._options = options.copy()
         self._openai_compatible_llm_provider = OpenAICompatibleLLMProvider()
+        self._litellm_compatible_llm_provider = LiteLLMCompatibleLLMProvider()
         self.initialize()
 
     @property
@@ -42,8 +44,9 @@ class AIServiceManager(Host):
     def initialize(self):
         self.chat_participants = {}
         self.register_llm_provider(GitHubCopilotLLMProvider())
-        self.register_llm_provider(OllamaLLMProvider())
         self.register_llm_provider(self._openai_compatible_llm_provider)
+        self.register_llm_provider(self._litellm_compatible_llm_provider)
+        self.register_llm_provider(OllamaLLMProvider())
 
         self.update_models_from_config()
 
@@ -80,17 +83,15 @@ class AIServiceManager(Host):
         # if chat_model_provider:
         #     print(f"Chat model provider: {chat_model_provider.id}")
 
-        if chat_model_provider_id == 'openai-compatible':
-            chat_model = self._openai_compatible_llm_provider.chat_models[0]
+        if self._chat_model is not None:
             properties = chat_model_cfg.get('properties', [])
             for property in properties:
-                chat_model.set_property_value(property['id'], property['value'])
+                self._chat_model.set_property_value(property['id'], property['value'])
 
-        if inline_completion_model_provider_id == 'openai-compatible':
-            inline_completion_model = self._openai_compatible_llm_provider.inline_completion_models[0]
+        if self._inline_completion_model is not None:
             properties = inline_completion_model_cfg.get('properties', [])
             for property in properties:
-                inline_completion_model.set_property_value(property['id'], property['value'])
+                self._inline_completion_model.set_property_value(property['id'], property['value'])
 
         is_github_copilot_chat_model = isinstance(chat_model_provider, GitHubCopilotLLMProvider)
         default_chat_participant = GithubCopilotChatParticipant() if is_github_copilot_chat_model else BaseChatParticipant()

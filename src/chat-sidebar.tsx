@@ -36,8 +36,11 @@ import { VscSend, VscStopCircle, VscEye, VscEyeClosed } from 'react-icons/vsc';
 import { extractCodeFromMarkdown, isDarkTheme } from './utils';
 
 const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
+const LITELLM_COMPATIBLE_CHAT_MODEL_ID = 'litellm-compatible-chat-model';
 const OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID =
   'openai-compatible-inline-completion-model';
+const LITELLM_COMPATIBLE_INLINE_COMPLETION_MODEL_ID =
+  'litellm-compatible-inline-completion-model';
 
 export enum RunChatCompletionType {
   Chat,
@@ -1721,7 +1724,7 @@ function ConfigurationDialogBodyComponent(props: any) {
       inlineCompletionModelProvider,
       'inline-completion'
     );
-  }, [chatModelProvider, inlineCompletionModelProvider]);
+  }, []);
 
   return (
     <div className="config-dialog">
@@ -1751,11 +1754,16 @@ function ConfigurationDialogBodyComponent(props: any) {
                   </select>
                 </div>
               </div>
-              {chatModelProvider !== 'openai-compatible' &&
+              {!['openai-compatible', 'litellm-compatible'].includes(
+                chatModelProvider
+              ) &&
                 chatModels.length > 0 && (
                   <div className="model-config-section-column">
                     <div>Model</div>
-                    {chatModel !== OPENAI_COMPATIBLE_CHAT_MODEL_ID &&
+                    {![
+                      OPENAI_COMPATIBLE_CHAT_MODEL_ID,
+                      LITELLM_COMPATIBLE_CHAT_MODEL_ID
+                    ].includes(chatModel) &&
                       chatModels.length > 0 && (
                         <div>
                           <select
@@ -1850,11 +1858,15 @@ function ConfigurationDialogBodyComponent(props: any) {
                   </select>
                 </div>
               </div>
-              {inlineCompletionModelProvider !== 'openai-compatible' && (
+              {!['openai-compatible', 'litellm-compatible'].includes(
+                inlineCompletionModelProvider
+              ) && (
                 <div className="model-config-section-column">
                   <div>Model</div>
-                  {inlineCompletionModel !==
-                    OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID && (
+                  {![
+                    OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID,
+                    LITELLM_COMPATIBLE_INLINE_COMPLETION_MODEL_ID
+                  ].includes(inlineCompletionModel) && (
                     <div>
                       <select
                         className="jp-mod-styled"

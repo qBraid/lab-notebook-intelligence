@@ -294,7 +294,8 @@ class GitHubInlineCompletionProvider
   get schema(): ISettingRegistry.IProperty {
     return {
       default: {
-        debouncerDelay: 200
+        debouncerDelay: 200,
+        timeout: 15000
       }
     };
   }
