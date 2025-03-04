@@ -947,6 +947,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
           openPopover = null;
           Widget.detach(inlinePrompt);
         }
+
+        if (isCodeCell) {
+          codeInput?.classList.remove('generating');
+        }
       };
 
       let userPrompt = '';
@@ -999,6 +1003,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
             return;
           }
           removePopover();
+          if (isCodeCell) {
+            codeInput?.classList.add('generating');
+          }
         },
         onRequestCancelled: () => {
           removePopover();

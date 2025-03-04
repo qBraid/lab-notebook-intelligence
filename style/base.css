@@ -35,8 +35,24 @@
   display: flex;
   flex-direction: column;
   background-color: var(--jp-cell-editor-background);
-  border: 1px solid var(--jp-border-color1);
+  border: 2px solid var(--jp-border-color1);
+  margin: 4px;
+  border-radius: 3px;
 }
+
+/* stylelint-disable */
+.sidebar-user-input.generating {
+  background:
+    linear-gradient(
+        var(--jp-cell-editor-active-background),
+        var(--jp-cell-editor-active-background)
+      )
+      padding-box,
+    linear-gradient(var(--angle), #f1259c, #687aff) border-box;
+  animation: 4s rotate-gen linear infinite;
+  border: 2px solid #0000 !important;
+}
+/* stylelint-enable */
 
 .sidebar-user-input:focus-within {
   border-radius: 2px;
@@ -504,3 +520,29 @@ body[data-jp-theme-light='false'] .inline-popover {
   position: absolute;
   z-index: -1;
 }
+
+/* stylelint-disable */
+.jp-InputArea-editor.generating {
+  background:
+    linear-gradient(
+        var(--jp-cell-editor-active-background),
+        var(--jp-cell-editor-active-background)
+      )
+      padding-box,
+    linear-gradient(var(--angle), #f1259c, #687aff) border-box;
+  animation: 4s rotate-gen linear infinite;
+  border: 2px solid #0000 !important;
+}
+
+@keyframes rotate-gen {
+  to {
+    --angle: 360deg;
+  }
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+/* stylelint-enable */

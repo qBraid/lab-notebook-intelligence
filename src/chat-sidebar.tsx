@@ -1122,7 +1122,9 @@ function SidebarComponent(props: any) {
           </div>
         ))}
       {chatEnabled && (
-        <div className="sidebar-user-input">
+        <div
+          className={`sidebar-user-input ${copilotRequestInProgress ? 'generating' : ''}`}
+        >
           <textarea
             ref={promptInputRef}
             rows={3}
