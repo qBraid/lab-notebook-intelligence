@@ -6,21 +6,16 @@ from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletio
 import ollama
 import logging
 
+from notebook_intelligence.util import extract_llm_generated_code
+
 log = logging.getLogger(__name__)
 
-OLLAMA_EMBEDDING_FAMILIES = set([
-    "nomic-bert", "bert"
-])
-
+OLLAMA_EMBEDDING_FAMILIES = set(["nomic-bert", "bert"])
 QWEN_INLINE_COMPL_PROMPT = """<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>"""
-
 DEEPSEEK_INLINE_COMPL_PROMPT = """<｜fim▁begin｜>{prefix}<｜fim▁hole｜>{suffix}<｜fim▁end｜>"""
-
 CODELLAMA_INLINE_COMPL_PROMPT = """<PRE> {prefix} <SUF>{suffix} <MID>"""
-
 STARCODER_INLINE_COMPL_PROMPT = """<fim_prefix>{prefix}<fim_suffix>{suffix}<fim_middle>"""
-
-CODEGEMMA_INLINE_COMPL_PROMPT = """<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>"""
+CODESTRAL_INLINE_COMPL_PROMPT = """[SUFFIX]{suffix}[PREFIX]{prefix}"""
 
 class OllamaChatModel(ChatModel):
     def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int):
@@ -100,19 +95,20 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
         return self._context_window
 
     def inline_completions(self, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
-        if suffix.strip() == "":
-            prompt = prefix
-        else:
+        has_suffix = suffix.strip() != ""
+        if has_suffix:
             prompt = self._prompt_template.format(prefix=prefix, suffix=suffix.strip())
+        else:
+            prompt = prefix
 
         try:
             generate_args = {
                 "model": self._model_id, 
                 "prompt": prompt,
+                "raw": True,
                 "options": {
-                    'num_predict': 64,
-                    "temperature": 0.6,
-                    "repeat_penalty": 1.1,
+                    'num_predict': 128,
+                    "temperature": 0,
                     "stop" : [
                         "<|end▁of▁sentence|>",
                         "<｜end▁of▁sentence｜>",
@@ -127,28 +123,8 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
 
             ollama_response = ollama.generate(**generate_args)
             code = ollama_response.response
+            code = extract_llm_generated_code(code)
 
-            prefix_last_line = prefix.split('\n')[-1]
-
-            last_index = code.rfind('```')
-            if last_index != -1:
-                code = code[:last_index]
-
-            lines = code.split('\n')
-            lines = [line for line in lines if not line.startswith('#')]
-
-            num_lines = len(lines)
-            if num_lines > 1:
-                # reverse iterate lines
-                for i in range(num_lines-1, -1, -1):
-                    if lines[i].startswith(prefix_last_line):
-                        code = '\n'.join(lines[i:])
-                        break
-
-            if code.startswith(prefix):
-                code = code[len(prefix):]
-            elif code.startswith(prefix_last_line):
-                code = code[len(prefix_last_line):]
             return code
         except Exception as e:
             log.error(f"Error occurred while generating using completions ollama: {e}")
@@ -175,11 +151,11 @@ class OllamaLLMProvider(LLMProvider):
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
         return [
-            OllamaInlineCompletionModel(self, "codellama:7b-code", "codellama:7b-code", 16384, CODELLAMA_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "qwen2.5-coder", "Qwen 2.5 Coder", 32768, QWEN_INLINE_COMPL_PROMPT),
             OllamaInlineCompletionModel(self, "deepseek-coder-v2", "deepseek-coder-v2", 163840, DEEPSEEK_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "starcoder2", "StarCoder2", 16384, STARCODER_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "codegemma", "codegemma", 8192, CODEGEMMA_INLINE_COMPL_PROMPT),
+            OllamaInlineCompletionModel(self, "qwen2.5-coder", "qwen2.5-coder", 32768, QWEN_INLINE_COMPL_PROMPT),
+            OllamaInlineCompletionModel(self, "codestral", "codestral", 32768, CODESTRAL_INLINE_COMPL_PROMPT),
+            OllamaInlineCompletionModel(self, "starcoder2", "starcoder2", 16384, STARCODER_INLINE_COMPL_PROMPT),
+            OllamaInlineCompletionModel(self, "codellama:7b-code", "codellama:7b-code", 16384, CODELLAMA_INLINE_COMPL_PROMPT),
         ]
     
     @property

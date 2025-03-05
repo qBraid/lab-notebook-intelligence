@@ -35,21 +35,25 @@ class AIServiceManager(Host):
         self._options = options.copy()
         self._openai_compatible_llm_provider = OpenAICompatibleLLMProvider()
         self._litellm_compatible_llm_provider = LiteLLMCompatibleLLMProvider()
+        self._ollama_llm_provider = OllamaLLMProvider()
         self.initialize()
 
     @property
     def nbi_config(self) -> NBIConfig:
         return self._nbi_config
+    
+    @property
+    def ollama_llm_provider(self) -> OllamaLLMProvider:
+        return self._ollama_llm_provider
 
     def initialize(self):
         self.chat_participants = {}
         self.register_llm_provider(GitHubCopilotLLMProvider())
         self.register_llm_provider(self._openai_compatible_llm_provider)
         self.register_llm_provider(self._litellm_compatible_llm_provider)
-        self.register_llm_provider(OllamaLLMProvider())
+        self.register_llm_provider(self._ollama_llm_provider)
 
         self.update_models_from_config()
-
         self.initialize_extensions()
 
     def update_models_from_config(self):
@@ -61,27 +65,13 @@ class AIServiceManager(Host):
         chat_model_id = chat_model_cfg.get('model', 'gpt-4o')
         chat_model_provider = self.get_llm_provider(chat_model_provider_id)
         self._chat_model = chat_model_provider.get_chat_model(chat_model_id) if chat_model_provider is not None else None
-        print(f"Chat model updated to: {self._chat_model.name if self._chat_model is not None else None}")
 
         inline_completion_model_cfg = self.nbi_config.inline_completion_model
         inline_completion_model_provider_id = inline_completion_model_cfg.get('provider', 'github-copilot')
         inline_completion_model_id = inline_completion_model_cfg.get('model', 'gpt-4o')
         inline_completion_model_provider = self.get_llm_provider(inline_completion_model_provider_id)
         self._inline_completion_model = inline_completion_model_provider.get_inline_completion_model(inline_completion_model_id) if inline_completion_model_provider is not None else None
-        print(f"Inline completion model updated to: {self._inline_completion_model.name if self._inline_completion_model is not None else None}")
-
-
-        # inline_completion_model_ref = self.nbi_config.inline_completion_model
-
-        # if self._chat_model:
-        #     print(f"Chat model: ref: {chat_model_ref}, id: {self._chat_model.id}")
-        # self._inline_completion_model = self.get_inline_completion_model(inline_completion_model_ref)
-        # if self._inline_completion_model:
-        #     print(f"Inlline comple model: {self._inline_completion_model.id}")
         self._embedding_model = None
-        
-        # if chat_model_provider:
-        #     print(f"Chat model provider: {chat_model_provider.id}")
 
         if self._chat_model is not None:
             properties = chat_model_cfg.get('properties', [])
