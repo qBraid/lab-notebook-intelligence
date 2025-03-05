@@ -1636,6 +1636,11 @@ function ConfigurationDialogBodyComponent(props: any) {
     props.onSave();
   };
 
+  const handleRefreshOllamaModelListClick = async () => {
+    await NBIAPI.updateOllamaModelList();
+    updateModelOptionsForProvider(chatModelProvider, 'chat');
+  };
+
   const [chatModelProvider, setChatModelProvider] = useState(
     nbiConfig.chatModel.provider || 'none'
   );
@@ -1798,12 +1803,19 @@ function ConfigurationDialogBodyComponent(props: any) {
             <div className="model-config-section-row">
               <div className="model-config-section-column">
                 {chatModelProvider === 'ollama' && chatModels.length === 0 && (
-                  <div style={{ color: 'var(--jp-warn-color0)' }}>
+                  <div className="ollama-warning-message">
                     No Ollama models found! Make sure{' '}
                     <a href="https://ollama.com/" target="_blank">
                       Ollama
                     </a>{' '}
-                    is running and models are downloaded to your computer.
+                    is running and models are downloaded to your computer.{' '}
+                    <a
+                      href="javascript:void(0)"
+                      onClick={handleRefreshOllamaModelListClick}
+                    >
+                      Try again
+                    </a>{' '}
+                    once ready.
                   </div>
                 )}
               </div>

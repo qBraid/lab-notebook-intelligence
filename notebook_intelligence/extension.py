@@ -66,6 +66,14 @@ class ConfigHandler(APIHandler):
         ai_service_manager.update_models_from_config()
         self.finish(json.dumps({}))
 
+class UpdateProviderModelsHandler(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        data = json.loads(self.request.body)
+        if data.get("provider") == "ollama":
+            ai_service_manager.ollama_llm_provider.update_chat_model_list()
+        self.finish(json.dumps({}))
+
 class GetGitHubLoginStatusHandler(APIHandler):
     # The following decorator should be present on all verb methods (head, get, post,
     # patch, put, delete, options) to ensure only authorized user can request the
@@ -495,6 +503,7 @@ class NotebookIntelligence(ExtensionApp):
         base_url = web_app.settings["base_url"]
         route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
         route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
+        route_pattern_update_provider_models = url_path_join(base_url, "notebook-intelligence", "update-provider-models")
         route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
@@ -502,6 +511,7 @@ class NotebookIntelligence(ExtensionApp):
         NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
             (route_pattern_config, ConfigHandler),
+            (route_pattern_update_provider_models, UpdateProviderModelsHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),
             (route_pattern_github_logout, GetGitHubLogoutHandler),

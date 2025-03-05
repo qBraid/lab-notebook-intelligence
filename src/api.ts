@@ -189,6 +189,23 @@ export class NBIAPI {
       });
   }
 
+  static async updateOllamaModelList(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      requestAPI<any>('update-provider-models', {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'ollama' })
+      })
+        .then(async data => {
+          await NBIAPI.fetchCapabilities();
+          resolve();
+        })
+        .catch(reason => {
+          console.error(`Failed to update ollama model list.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
   static async chatRequest(
     messageId: string,
     chatId: string,

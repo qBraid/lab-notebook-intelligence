@@ -546,3 +546,8 @@ body[data-jp-theme-light='false'] .inline-popover {
   inherits: false;
 }
 /* stylelint-enable */
+
+.ollama-warning-message {
+  color: var(--jp-warn-color0);
+  line-height: 20px;
+}
