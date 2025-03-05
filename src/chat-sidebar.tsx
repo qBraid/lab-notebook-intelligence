@@ -1838,9 +1838,7 @@ function ConfigurationDialogBodyComponent(props: any) {
         </div>
 
         <div className="model-config-section">
-          <div className="model-config-section-header">
-            Inline completion model
-          </div>
+          <div className="model-config-section-header">Auto-complete model</div>
           <div className="model-config-section-body">
             <div className="model-config-section-row">
               <div className="model-config-section-column">

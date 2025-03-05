@@ -53,7 +53,7 @@ import {
 import { NBIAPI, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
-  GITHUB_COPILOT_MODEL_ID_PREFIX,
+  GITHUB_COPILOT_PROVIDER_ID,
   IActiveDocumentInfo,
   ICellContents,
   RequestDataType
@@ -338,10 +338,10 @@ class GitHubInlineCompletionProvider
     }
 
     const nbiConfig = NBIAPI.config;
-    const prefix = `${GITHUB_COPILOT_MODEL_ID_PREFIX}::`;
     const inlineCompletionsEnabled =
-      !nbiConfig.inlineCompletionModel.model.startsWith(prefix) ||
-      NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn;
+      nbiConfig.inlineCompletionModel.provider === GITHUB_COPILOT_PROVIDER_ID
+        ? NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
+        : nbiConfig.inlineCompletionModel.provider !== 'none';
 
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
@@ -676,7 +676,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
     };
 
     const isChatEnabled = (): boolean => {
-      return NBIAPI.config.chatModel !== '' && !githubLoginRequired();
+      return NBIAPI.config.chatModel.provider === GITHUB_COPILOT_PROVIDER_ID
+        ? !githubLoginRequired()
+        : NBIAPI.config.chatModel.provider !== 'none';
     };
 
     const isActiveCellCodeCell = (): boolean => {

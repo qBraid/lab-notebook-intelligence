@@ -6,7 +6,7 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import {
-  GITHUB_COPILOT_MODEL_ID_PREFIX,
+  GITHUB_COPILOT_PROVIDER_ID,
   IChatCompletionResponseEmitter,
   IChatParticipant,
   IContextItem,
@@ -49,10 +49,9 @@ export class NBIConfig {
   }
 
   get usingGitHubCopilotModel(): boolean {
-    const prefix = `${GITHUB_COPILOT_MODEL_ID_PREFIX}::`;
     return (
-      this.chatModel.model.startsWith(prefix) ||
-      this.inlineCompletionModel.model.startsWith(prefix)
+      this.chatModel.provider === GITHUB_COPILOT_PROVIDER_ID ||
+      this.inlineCompletionModel.provider === GITHUB_COPILOT_PROVIDER_ID
     );
   }
 

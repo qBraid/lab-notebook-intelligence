@@ -72,4 +72,4 @@ export interface IChatParticipant {
   commands: string[];
 }
 
-export const GITHUB_COPILOT_MODEL_ID_PREFIX = 'github-copilot';
+export const GITHUB_COPILOT_PROVIDER_ID = 'github-copilot';
