@@ -25,7 +25,6 @@ import notebook_intelligence.github_copilot as github_copilot
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
 tiktoken_encoding = tiktoken.encoding_for_model('gpt-4o')
-MAX_TOKENS = 4096
 
 class GetCapabilitiesHandler(APIHandler):
     @tornado.web.authenticated
@@ -339,7 +338,8 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
 
             request_chat_history = self.chat_history.get_history(chatId).copy()
 
-            token_budget = 0.8 * MAX_TOKENS
+            token_limit = 100 if ai_service_manager.chat_model is None else ai_service_manager.chat_model.context_window
+            token_budget =  0.8 * token_limit
 
             for context in additionalContext:
                 file_path = context["filePath"]
