@@ -1,6 +1,6 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-def extract_llm_generated_code(self, code: str) -> str:
+def extract_llm_generated_code(code: str) -> str:
         if code.endswith("```"):
             code = code[:-3]
 
@@ -14,11 +14,11 @@ def extract_llm_generated_code(self, code: str) -> str:
 
         for i in range(num_lines):
             if start_line == -1:
-                if lines[i].startswith("```"):
+                if lines[i].lstrip().startswith("```"):
                     start_line = i
                     continue
             else:
-                if lines[i].startswith("```"):
+                if lines[i].lstrip().startswith("```"):
                     end_line = i
                     break
 

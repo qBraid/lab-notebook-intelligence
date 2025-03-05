@@ -65,7 +65,7 @@ import {
   applyCodeToSelectionInEditor,
   cellOutputAsText,
   compareSelections,
-  extractCodeFromMarkdown,
+  extractLLMGeneratedCode,
   getSelectionInEditor,
   getTokenCount,
   getWholeNotebookContent,
@@ -594,7 +594,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           path: defaultBrowser?.model.path
         });
         contents.save(newPyFile.path, {
-          content: extractCodeFromMarkdown(args.code as string),
+          content: extractLLMGeneratedCode(args.code as string),
           format: 'text',
           type: 'file'
         });
@@ -985,7 +985,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       }
 
       const applyGeneratedCode = () => {
-        generatedContent = extractCodeFromMarkdown(generatedContent);
+        generatedContent = extractLLMGeneratedCode(generatedContent);
         applyCodeToSelectionInEditor(editor, generatedContent);
         generatedContent = '';
         removePopover();

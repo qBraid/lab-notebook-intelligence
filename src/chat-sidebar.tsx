@@ -33,7 +33,7 @@ import copySvgstr from '../style/icons/copy.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
 import { VscSend, VscStopCircle, VscEye, VscEyeClosed } from 'react-icons/vsc';
-import { extractCodeFromMarkdown, isDarkTheme } from './utils';
+import { extractLLMGeneratedCode, isDarkTheme } from './utils';
 
 const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
 const LITELLM_COMPATIBLE_CHAT_MODEL_ID = 'litellm-compatible-chat-model';
@@ -1228,7 +1228,7 @@ function InlinePopoverComponent(props: any) {
       setModifiedCode((modifiedCode: string) => modifiedCode + responseMessage);
     } else if (response.type === BackendMessageType.StreamEnd) {
       setModifiedCode((modifiedCode: string) =>
-        extractCodeFromMarkdown(modifiedCode)
+        extractLLMGeneratedCode(modifiedCode)
       );
     }
 
