@@ -18,6 +18,7 @@ import { NBIAPI, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
   ContextType,
+  GITHUB_COPILOT_PROVIDER_ID,
   IActiveDocumentInfo,
   ICellContents,
   IChatCompletionResponseEmitter,
@@ -488,7 +489,7 @@ function SidebarComponent(props: any) {
   const [prompt, setPrompt] = useState<string>('');
   const [draftPrompt, setDraftPrompt] = useState<string>('');
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const [_ghLoginStatus, setGHLoginStatus] = useState(
+  const [ghLoginStatus, setGHLoginStatus] = useState(
     GitHubCopilotLoginStatus.NotLoggedIn
   );
   const [loginClickCount, _setLoginClickCount] = useState(0);
@@ -1048,10 +1049,31 @@ function SidebarComponent(props: any) {
   };
 
   const nbiConfig = NBIAPI.config;
-  const ghLoginRequired =
-    nbiConfig.usingGitHubCopilotModel &&
-    NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn;
-  const chatEnabled = nbiConfig.chatModel !== '' && !ghLoginRequired;
+  const getGHLoginRequired = () => {
+    return (
+      nbiConfig.usingGitHubCopilotModel &&
+      NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn
+    );
+  };
+  const getChatEnabled = () => {
+    return nbiConfig.chatModel.provider === GITHUB_COPILOT_PROVIDER_ID
+      ? !getGHLoginRequired()
+      : (nbiConfig.chatModel.provider || 'none') !== 'none';
+  };
+
+  const [ghLoginRequired, setGHLoginRequired] = useState(getGHLoginRequired());
+  const [chatEnabled, setChatEnabled] = useState(getChatEnabled());
+
+  NBIAPI.configChanged.connect(() => {
+    setGHLoginRequired(getGHLoginRequired());
+    setChatEnabled(getChatEnabled());
+  });
+
+  useEffect(() => {
+    console.log('ghLoginStatus', ghLoginStatus);
+    setGHLoginRequired(getGHLoginRequired());
+    setChatEnabled(getChatEnabled());
+  }, [ghLoginStatus]);
 
   return (
     <div className="sidebar">
@@ -1060,7 +1082,7 @@ function SidebarComponent(props: any) {
       </div>
       {!chatEnabled && !ghLoginRequired && (
         <div className="sidebar-login-info">
-          Chat is disabled as you don't have a model available to use.
+          Chat is disabled as you don't have a model configured.
           <button
             className="jp-Dialog-button jp-mod-accept jp-mod-styled"
             onClick={handleConfigurationClick}

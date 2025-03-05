@@ -61,14 +61,14 @@ class AIServiceManager(Host):
             github_copilot.login_with_existing_credentials(self._options.get("github_access_token"))
 
         chat_model_cfg = self.nbi_config.chat_model
-        chat_model_provider_id = chat_model_cfg.get('provider', 'github-copilot')
-        chat_model_id = chat_model_cfg.get('model', 'gpt-4o')
+        chat_model_provider_id = chat_model_cfg.get('provider', 'none')
+        chat_model_id = chat_model_cfg.get('model', 'none')
         chat_model_provider = self.get_llm_provider(chat_model_provider_id)
         self._chat_model = chat_model_provider.get_chat_model(chat_model_id) if chat_model_provider is not None else None
 
         inline_completion_model_cfg = self.nbi_config.inline_completion_model
-        inline_completion_model_provider_id = inline_completion_model_cfg.get('provider', 'github-copilot')
-        inline_completion_model_id = inline_completion_model_cfg.get('model', 'gpt-4o')
+        inline_completion_model_provider_id = inline_completion_model_cfg.get('provider', 'none')
+        inline_completion_model_id = inline_completion_model_cfg.get('model', 'none')
         inline_completion_model_provider = self.get_llm_provider(inline_completion_model_provider_id)
         self._inline_completion_model = inline_completion_model_provider.get_inline_completion_model(inline_completion_model_id) if inline_completion_model_provider is not None else None
         self._embedding_model = None
