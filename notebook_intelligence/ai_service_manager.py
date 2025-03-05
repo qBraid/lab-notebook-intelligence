@@ -220,14 +220,10 @@ class AIServiceManager(Host):
         model_id = parts[1]
         llm_provider = self.get_llm_provider(provider_id)
 
-        # print(f"Provider ID: {provider_id}, Model ID {model_id}, {llm_provider}")
-
         if llm_provider is None:
             return None
 
         model_list = llm_provider.chat_models if model_type == 'chat' else llm_provider.inline_completion_models if model_type == 'inline-completion' else llm_provider.embedding_models
-
-        # print(f"model_list: {model_list}")
 
         for model in model_list:
             if model.id == model_id:
