@@ -27,7 +27,10 @@ dependencies = [
     "sseclient-py",
     "fuzy-jon==0.1.0",
     "tiktoken",
-    "keyring"
+    "keyring",
+    "litellm>=1.62.1",
+    "openai",
+    "ollama"
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
