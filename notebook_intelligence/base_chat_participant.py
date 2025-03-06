@@ -171,6 +171,7 @@ class BaseChatParticipant(ChatParticipant):
             ChatCommand(name='newNotebook', description='Create a new notebook'),
             ChatCommand(name='newPythonFile', description='Create a new Python file'),
             ChatCommand(name='clear', description='Clears chat history'),
+            ChatCommand(name='settings', description='Open settings dialog'),
         ]
 
     @property
@@ -235,6 +236,11 @@ class BaseChatParticipant(ChatParticipant):
             ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
             file_path = ui_cmd_response['path']
             response.stream(MarkdownData(f"File '{file_path}' created successfully"))
+            response.finish()
+            return
+        elif request.command == 'settings':
+            ui_cmd_response = await response.run_ui_command('notebook-intelligence:open-configuration-dialog')
+            response.stream(MarkdownData(f"Opened the settings dialog"))
             response.finish()
             return
 

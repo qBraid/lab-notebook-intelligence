@@ -722,7 +722,7 @@ function SidebarComponent(props: any) {
 
             const data = {
               callback_id: response.data.callback_id,
-              result
+              result: result || "void"
             };
 
             try {
