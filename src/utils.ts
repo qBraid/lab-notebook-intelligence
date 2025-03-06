@@ -55,16 +55,39 @@ export function moveCodeSectionBoundaryMarkersToNewLine(
   return newLines.join('\n');
 }
 
-export function extractCodeFromMarkdown(source: string): string {
-  // make sure end of code block is in new line
-  source = moveCodeSectionBoundaryMarkersToNewLine(source);
-  const codeBlockRegex = /^```(?:\w+)?\s*\n(.*?)(?=^```)```/gms;
-  let code = '';
-  let match;
-  while ((match = codeBlockRegex.exec(source)) !== null) {
-    code += match[1] + '\n';
+export function extractLLMGeneratedCode(code: string): string {
+  if (code.endsWith('```')) {
+    code = code.slice(0, -3);
   }
-  return code.trim() || source;
+
+  const lines = code.split('\n');
+  if (lines.length < 2) {
+    return code;
+  }
+
+  const numLines = lines.length;
+  let startLine = -1;
+  let endLine = numLines;
+
+  for (let i = 0; i < numLines; i++) {
+    if (startLine === -1) {
+      if (lines[i].trimStart().startsWith('```')) {
+        startLine = i;
+        continue;
+      }
+    } else {
+      if (lines[i].trimStart().startsWith('```')) {
+        endLine = i;
+        break;
+      }
+    }
+  }
+
+  if (startLine !== -1) {
+    return lines.slice(startLine + 1, endLine).join('\n');
+  }
+
+  return code;
 }
 
 export function isDarkTheme(): boolean {

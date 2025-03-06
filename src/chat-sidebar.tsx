@@ -14,26 +14,34 @@ import { UUID } from '@lumino/coreutils';
 
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 
-import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
+import { NBIAPI, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
   ContextType,
+  GITHUB_COPILOT_PROVIDER_ID,
   IActiveDocumentInfo,
   ICellContents,
   IChatCompletionResponseEmitter,
+  IChatParticipant,
   IContextItem,
   RequestDataType,
   ResponseStreamDataType
 } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
-import { requestAPI } from './handler';
 import { MarkdownRenderer } from './markdown-renderer';
 
 import copySvgstr from '../style/icons/copy.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
 import { VscSend, VscStopCircle, VscEye, VscEyeClosed } from 'react-icons/vsc';
-import { extractCodeFromMarkdown, isDarkTheme } from './utils';
+import { extractLLMGeneratedCode, isDarkTheme } from './utils';
+
+const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
+const LITELLM_COMPATIBLE_CHAT_MODEL_ID = 'litellm-compatible-chat-model';
+const OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID =
+  'openai-compatible-inline-completion-model';
+const LITELLM_COMPATIBLE_INLINE_COMPLETION_MODEL_ID =
+  'litellm-compatible-inline-completion-model';
 
 export enum RunChatCompletionType {
   Chat,
@@ -205,6 +213,20 @@ export class GitHubCopilotLoginDialogBody extends ReactWidget {
   private _onLoggedIn: () => void;
 }
 
+export class ConfigurationDialogBody extends ReactWidget {
+  constructor(options: { onSave: () => void }) {
+    super();
+
+    this._onSave = options.onSave;
+  }
+
+  render(): JSX.Element {
+    return <ConfigurationDialogBodyComponent onSave={this._onSave} />;
+  }
+
+  private _onSave: () => void;
+}
+
 interface IChatMessageContent {
   id: string;
   type: ResponseStreamDataType;
@@ -219,14 +241,6 @@ interface IChatMessage {
   contents: IChatMessageContent[];
   notebookLink?: string;
   participant?: IChatParticipant;
-}
-
-interface IChatParticipant {
-  id: string;
-  name: string;
-  description: string;
-  iconPath: string;
-  commands: string[];
 }
 
 const answeredForms = new Map<string, string>();
@@ -433,7 +447,7 @@ async function submitCompletionRequest(
 ): Promise<any> {
   switch (request.type) {
     case RunChatCompletionType.Chat:
-      return GitHubCopilot.chatRequest(
+      return NBIAPI.chatRequest(
         request.messageId,
         request.chatId,
         request.content,
@@ -446,7 +460,7 @@ async function submitCompletionRequest(
     case RunChatCompletionType.FixThis:
     case RunChatCompletionType.ExplainThisOutput:
     case RunChatCompletionType.TroubleshootThisOutput: {
-      return GitHubCopilot.chatRequest(
+      return NBIAPI.chatRequest(
         request.messageId,
         request.chatId,
         request.content,
@@ -457,7 +471,7 @@ async function submitCompletionRequest(
       );
     }
     case RunChatCompletionType.GenerateCode:
-      return GitHubCopilot.generateCode(
+      return NBIAPI.generateCode(
         request.chatId,
         request.content,
         request.prefix || '',
@@ -492,41 +506,34 @@ function SidebarComponent(props: any) {
   const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
   const [chatId, setChatId] = useState(UUID.uuid4());
   const lastMessageId = useRef<string>('');
-  const chatParticipants = useRef<IChatParticipant[]>([]);
   const [contextOn, setContextOn] = useState(false);
   const [activeDocumentInfo, setActiveDocumentInfo] =
     useState<IActiveDocumentInfo | null>(null);
   const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
 
   useEffect(() => {
-    requestAPI<any>('capabilities', { method: 'GET' })
-      .then(data => {
-        chatParticipants.current = structuredClone(data.chat_participants);
-        const prefixes: string[] = [];
-        for (const participant of data.chat_participants) {
-          const id = participant.id;
-          const commands = participant.commands;
-          const participantPrefix = id === 'default' ? '' : `@${id}`;
-          if (participantPrefix !== '') {
-            prefixes.push(participantPrefix);
-          }
-          const commandPrefix =
-            participantPrefix === '' ? '' : `${participantPrefix} `;
-          for (const command of commands) {
-            prefixes.push(`${commandPrefix}/${command}`);
-          }
-        }
-        setOriginalPrefixes(prefixes);
-        setPrefixSuggestions(prefixes);
-      })
-      .catch(reason => {
-        console.error(`Failed to get extension capabilities.\n${reason}`);
-      });
+    const prefixes: string[] = [];
+    const chatParticipants = NBIAPI.config.chatParticipants;
+    for (const participant of chatParticipants) {
+      const id = participant.id;
+      const commands = participant.commands;
+      const participantPrefix = id === 'default' ? '' : `@${id}`;
+      if (participantPrefix !== '') {
+        prefixes.push(participantPrefix);
+      }
+      const commandPrefix =
+        participantPrefix === '' ? '' : `${participantPrefix} `;
+      for (const command of commands) {
+        prefixes.push(`${commandPrefix}/${command}`);
+      }
+    }
+    setOriginalPrefixes(prefixes);
+    setPrefixSuggestions(prefixes);
   }, []);
 
   useEffect(() => {
     const fetchData = () => {
-      setGHLoginStatus(GitHubCopilot.getLoginStatus());
+      setGHLoginStatus(NBIAPI.getLoginStatus());
     };
 
     fetchData();
@@ -627,7 +634,7 @@ function SidebarComponent(props: any) {
       resetPrefixSuggestions();
       setPromptHistory([]);
       setPromptHistoryIndex(0);
-      GitHubCopilot.sendWebSocketMessage(
+      NBIAPI.sendWebSocketMessage(
         UUID.uuid4(),
         RequestDataType.ClearChatHistory,
         { chatId }
@@ -715,7 +722,7 @@ function SidebarComponent(props: any) {
 
             const data = {
               callback_id: response.data.callback_id,
-              result
+              result: result || 'void'
             };
 
             try {
@@ -724,7 +731,7 @@ function SidebarComponent(props: any) {
               data.result = 'Could not serialize the result';
             }
 
-            GitHubCopilot.sendWebSocketMessage(
+            NBIAPI.sendWebSocketMessage(
               messageId,
               RequestDataType.RunUICommandResponse,
               data
@@ -737,7 +744,7 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: chatParticipants.current?.find(participant => {
+              participant: NBIAPI.config.chatParticipants.find(participant => {
                 return participant.id === response.participant;
               })
             }
@@ -745,12 +752,15 @@ function SidebarComponent(props: any) {
         }
       }
     );
-    setPrompt(promptPrefix);
-    filterPrefixSuggestions(promptPrefix);
+
+    const newPrompt = prompt.startsWith('/settings') ? '' : promptPrefix;
+
+    setPrompt(newPrompt);
+    filterPrefixSuggestions(newPrompt);
   };
 
   const handleUserInputCancel = async () => {
-    GitHubCopilot.sendWebSocketMessage(
+    NBIAPI.sendWebSocketMessage(
       lastMessageId.current,
       RequestDataType.CancelChatRequest,
       { chatId }
@@ -868,6 +878,12 @@ function SidebarComponent(props: any) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleConfigurationClick = async () => {
+    props
+      .getApp()
+      .commands.execute('notebook-intelligence:open-configuration-dialog');
+  };
+
   const handleLoginClick = async () => {
     props
       .getApp()
@@ -951,7 +967,7 @@ function SidebarComponent(props: any) {
               date: new Date(),
               from: 'copilot',
               contents: contents,
-              participant: chatParticipants.current?.find(participant => {
+              participant: NBIAPI.config.chatParticipants.find(participant => {
                 return participant.id === response.participant;
               })
             }
@@ -1035,12 +1051,52 @@ function SidebarComponent(props: any) {
     return `${activeDocumentInfo.filename}${cellAndLineIndicator}`;
   };
 
+  const nbiConfig = NBIAPI.config;
+  const getGHLoginRequired = () => {
+    return (
+      nbiConfig.usingGitHubCopilotModel &&
+      NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn
+    );
+  };
+  const getChatEnabled = () => {
+    return nbiConfig.chatModel.provider === GITHUB_COPILOT_PROVIDER_ID
+      ? !getGHLoginRequired()
+      : nbiConfig.llmProviders.find(
+          provider => provider.id === nbiConfig.chatModel.provider
+        );
+  };
+
+  const [ghLoginRequired, setGHLoginRequired] = useState(getGHLoginRequired());
+  const [chatEnabled, setChatEnabled] = useState(getChatEnabled());
+
+  NBIAPI.configChanged.connect(() => {
+    setGHLoginRequired(getGHLoginRequired());
+    setChatEnabled(getChatEnabled());
+  });
+
+  useEffect(() => {
+    console.log('ghLoginStatus', ghLoginStatus);
+    setGHLoginRequired(getGHLoginRequired());
+    setChatEnabled(getChatEnabled());
+  }, [ghLoginStatus]);
+
   return (
     <div className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-title">Copilot Chat</div>
       </div>
-      {ghLoginStatus === GitHubCopilotLoginStatus.NotLoggedIn && (
+      {!chatEnabled && !ghLoginRequired && (
+        <div className="sidebar-login-info">
+          Chat is disabled as you don't have a model configured.
+          <button
+            className="jp-Dialog-button jp-mod-accept jp-mod-styled"
+            onClick={handleConfigurationClick}
+          >
+            <div className="jp-Dialog-buttonLabel">Configure models</div>
+          </button>
+        </div>
+      )}
+      {ghLoginRequired && (
         <div className="sidebar-login-info">
           <div>
             You are not logged in to GitHub Copilot. Please login now to
@@ -1055,11 +1111,18 @@ function SidebarComponent(props: any) {
                 Login to GitHub Copilot
               </div>
             </button>
+
+            <button
+              className="jp-Dialog-button jp-mod-reject jp-mod-styled"
+              onClick={handleConfigurationClick}
+            >
+              <div className="jp-Dialog-buttonLabel">Change provider</div>
+            </button>
           </div>
         </div>
       )}
 
-      {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn &&
+      {chatEnabled &&
         (chatMessages.length === 0 ? (
           <div className="sidebar-messages">
             <div className="sidebar-greeting">
@@ -1085,8 +1148,10 @@ function SidebarComponent(props: any) {
             <div ref={messagesEndRef} />
           </div>
         ))}
-      {ghLoginStatus === GitHubCopilotLoginStatus.LoggedIn && (
-        <div className="sidebar-user-input">
+      {chatEnabled && (
+        <div
+          className={`sidebar-user-input ${copilotRequestInProgress ? 'generating' : ''}`}
+        >
           <textarea
             ref={promptInputRef}
             rows={3}
@@ -1190,7 +1255,7 @@ function InlinePopoverComponent(props: any) {
       setModifiedCode((modifiedCode: string) => modifiedCode + responseMessage);
     } else if (response.type === BackendMessageType.StreamEnd) {
       setModifiedCode((modifiedCode: string) =>
-        extractCodeFromMarkdown(modifiedCode)
+        extractLLMGeneratedCode(modifiedCode)
       );
     }
 
@@ -1370,7 +1435,7 @@ function GitHubCopilotStatusComponent(props: any) {
 
   useEffect(() => {
     const fetchData = () => {
-      setGHLoginStatus(GitHubCopilot.getLoginStatus());
+      setGHLoginStatus(NBIAPI.getLoginStatus());
     };
 
     fetchData();
@@ -1414,7 +1479,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
 
   useEffect(() => {
     const fetchData = () => {
-      const status = GitHubCopilot.getLoginStatus();
+      const status = NBIAPI.getLoginStatus();
       setGHLoginStatus(status);
       if (status === GitHubCopilotLoginStatus.LoggedIn && loginClicked) {
         setTimeout(() => {
@@ -1431,7 +1496,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
   }, [loginClickCount]);
 
   const handleLoginClick = async () => {
-    const response = await GitHubCopilot.loginToGitHub();
+    const response = await NBIAPI.loginToGitHub();
     setDeviceActivationURL((response as any).verificationURI);
     setDeviceActivationCode((response as any).userCode);
     setLoginClickCount(loginClickCount + 1);
@@ -1439,7 +1504,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
   };
 
   const handleLogoutClick = async () => {
-    await GitHubCopilot.logoutFromGitHub();
+    await NBIAPI.logoutFromGitHub();
     setLoginClickCount(loginClickCount + 1);
   };
 
@@ -1571,6 +1636,365 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ConfigurationDialogBodyComponent(props: any) {
+  const nbiConfig = NBIAPI.config;
+  const llmProviders = nbiConfig.llmProviders;
+  const [chatModels, setChatModels] = useState([]);
+  const [inlineCompletionModels, setInlineCompletionModels] = useState([]);
+
+  const handleSaveClick = async () => {
+    await NBIAPI.setConfig({
+      chat_model: {
+        provider: chatModelProvider,
+        model: chatModel,
+        properties: chatModelProperties
+      },
+      inline_completion_model: {
+        provider: inlineCompletionModelProvider,
+        model: inlineCompletionModel,
+        properties: inlineCompletionModelProperties
+      }
+    });
+
+    props.onSave();
+  };
+
+  const handleRefreshOllamaModelListClick = async () => {
+    await NBIAPI.updateOllamaModelList();
+    updateModelOptionsForProvider(chatModelProvider, 'chat');
+  };
+
+  const [chatModelProvider, setChatModelProvider] = useState(
+    nbiConfig.chatModel.provider || 'none'
+  );
+  const [inlineCompletionModelProvider, setInlineCompletionModelProvider] =
+    useState(nbiConfig.inlineCompletionModel.provider || 'none');
+  const [chatModel, setChatModel] = useState<string>(nbiConfig.chatModel.model);
+  const [chatModelProperties, setChatModelProperties] = useState<any[]>([]);
+  const [inlineCompletionModelProperties, setInlineCompletionModelProperties] =
+    useState<any[]>([]);
+  const [inlineCompletionModel, setInlineCompletionModel] = useState(
+    nbiConfig.inlineCompletionModel.model
+  );
+
+  const updateModelOptionsForProvider = (
+    providerId: string,
+    modelType: 'chat' | 'inline-completion'
+  ) => {
+    if (modelType === 'chat') {
+      setChatModelProvider(providerId);
+    } else {
+      setInlineCompletionModelProvider(providerId);
+    }
+    const models =
+      modelType === 'chat'
+        ? nbiConfig.chatModels
+        : nbiConfig.inlineCompletionModels;
+    const selectedModelId =
+      modelType === 'chat'
+        ? nbiConfig.chatModel.model
+        : nbiConfig.inlineCompletionModel.model;
+
+    const providerModels = models.filter(
+      (model: any) => model.provider === providerId
+    );
+    if (modelType === 'chat') {
+      setChatModels(providerModels);
+    } else {
+      setInlineCompletionModels(providerModels);
+    }
+    let selectedModel = providerModels.find(
+      (model: any) => model.id === selectedModelId
+    );
+    if (!selectedModel) {
+      selectedModel = providerModels?.[0];
+    }
+    if (selectedModel) {
+      if (modelType === 'chat') {
+        setChatModel(selectedModel.id);
+        setChatModelProperties(selectedModel.properties);
+      } else {
+        setInlineCompletionModel(selectedModel.id);
+        setInlineCompletionModelProperties(selectedModel.properties);
+      }
+    } else {
+      if (modelType === 'chat') {
+        setChatModelProperties([]);
+      } else {
+        setInlineCompletionModelProperties([]);
+      }
+    }
+  };
+
+  const onModelPropertyChange = (
+    modelType: 'chat' | 'inline-completion',
+    propertyId: string,
+    value: string
+  ) => {
+    const modelProperties =
+      modelType === 'chat'
+        ? chatModelProperties
+        : inlineCompletionModelProperties;
+    const updatedProperties = modelProperties.map((property: any) => {
+      if (property.id === propertyId) {
+        return { ...property, value };
+      }
+      return property;
+    });
+    if (modelType === 'chat') {
+      setChatModelProperties(updatedProperties);
+    } else {
+      setInlineCompletionModelProperties(updatedProperties);
+    }
+  };
+
+  useEffect(() => {
+    updateModelOptionsForProvider(chatModelProvider, 'chat');
+    updateModelOptionsForProvider(
+      inlineCompletionModelProvider,
+      'inline-completion'
+    );
+  }, []);
+
+  return (
+    <div className="config-dialog">
+      <div className="config-dialog-body">
+        <div className="model-config-section">
+          <div className="model-config-section-header">Chat model</div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <div>Provider</div>
+                <div>
+                  <select
+                    className="jp-mod-styled"
+                    onChange={event =>
+                      updateModelOptionsForProvider(event.target.value, 'chat')
+                    }
+                  >
+                    {llmProviders.map((provider: any, index: number) => (
+                      <option
+                        key={index}
+                        value={provider.id}
+                        selected={provider.id === chatModelProvider}
+                      >
+                        {provider.name}
+                      </option>
+                    ))}
+                    <option
+                      key={-1}
+                      value="none"
+                      selected={
+                        chatModelProvider === 'none' ||
+                        !llmProviders.find(
+                          provider => provider.id === chatModelProvider
+                        )
+                      }
+                    >
+                      None
+                    </option>
+                  </select>
+                </div>
+              </div>
+              {!['openai-compatible', 'litellm-compatible', 'none'].includes(
+                chatModelProvider
+              ) &&
+                chatModels.length > 0 && (
+                  <div className="model-config-section-column">
+                    <div>Model</div>
+                    {![
+                      OPENAI_COMPATIBLE_CHAT_MODEL_ID,
+                      LITELLM_COMPATIBLE_CHAT_MODEL_ID
+                    ].includes(chatModel) &&
+                      chatModels.length > 0 && (
+                        <div>
+                          <select
+                            className="jp-mod-styled"
+                            onChange={event => setChatModel(event.target.value)}
+                          >
+                            {chatModels.map((model: any, index: number) => (
+                              <option
+                                key={index}
+                                value={model.id}
+                                selected={model.id === chatModel}
+                              >
+                                {model.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                  </div>
+                )}
+            </div>
+
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {chatModelProvider === 'ollama' && chatModels.length === 0 && (
+                  <div className="ollama-warning-message">
+                    No Ollama models found! Make sure{' '}
+                    <a href="https://ollama.com/" target="_blank">
+                      Ollama
+                    </a>{' '}
+                    is running and models are downloaded to your computer.{' '}
+                    <a
+                      href="javascript:void(0)"
+                      onClick={handleRefreshOllamaModelListClick}
+                    >
+                      Try again
+                    </a>{' '}
+                    once ready.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {chatModelProperties.map((property: any, index: number) => (
+                  <div className="form-field-row" key={index}>
+                    <div className="form-field-description">
+                      {property.name} {property.optional ? '(optional)' : ''}
+                    </div>
+                    <input
+                      name="chat-model-id-input"
+                      placeholder={property.description}
+                      className="jp-mod-styled"
+                      spellCheck={false}
+                      value={property.value}
+                      onChange={event =>
+                        onModelPropertyChange(
+                          'chat',
+                          property.id,
+                          event.target.value
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="model-config-section">
+          <div className="model-config-section-header">Auto-complete model</div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <div>Provider</div>
+                <div>
+                  <select
+                    className="jp-mod-styled"
+                    onChange={event =>
+                      updateModelOptionsForProvider(
+                        event.target.value,
+                        'inline-completion'
+                      )
+                    }
+                  >
+                    {llmProviders.map((provider: any, index: number) => (
+                      <option
+                        key={index}
+                        value={provider.id}
+                        selected={provider.id === inlineCompletionModelProvider}
+                      >
+                        {provider.name}
+                      </option>
+                    ))}
+                    <option
+                      key={-1}
+                      value="none"
+                      selected={
+                        inlineCompletionModelProvider === 'none' ||
+                        !llmProviders.find(
+                          provider =>
+                            provider.id === inlineCompletionModelProvider
+                        )
+                      }
+                    >
+                      None
+                    </option>
+                  </select>
+                </div>
+              </div>
+              {!['openai-compatible', 'litellm-compatible', 'none'].includes(
+                inlineCompletionModelProvider
+              ) && (
+                <div className="model-config-section-column">
+                  <div>Model</div>
+                  {![
+                    OPENAI_COMPATIBLE_INLINE_COMPLETION_MODEL_ID,
+                    LITELLM_COMPATIBLE_INLINE_COMPLETION_MODEL_ID
+                  ].includes(inlineCompletionModel) && (
+                    <div>
+                      <select
+                        className="jp-mod-styled"
+                        onChange={event =>
+                          setInlineCompletionModel(event.target.value)
+                        }
+                      >
+                        {inlineCompletionModels.map(
+                          (model: any, index: number) => (
+                            <option
+                              key={index}
+                              value={model.id}
+                              selected={model.id === inlineCompletionModel}
+                            >
+                              {model.name}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {inlineCompletionModelProperties.map(
+                  (property: any, index: number) => (
+                    <div className="form-field-row" key={index}>
+                      <div className="form-field-description">
+                        {property.name} {property.optional ? '(optional)' : ''}
+                      </div>
+                      <input
+                        name="inline-completion-model-id-input"
+                        placeholder={property.description}
+                        className="jp-mod-styled"
+                        spellCheck={false}
+                        value={property.value}
+                        onChange={event =>
+                          onModelPropertyChange(
+                            'inline-completion',
+                            property.id,
+                            event.target.value
+                          )
+                        }
+                      />
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="config-dialog-footer">
+        <button
+          className="jp-Dialog-button jp-mod-accept jp-mod-styled"
+          onClick={handleSaveClick}
+        >
+          <div className="jp-Dialog-buttonLabel">Save</div>
+        </button>
+      </div>
     </div>
   );
 }

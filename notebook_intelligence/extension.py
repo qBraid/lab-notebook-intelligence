@@ -19,18 +19,28 @@ from tornado import websocket
 from traitlets import Unicode
 from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
+from notebook_intelligence.config import NBIConfig
 import notebook_intelligence.github_copilot as github_copilot
-from notebook_intelligence.github_copilot_participant import GithubCopilotChatParticipant
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
 tiktoken_encoding = tiktoken.encoding_for_model('gpt-4o')
-MAX_TOKENS = 4096
 
 class GetCapabilitiesHandler(APIHandler):
     @tornado.web.authenticated
     def get(self):
+        ai_service_manager.update_models_from_config()
+        nbi_config = ai_service_manager.nbi_config
+        llm_providers = ai_service_manager.llm_providers.values()
         response = {
+            "using_github_copilot_service": nbi_config.using_github_copilot_service,
+            "llm_providers": [{"id": provider.id, "name": provider.name} for provider in llm_providers],
+            "chat_models": ai_service_manager.chat_model_ids,
+            "inline_completion_models": ai_service_manager.inline_completion_model_ids,
+            "embedding_models": ai_service_manager.embedding_model_ids,
+            "chat_model": nbi_config.chat_model,
+            "inline_completion_model": nbi_config.inline_completion_model,
+            "embedding_model": nbi_config.embedding_model_id,
             "chat_participants": []
         }
         for participant_id in ai_service_manager.chat_participants:
@@ -43,6 +53,26 @@ class GetCapabilitiesHandler(APIHandler):
                 "commands": [command.name for command in participant.commands]
             })
         self.finish(json.dumps(response))
+
+class ConfigHandler(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        data = json.loads(self.request.body)
+        valid_keys = set(["chat_model", "inline_completion_model"])
+        for key in data:
+            if key in valid_keys:
+                ai_service_manager.nbi_config.set(key, data[key])
+        ai_service_manager.nbi_config.save()
+        ai_service_manager.update_models_from_config()
+        self.finish(json.dumps({}))
+
+class UpdateProviderModelsHandler(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        data = json.loads(self.request.body)
+        if data.get("provider") == "ollama":
+            ai_service_manager.ollama_llm_provider.update_chat_model_list()
+        self.finish(json.dumps({}))
 
 class GetGitHubLoginStatusHandler(APIHandler):
     # The following decorator should be present on all verb methods (head, get, post,
@@ -316,7 +346,8 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
 
             request_chat_history = self.chat_history.get_history(chatId).copy()
 
-            token_budget = 0.8 * MAX_TOKENS
+            token_limit = 100 if ai_service_manager.chat_model is None else ai_service_manager.chat_model.context_window
+            token_budget =  0.8 * token_limit
 
             for context in additionalContext:
                 file_path = context["filePath"]
@@ -402,25 +433,23 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
         pass
 
     async def handle_inline_completions(prefix, suffix, language, filename, response_emitter, cancel_token):
+        if ai_service_manager.inline_completion_model is None:
+            response_emitter.finish()
+            return
+
         context = await ai_service_manager.get_completion_context(ContextRequest(ContextRequestType.InlineCompletion, prefix, suffix, language, filename, participant=ai_service_manager.get_chat_participant(prefix), cancel_token=cancel_token))
 
         if cancel_token.is_cancel_requested:
             response_emitter.finish()
             return
 
-        completions = github_copilot.inline_completions(prefix, suffix, language, filename, context, cancel_token)
+        completions = ai_service_manager.inline_completion_model.inline_completions(prefix, suffix, language, filename, context, cancel_token)
         if cancel_token.is_cancel_requested:
             response_emitter.finish()
             return
 
         response_emitter.stream({"completions": completions})
         response_emitter.finish()
-
-def initialize_extensions():
-    global ai_service_manager
-    default_chat_participant = GithubCopilotChatParticipant()
-    ai_service_manager = AIServiceManager(default_chat_participant)
-
 
 class NotebookIntelligence(ExtensionApp):
     name = "notebook_intelligence"
@@ -453,10 +482,13 @@ class NotebookIntelligence(ExtensionApp):
 
     def initialize_handlers(self):
         NotebookIntelligence.root_dir = self.serverapp.root_dir
-        initialize_extensions()
+        self.initialize_ai_service()
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")
-        github_copilot.login_with_existing_credentials(self.github_access_token)
+    
+    def initialize_ai_service(self):
+        global ai_service_manager
+        ai_service_manager = AIServiceManager({"github_access_token": self.github_access_token})
 
     def initialize_templates(self):
         pass
@@ -470,12 +502,16 @@ class NotebookIntelligence(ExtensionApp):
 
         base_url = web_app.settings["base_url"]
         route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
+        route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
+        route_pattern_update_provider_models = url_path_join(base_url, "notebook-intelligence", "update-provider-models")
         route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
         route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
         NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
+            (route_pattern_config, ConfigHandler),
+            (route_pattern_update_provider_models, UpdateProviderModelsHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),
             (route_pattern_github_logout, GetGitHubLogoutHandler),

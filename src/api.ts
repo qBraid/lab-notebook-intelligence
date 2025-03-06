@@ -6,7 +6,9 @@ import { URLExt } from '@jupyterlab/coreutils';
 import { UUID } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import {
+  GITHUB_COPILOT_PROVIDER_ID,
   IChatCompletionResponseEmitter,
+  IChatParticipant,
   IContextItem,
   RequestDataType
 } from './tokens';
@@ -25,7 +27,41 @@ export interface IDeviceVerificationInfo {
   userCode: string;
 }
 
-export class GitHubCopilot {
+export class NBIConfig {
+  get llmProviders(): [any] {
+    return this.capabilities.llm_providers;
+  }
+
+  get chatModels(): [any] {
+    return this.capabilities.chat_models;
+  }
+
+  get inlineCompletionModels(): [any] {
+    return this.capabilities.inline_completion_models;
+  }
+
+  get chatModel(): any {
+    return this.capabilities.chat_model;
+  }
+
+  get inlineCompletionModel(): any {
+    return this.capabilities.inline_completion_model;
+  }
+
+  get usingGitHubCopilotModel(): boolean {
+    return (
+      this.chatModel.provider === GITHUB_COPILOT_PROVIDER_ID ||
+      this.inlineCompletionModel.provider === GITHUB_COPILOT_PROVIDER_ID
+    );
+  }
+
+  capabilities: any = {};
+  chatParticipants: IChatParticipant[] = [];
+
+  changed = new Signal<this, void>(this);
+}
+
+export class NBIAPI {
   static _loginStatus = GitHubCopilotLoginStatus.NotLoggedIn;
   static _deviceVerificationInfo: IDeviceVerificationInfo = {
     verificationURI: '',
@@ -33,15 +69,18 @@ export class GitHubCopilot {
   };
   static _webSocket: WebSocket;
   static _messageReceived = new Signal<unknown, any>(this);
+  static config = new NBIConfig();
+  static configChanged = this.config.changed;
 
-  static initialize() {
+  static async initialize() {
+    await this.fetchCapabilities();
     this.updateGitHubLoginStatus();
 
     setInterval(() => {
       this.updateGitHubLoginStatus();
     }, LOGIN_STATUS_UPDATE_INTERVAL);
 
-    GitHubCopilot.initializeWebsocket();
+    NBIAPI.initializeWebsocket();
   }
 
   static async initializeWebsocket() {
@@ -114,6 +153,54 @@ export class GitHubCopilot {
           console.error(
             `Failed to fetch GitHub Copilot login status.\n${reason}`
           );
+          reject(reason);
+        });
+    });
+  }
+
+  static async fetchCapabilities(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      requestAPI<any>('capabilities', { method: 'GET' })
+        .then(data => {
+          this.config.capabilities = structuredClone(data);
+          this.config.chatParticipants = structuredClone(
+            data.chat_participants
+          );
+          this.configChanged.emit();
+          resolve();
+        })
+        .catch(reason => {
+          console.error(`Failed to get extension capabilities.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
+  static async setConfig(config: any) {
+    requestAPI<any>('config', {
+      method: 'POST',
+      body: JSON.stringify(config)
+    })
+      .then(data => {
+        NBIAPI.fetchCapabilities();
+      })
+      .catch(reason => {
+        console.error(`Failed to set NBI config.\n${reason}`);
+      });
+  }
+
+  static async updateOllamaModelList(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      requestAPI<any>('update-provider-models', {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'ollama' })
+      })
+        .then(async data => {
+          await NBIAPI.fetchCapabilities();
+          resolve();
+        })
+        .catch(reason => {
+          console.error(`Failed to update ollama model list.\n${reason}`);
           reject(reason);
         });
     });

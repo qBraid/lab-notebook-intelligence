@@ -63,3 +63,13 @@ export interface ICellContents {
   input: string;
   output: string;
 }
+
+export interface IChatParticipant {
+  id: string;
+  name: string;
+  description: string;
+  iconPath: string;
+  commands: string[];
+}
+
+export const GITHUB_COPILOT_PROVIDER_ID = 'github-copilot';

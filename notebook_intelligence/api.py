@@ -2,9 +2,10 @@
 
 import asyncio
 import json
-from typing import Callable, Dict, Union
-from dataclasses import dataclass
+from typing import Any, Callable, Dict, Union
+from dataclasses import asdict, dataclass
 from enum import Enum
+import uuid
 from fuzzy_json import loads as fuzzy_json_loads
 import logging
 
@@ -322,7 +323,7 @@ class ChatParticipant:
         messages = request.chat_history.copy()
 
         if len(tools) == 0:
-            request.host.model.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
+            request.host.chat_model.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
             return
 
         openai_tools = [tool.schema for tool in tools]
@@ -334,20 +335,25 @@ class ChatParticipant:
 
         async def _tool_call_loop(tool_call_rounds: list):
             try:
-                tool_response = request.host.model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
+                tool_response = request.host.chat_model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
 
-                if 'tool_calls' in tool_response['choices'][0]['message']:
+                if tool_response['choices'][0]['message'].get('tool_calls', None) is not None:
                     for tool_call in tool_response['choices'][0]['message']['tool_calls']:
                         tool_call_rounds.append(tool_call)
-                elif 'content' in tool_response['choices'][0]['message']:
-                    messages.append(tool_response['choices'][0]['message'])
+                elif tool_response['choices'][0]['message'].get('content', None) is not None:
                     response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
 
-                # handle first tool call in tool_call_rounds
-                if len(tool_call_rounds) > 0:
+                messages.append(tool_response['choices'][0]['message'])
+
+                had_tool_call = len(tool_call_rounds) > 0
+
+                # handle first tool calls
+                while len(tool_call_rounds) > 0:
                     tool_call = tool_call_rounds[0]
+                    if "id" not in tool_call:
+                        tool_call['id'] = uuid.uuid4().hex
                     tool_call_rounds = tool_call_rounds[1:]
 
                     tool_name = tool_call['function']['name']
@@ -358,7 +364,9 @@ class ChatParticipant:
                         response.finish()
                         return
 
-                    if not tool_call['function']['arguments'].startswith('{'):
+                    if type(tool_call['function']['arguments']) is dict:
+                        args = tool_call['function']['arguments']
+                    elif not tool_call['function']['arguments'].startswith('{'):
                         args = tool_call['function']['arguments']
                     else:
                         args = fuzzy_json_loads(tool_call['function']['arguments'])
@@ -394,18 +402,15 @@ class ChatParticipant:
 
                     tool_call_response = await tool_to_call.handle_tool_call(request, response, tool_context, args)
 
-                    tool_call_args_resp = args.copy()
-                    tool_call_args_resp.update(tool_call_response)
-
                     function_call_result_message = {
                         "role": "tool",
-                        "content": json.dumps(tool_call_args_resp),
+                        "content": json.dumps(tool_call_response),
                         "tool_call_id": tool_call['id']
                     }
 
-                    # TODO: duplicate message?
-                    messages.append(tool_response['choices'][0]['message'])
                     messages.append(function_call_result_message)
+
+                if had_tool_call:
                     await _tool_call_loop(tool_call_rounds)
                     return
 
@@ -437,14 +442,122 @@ class CompletionContextProvider:
     def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
         raise NotImplemented
 
-class AIModel:
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> None:
-        raise NotImplemented
+@dataclass
+class LLMProviderProperty:
+    id: str
+    name: str
+    description: str
+    value: str
+    optional: bool = False
 
-class Host:
-    def register_chat_participant(self, participant: ChatParticipant) -> None:
+    def to_dict(self):
+        return asdict(self)
+
+class LLMPropertyProvider:
+    def __init__(self):
+        self._properties = []
+
+    @property
+    def properties(self) -> list[LLMProviderProperty]:
+        return self._properties
+
+    def get_property(self, property_id: str) -> LLMProviderProperty:
+        for prop in self.properties:
+            if prop.id == property_id:
+                return prop
+        return None
+
+    def set_property_value(self, property_id: str, value: str):
+        for prop in self.properties:
+            if prop.id == property_id:
+                prop.value = value
+
+class AIModel(LLMPropertyProvider):
+    def __init__(self, provider: 'LLMProvider'):
+        super().__init__()
+        self._provider = provider
+
+    @property
+    def id(self) -> str:
         raise NotImplemented
     
+    @property
+    def name(self) -> str:
+        raise NotImplemented
+
+    @property
+    def provider(self) -> str:
+        return self._provider
+    
+    @property
+    def context_window(self) -> int:
+        raise NotImplemented
+
+    @property
+    def supports_tools(self) -> bool:
+        return False
+
+class ChatModel(AIModel):
+    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
+        raise NotImplemented
+
+class InlineCompletionModel(AIModel):
+    def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
+        raise NotImplemented
+
+class EmbeddingModel(AIModel):
+    def embeddings(self, inputs: list[str]) -> Any:
+        raise NotImplemented
+
+class LLMProvider(LLMPropertyProvider):
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def id(self) -> str:
+        raise NotImplemented
+    
+    @property
+    def name(self) -> str:
+        raise NotImplemented
+
+    @property
+    def chat_models(self) -> list[ChatModel]:
+        raise NotImplemented
+    
+    @property
+    def inline_completion_models(self) -> list[InlineCompletionModel]:
+        raise NotImplemented
+    
+    @property
+    def embedding_models(self) -> list[EmbeddingModel]:
+        raise NotImplemented
+
+    def get_chat_model(self, model_id: str) -> ChatModel:
+        for model in self.chat_models:
+            if model.id == model_id:
+                return model
+        return None
+    
+    def get_inline_completion_model(self, model_id: str) -> InlineCompletionModel:
+        for model in self.inline_completion_models:
+            if model.id == model_id:
+                return model
+        return None
+    
+    def get_embedding_model(self, model_id: str) -> EmbeddingModel:
+        for model in self.embedding_models:
+            if model.id == model_id:
+                return model
+        return None
+
+class Host:
+    def register_llm_provider(self, provider: LLMProvider) -> None:
+        raise NotImplemented
+
+    def register_chat_participant(self, participant: ChatParticipant) -> None:
+        raise NotImplemented
+
     def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         raise NotImplemented
     
@@ -453,7 +566,15 @@ class Host:
         raise NotImplemented
     
     @property
-    def model(self) -> AIModel:
+    def chat_model(self) -> ChatModel:
+        raise NotImplemented
+    
+    @property
+    def inline_completion_model(self) -> InlineCompletionModel:
+        raise NotImplemented
+    
+    @property
+    def embedding_model(self) -> EmbeddingModel:
         raise NotImplemented
 
 class NotebookIntelligenceExtension:

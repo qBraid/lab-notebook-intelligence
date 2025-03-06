@@ -9,7 +9,8 @@ import {
 import { IDocumentManager } from '@jupyterlab/docmanager';
 import { DocumentWidget } from '@jupyterlab/docregistry';
 
-import { Dialog } from '@jupyterlab/apputils';
+import { Dialog, ICommandPalette } from '@jupyterlab/apputils';
+import { IMainMenu } from '@jupyterlab/mainmenu';
 
 import { IEditorLanguageRegistry } from '@jupyterlab/codemirror';
 
@@ -43,14 +44,16 @@ import { IStatusBar } from '@jupyterlab/statusbar';
 
 import {
   ChatSidebar,
+  ConfigurationDialogBody,
   GitHubCopilotLoginDialogBody,
   GitHubCopilotStatusBarItem,
   InlinePromptWidget,
   RunChatCompletionType
 } from './chat-sidebar';
-import { GitHubCopilot, GitHubCopilotLoginStatus } from './github-copilot';
+import { NBIAPI, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
+  GITHUB_COPILOT_PROVIDER_ID,
   IActiveDocumentInfo,
   ICellContents,
   RequestDataType
@@ -62,7 +65,7 @@ import {
   applyCodeToSelectionInEditor,
   cellOutputAsText,
   compareSelections,
-  extractCodeFromMarkdown,
+  extractLLMGeneratedCode,
   getSelectionInEditor,
   getTokenCount,
   getWholeNotebookContent,
@@ -94,13 +97,20 @@ namespace CommandIDs {
     'notebook-intelligence:editor-troubleshoot-this-output';
   export const openGitHubCopilotLoginDialog =
     'notebook-intelligence:open-github-copilot-login-dialog';
+  export const openConfigurationDialog =
+    'notebook-intelligence:open-configuration-dialog';
 }
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
 const MAX_TOKENS = 4096;
-const githuCopilotIcon = new LabIcon({
+const githubCopilotIcon = new LabIcon({
   name: 'notebook-intelligence:github-copilot-icon',
   svgstr: copilotSvgstr
+});
+
+const sparkleIcon = new LabIcon({
+  name: 'notebook-intelligence:sparkles-icon',
+  svgstr: sparklesSvgstr
 });
 
 const emptyNotebookContent: any = {
@@ -284,7 +294,8 @@ class GitHubInlineCompletionProvider
   get schema(): ISettingRegistry.IProperty {
     return {
       default: {
-        debouncerDelay: 200
+        debouncerDelay: 200,
+        timeout: 15000
       }
     };
   }
@@ -326,18 +337,22 @@ class GitHubInlineCompletionProvider
       }
     }
 
+    const nbiConfig = NBIAPI.config;
+    const inlineCompletionsEnabled =
+      nbiConfig.inlineCompletionModel.provider === GITHUB_COPILOT_PROVIDER_ID
+        ? NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
+        : nbiConfig.inlineCompletionModel.provider !== 'none';
+
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
 
-      if (
-        GitHubCopilot.getLoginStatus() !== GitHubCopilotLoginStatus.LoggedIn
-      ) {
+      if (!inlineCompletionsEnabled) {
         resolve({ items });
         return;
       }
 
       if (this._lastRequestInfo) {
-        GitHubCopilot.sendWebSocketMessage(
+        NBIAPI.sendWebSocketMessage(
           this._lastRequestInfo.messageId,
           RequestDataType.CancelInlineCompletionRequest,
           { chatId: this._lastRequestInfo.chatId }
@@ -348,7 +363,7 @@ class GitHubInlineCompletionProvider
       const chatId = UUID.uuid4();
       this._lastRequestInfo = { chatId, messageId };
 
-      GitHubCopilot.inlineCompletionsRequest(
+      NBIAPI.inlineCompletionsRequest(
         chatId,
         messageId,
         preContent + preCursor,
@@ -384,7 +399,9 @@ class GitHubInlineCompletionProvider
   }
 
   get icon(): LabIcon.ILabIcon {
-    return githuCopilotIcon;
+    return NBIAPI.config.usingGitHubCopilotModel
+      ? githubCopilotIcon
+      : sparkleIcon;
   }
 
   private _lastRequestInfo: { chatId: string; messageId: string } = null;
@@ -401,15 +418,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
     ICompletionProviderManager,
     IDocumentManager,
     IDefaultFileBrowser,
-    IEditorLanguageRegistry
+    IEditorLanguageRegistry,
+    ICommandPalette,
+    IMainMenu
   ],
   optional: [ISettingRegistry, IStatusBar],
-  activate: (
+  activate: async (
     app: JupyterFrontEnd,
     completionManager: ICompletionProviderManager,
     docManager: IDocumentManager,
     defaultBrowser: IDefaultFileBrowser,
     languageRegistry: IEditorLanguageRegistry,
+    palette: ICommandPalette,
+    mainMenu: IMainMenu,
     settingRegistry: ISettingRegistry | null,
     statusBar: IStatusBar | null
   ) => {
@@ -417,12 +438,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
       'JupyterLab extension @mbektas/notebook-intelligence is activated!'
     );
 
-    let openPopover: InlinePromptWidget | null = null;
+    await NBIAPI.initialize();
 
-    new LabIcon({
-      name: 'notebook-intelligence:sparkles-icon',
-      svgstr: sparklesSvgstr
-    });
+    let openPopover: InlinePromptWidget | null = null;
 
     completionManager.registerInlineProvider(
       new GitHubInlineCompletionProvider()
@@ -432,10 +450,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       settingRegistry
         .load(plugin.id)
         .then(settings => {
-          console.log(
-            '@mbektas/notebook-intelligence settings loaded:',
-            settings.composite
-          );
+          //
         })
         .catch(reason => {
           console.error(
@@ -512,7 +527,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     app.commands.addCommand(CommandIDs.chatuserInput, {
       execute: args => {
-        GitHubCopilot.sendChatUserInput(args.id as string, args.data);
+        NBIAPI.sendChatUserInput(args.id as string, args.data);
       }
     });
 
@@ -579,7 +594,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
           path: defaultBrowser?.model.path
         });
         contents.save(newPyFile.path, {
-          content: extractCodeFromMarkdown(args.code as string),
+          content: extractLLMGeneratedCode(args.code as string),
           format: 'text',
           type: 'file'
         });
@@ -653,10 +668,17 @@ const plugin: JupyterFrontEndPlugin<void> = {
       );
     };
 
-    const loggedInToGitHubCopilot = (): boolean => {
+    const githubLoginRequired = () => {
       return (
-        GitHubCopilot.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
+        NBIAPI.config.usingGitHubCopilotModel &&
+        NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.NotLoggedIn
       );
+    };
+
+    const isChatEnabled = (): boolean => {
+      return NBIAPI.config.chatModel.provider === GITHUB_COPILOT_PROVIDER_ID
+        ? !githubLoginRequired()
+        : NBIAPI.config.chatModel.provider !== 'none';
     };
 
     const isActiveCellCodeCell = (): boolean => {
@@ -741,6 +763,39 @@ const plugin: JupyterFrontEndPlugin<void> = {
         dialog.launch();
       }
     });
+
+    app.commands.addCommand(CommandIDs.openConfigurationDialog, {
+      label: 'Notebook Intelligence Settings',
+      execute: args => {
+        let dialog: Dialog<unknown> | null = null;
+        const dialogBody = new ConfigurationDialogBody({
+          onSave: () => {
+            dialog?.dispose();
+            NBIAPI.fetchCapabilities();
+          }
+        });
+        dialog = new Dialog({
+          title: 'Notebook Intelligence Settings',
+          hasClose: true,
+          body: dialogBody,
+          buttons: []
+        });
+        dialog.node.classList.add('config-dialog-container');
+
+        dialog.launch();
+      }
+    });
+
+    palette.addItem({
+      command: CommandIDs.openConfigurationDialog,
+      category: 'Notebook Intelligence'
+    });
+
+    mainMenu.settingsMenu.addGroup([
+      {
+        command: CommandIDs.openConfigurationDialog
+      }
+    ]);
 
     const getPrefixAndSuffixForActiveCell = (): {
       prefix: string;
@@ -894,6 +949,10 @@ const plugin: JupyterFrontEndPlugin<void> = {
           openPopover = null;
           Widget.detach(inlinePrompt);
         }
+
+        if (isCodeCell) {
+          codeInput?.classList.remove('generating');
+        }
       };
 
       let userPrompt = '';
@@ -926,7 +985,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       }
 
       const applyGeneratedCode = () => {
-        generatedContent = extractCodeFromMarkdown(generatedContent);
+        generatedContent = extractLLMGeneratedCode(generatedContent);
         applyCodeToSelectionInEditor(editor, generatedContent);
         generatedContent = '';
         removePopover();
@@ -946,6 +1005,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
             return;
           }
           removePopover();
+          if (isCodeCell) {
+            codeInput?.classList.add('generating');
+          }
         },
         onRequestCancelled: () => {
           removePopover();
@@ -983,7 +1045,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       label: 'Generate code',
       isEnabled: () =>
-        loggedInToGitHubCopilot() &&
+        isChatEnabled() &&
         (isActiveCellCodeCell() || isCurrentWidgetFileEditor())
     };
     app.commands.addCommand(
@@ -1015,7 +1077,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
       },
       label: 'Explain code',
-      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
+      isEnabled: () => isChatEnabled() && isActiveCellCodeCell()
     });
     copilotMenuCommands.addCommand(CommandIDs.editorFixThisCode, {
       execute: () => {
@@ -1036,7 +1098,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
       },
       label: 'Fix code',
-      isEnabled: () => loggedInToGitHubCopilot() && isActiveCellCodeCell()
+      isEnabled: () => isChatEnabled() && isActiveCellCodeCell()
     });
     copilotMenuCommands.addCommand(CommandIDs.editorExplainThisOutput, {
       execute: () => {
@@ -1062,10 +1124,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: 'Explain output',
       isEnabled: () => {
         if (
-          !(
-            loggedInToGitHubCopilot() &&
-            app.shell.currentWidget instanceof NotebookPanel
-          )
+          !(isChatEnabled() && app.shell.currentWidget instanceof NotebookPanel)
         ) {
           return false;
         }
@@ -1102,10 +1161,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
       label: 'Troubleshoot errors in output',
       isEnabled: () => {
         if (
-          !(
-            loggedInToGitHubCopilot() &&
-            app.shell.currentWidget instanceof NotebookPanel
-          )
+          !(isChatEnabled() && app.shell.currentWidget instanceof NotebookPanel)
         ) {
           return false;
         }
@@ -1160,15 +1216,21 @@ const plugin: JupyterFrontEndPlugin<void> = {
           item: githubCopilotStatusBarItem,
           align: 'right',
           rank: 100,
-          isActive: () => true
+          isActive: () => NBIAPI.config.usingGitHubCopilotModel
         }
       );
+
+      NBIAPI.configChanged.connect(() => {
+        if (NBIAPI.config.usingGitHubCopilotModel) {
+          githubCopilotStatusBarItem.show();
+        } else {
+          githubCopilotStatusBarItem.hide();
+        }
+      });
     }
 
     const jlabApp = app as JupyterLab;
     ActiveDocumentWatcher.initialize(jlabApp, languageRegistry);
-
-    GitHubCopilot.initialize();
   }
 };
 

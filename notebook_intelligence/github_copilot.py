@@ -5,13 +5,14 @@
 from dataclasses import dataclass
 from enum import Enum
 import os, json, time, requests, threading
+from typing import Any
 from pathlib import Path
 import uuid
 import secrets
 import sseclient
 import datetime as dt
 import logging
-from notebook_intelligence.api import CancelToken, ChatResponse, CompletionContext
+from notebook_intelligence.api import CancelToken, ChatResponse, CompletionContext, MarkdownData
 
 from ._version import __version__ as NBI_VERSION
 
@@ -68,6 +69,10 @@ def get_login_status():
 
 def login_with_existing_credentials(access_token_config=None):
     global github_access_token_provided, remember_github_access_token
+
+    if github_auth["status"] is not LoginStatus.NOT_LOGGED_IN:
+        return
+
     if access_token_config == "remember" or access_token_config is None:
         try:
             import keyring
@@ -276,7 +281,7 @@ def wait_for_tokens():
         get_token_thread = threading.Thread(target=get_token_thread_func)
         get_token_thread.start()
 
-def _generate_copilot_headers():
+def generate_copilot_headers():
     global github_auth
     token = github_auth['token']
 
@@ -294,7 +299,7 @@ def _generate_copilot_headers():
         'vscode-machineid': MACHINE_ID,
     }
 
-def inline_completions(prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken):
+def inline_completions(model_id, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
     global github_auth
     token = github_auth['token']
 
@@ -313,7 +318,7 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
     try:
         if cancel_token.is_cancel_requested:
             return ''
-        resp = requests.post(f"{PROXY_ENDPOINT}/v1/engines/copilot-codex/completions",
+        resp = requests.post(f"{PROXY_ENDPOINT}/v1/engines/{model_id}/completions",
             headers={'authorization': f'Bearer {token}'},
                 json={
                 'prompt': prompt,
@@ -356,11 +361,12 @@ def inline_completions(prefix, suffix, language, filename, context: CompletionCo
     
     return result
 
-def completions(messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}):
+def completions(model_id, messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
     stream = response is not None
 
     try:
         data = {
+            'model': model_id,
             'messages': messages,
             'tools': tools,
             'max_tokens': 1000,
@@ -380,14 +386,16 @@ def completions(messages, tools = None, response: ChatResponse = None, cancel_to
 
         request = requests.post(
             f"{API_ENDPOINT}/chat/completions",
-            headers = _generate_copilot_headers(),
+            headers = generate_copilot_headers(),
             json = data,
             stream = stream
         )
 
         if request.status_code != 200:
-            msg = f"Failed to get completions from GitHub Copilot: {request.status_code}: {request.text}"
+            msg = f"Failed to get completions from GitHub Copilot: [{request.status_code}]: {request.text}"
             log.error(msg)
+            response.stream(MarkdownData(msg))
+            response.finish()
             raise Exception(msg)
 
         if stream:
