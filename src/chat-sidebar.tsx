@@ -722,7 +722,7 @@ function SidebarComponent(props: any) {
 
             const data = {
               callback_id: response.data.callback_id,
-              result: result || "void"
+              result: result || 'void'
             };
 
             try {
@@ -752,8 +752,11 @@ function SidebarComponent(props: any) {
         }
       }
     );
-    setPrompt(promptPrefix);
-    filterPrefixSuggestions(promptPrefix);
+
+    const newPrompt = prompt.startsWith('/settings') ? '' : promptPrefix;
+
+    setPrompt(newPrompt);
+    filterPrefixSuggestions(newPrompt);
   };
 
   const handleUserInputCancel = async () => {
@@ -1058,7 +1061,9 @@ function SidebarComponent(props: any) {
   const getChatEnabled = () => {
     return nbiConfig.chatModel.provider === GITHUB_COPILOT_PROVIDER_ID
       ? !getGHLoginRequired()
-      : (nbiConfig.chatModel.provider || 'none') !== 'none';
+      : nbiConfig.llmProviders.find(
+          provider => provider.id === nbiConfig.chatModel.provider
+        );
   };
 
   const [ghLoginRequired, setGHLoginRequired] = useState(getGHLoginRequired());
@@ -1783,7 +1788,12 @@ function ConfigurationDialogBodyComponent(props: any) {
                     <option
                       key={-1}
                       value="none"
-                      selected={chatModelProvider === 'none'}
+                      selected={
+                        chatModelProvider === 'none' ||
+                        !llmProviders.find(
+                          provider => provider.id === chatModelProvider
+                        )
+                      }
                     >
                       None
                     </option>
@@ -1899,7 +1909,13 @@ function ConfigurationDialogBodyComponent(props: any) {
                     <option
                       key={-1}
                       value="none"
-                      selected={inlineCompletionModelProvider === 'none'}
+                      selected={
+                        inlineCompletionModelProvider === 'none' ||
+                        !llmProviders.find(
+                          provider =>
+                            provider.id === inlineCompletionModelProvider
+                        )
+                      }
                     >
                       None
                     </option>
