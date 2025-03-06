@@ -1,16 +1,24 @@
 # Notebook Intelligence
 
-Notebook Intelligence (NBI) is an AI coding assistant and extensible AI framework for JupyterLab. It uses GitHub Copilot under the hood and is inspired by its design principles. NBI greatly boosts the productivity of JupyterLab users with AI assistance powered by GitHub Copilot.
+Notebook Intelligence (NBI) is an AI coding assistant and extensible AI framework for JupyterLab. It can use GitHub Copilot or AI models any other LLM Provider, including local models from [Ollama](https://ollama.com/). NBI greatly boosts the productivity of JupyterLab users with AI assistance powered by GitHub Copilot.
 
 See blog posts for features and usage.
 
 - [Introducing Notebook Intelligence!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/01/08/introducing-notebook-intelligence.html)
 - [Building AI Extensions for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/05/building-ai-extensions-for-jupyterlab.html)
 - [Building AI Agents for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/09/building-ai-agents-for-jupyterlab.html)
+- [Notebook Intelligence now supports any LLM Provider and AI Model!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/03/05/support-for-any-llm-provider.html)
 
 ![Generate code](media/generate-code.gif)
 
 [![Github Actions Status](https://github.com/notebook-intelligence/notebook-intelligence/workflows/Build/badge.svg)](https://github.com/notebook-intelligence/notebook-intelligence/actions/workflows/build.yml)
+
+## Configuring LLM Provider and models
+
+You can configure the model provider and model options using the Notebook Intelligence Settings dialog. You can access this dialog from JupyterLab Settings menu -> Notebook Intelligence Settings, using `/settings` command in Copilot Chat or by using the command palette. For more details, see the [blog post](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/03/05/support-for-any-llm-provider.html).
+
+![Settings dialog](media/provider-list.png)
+
 
 Notebook Intelligence extension for JupyterLab
 
