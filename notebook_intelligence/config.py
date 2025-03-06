@@ -29,11 +29,11 @@ class NBIConfig:
 
     @property
     def chat_model(self):
-        return self.get('chat_model', {})
+        return self.get('chat_model', {'provider': 'github-copilot', 'model': 'gpt-4o'})
 
     @property
     def inline_completion_model(self):
-        return self.get('inline_completion_model', {})
+        return self.get('inline_completion_model', {'provider': 'github-copilot', 'model': 'copilot-codex'})
 
     @property
     def embedding_model_id(self):

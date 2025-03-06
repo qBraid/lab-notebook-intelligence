@@ -102,11 +102,9 @@ class LiteLLMCompatibleInlineCompletionModel(InlineCompletionModel):
         base_url = self.get_property("base_url").value
         api_key_prop = self.get_property("api_key")
         api_key = api_key_prop.value if api_key_prop is not None else None
-        # TODO: remove this and check if suffix parameter is standardized
-        prompt = f"# the code below is written in {language}\n{prefix}"
         litellm_resp = litellm.completion(
             model=model_id,
-            prompt=prompt,
+            prompt=prefix,
             suffix=suffix,
             stream=False,
             api_base=base_url,
