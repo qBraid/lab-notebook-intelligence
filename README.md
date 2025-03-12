@@ -19,7 +19,6 @@ You can configure the model provider and model options using the Notebook Intell
 
 ![Settings dialog](media/provider-list.png)
 
-
 Notebook Intelligence extension for JupyterLab
 
 This extension is composed of a Python package named `notebook_intelligence`

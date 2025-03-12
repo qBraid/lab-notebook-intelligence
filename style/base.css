@@ -551,3 +551,40 @@ body[data-jp-theme-light='false'] .inline-popover {
   color: var(--jp-warn-color0);
   line-height: 20px;
 }
+
+.chat-reasoning-content-title {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  color: var(--jp-ui-font-color2);
+}
+
+.chat-reasoning-content-text {
+  display: none;
+  margin: 5px;
+  padding: 0 5px;
+  border: 1px dashed var(--jp-border-color1);
+  border-radius: 5px;
+}
+
+.chat-reasoning-content .collapsed-icon {
+  display: inline;
+}
+
+.chat-reasoning-content .expanded-icon {
+  display: none;
+}
+
+.chat-reasoning-content.expanded .expanded-icon {
+  display: inline;
+}
+
+.chat-reasoning-content.expanded .chat-reasoning-content-text {
+  display: block;
+}
+
+.chat-reasoning-content.expanded .collapsed-icon {
+  display: none;
+}
