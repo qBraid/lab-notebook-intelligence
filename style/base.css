@@ -32,7 +32,6 @@
 .sidebar-user-input {
   height: 80px;
   padding: 5px;
-  padding-right: 15px;
   display: flex;
   flex-direction: column;
   background-color: var(--jp-cell-editor-background);
@@ -109,6 +108,7 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  padding-right: 5px;
 }
 
 .chat-message {
