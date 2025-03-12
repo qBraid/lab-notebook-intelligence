@@ -1669,7 +1669,8 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
           </div>
           <div>
             <h4>Privacy and terms</h4>
-            By using Copilot Chat you agree to{' '}
+            By using Notebook Intelligence with GitHub Copilot subscription you
+            agree to{' '}
             <a
               href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide"
               target="_blank"
@@ -1677,7 +1678,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
               GitHub Copilot chat terms
             </a>
             . Review the terms to understand about usage, limitations and ways
-            to improve Copilot Chat. Please review{' '}
+            to improve GitHub Copilot. Please review{' '}
             <a
               href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
               target="_blank"
