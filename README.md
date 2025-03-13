@@ -9,7 +9,17 @@ See blog posts for features and usage.
 - [Building AI Agents for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/09/building-ai-agents-for-jupyterlab.html)
 - [Notebook Intelligence now supports any LLM Provider and AI Model!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/03/05/support-for-any-llm-provider.html)
 
+### Code generation with inline chat
+
 ![Generate code](media/generate-code.gif)
+
+### Auto-complete
+
+<img src="media/inline-completion.gif" alt="Auto-complete" width=700 />
+
+### Chat interface
+
+<img src="media/copilot-chat.gif" alt="Chat interface" width=600 />
 
 [![Github Actions Status](https://github.com/notebook-intelligence/notebook-intelligence/workflows/Build/badge.svg)](https://github.com/notebook-intelligence/notebook-intelligence/actions/workflows/build.yml)
 
@@ -17,7 +27,7 @@ See blog posts for features and usage.
 
 You can configure the model provider and model options using the Notebook Intelligence Settings dialog. You can access this dialog from JupyterLab Settings menu -> Notebook Intelligence Settings, using `/settings` command in Copilot Chat or by using the command palette. For more details, see the [blog post](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/03/05/support-for-any-llm-provider.html).
 
-![Settings dialog](media/provider-list.png)
+<img src="media/provider-list.png" alt="Settings dialog" width=500 />
 
 Notebook Intelligence extension for JupyterLab
 
