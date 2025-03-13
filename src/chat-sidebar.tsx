@@ -33,7 +33,14 @@ import { MarkdownRenderer } from './markdown-renderer';
 import copySvgstr from '../style/icons/copy.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
 import copilotWarningSvgstr from '../style/icons/copilot-warning.svg';
-import { VscSend, VscStopCircle, VscEye, VscEyeClosed } from 'react-icons/vsc';
+import {
+  VscSend,
+  VscStopCircle,
+  VscEye,
+  VscEyeClosed,
+  VscTriangleRight,
+  VscTriangleDown
+} from 'react-icons/vsc';
 import { extractLLMGeneratedCode, isDarkTheme } from './utils';
 
 const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
@@ -231,6 +238,10 @@ interface IChatMessageContent {
   id: string;
   type: ResponseStreamDataType;
   content: any;
+  created: Date;
+  reasoningContent?: string;
+  reasoningFinished?: boolean;
+  reasoningTime?: number;
 }
 
 interface IChatMessage {
@@ -263,6 +274,7 @@ function ChatResponseHTMLFrame(props: any) {
 }
 
 function ChatResponse(props: any) {
+  const [renderCount, setRenderCount] = useState(0);
   const msg: IChatMessage = props.message;
   const timestamp = msg.date.toLocaleTimeString('en-US', { hour12: false });
 
@@ -286,6 +298,47 @@ function ChatResponse(props: any) {
   const groupedContents: IChatMessageContent[] = [];
   let lastItemType: ResponseStreamDataType | undefined;
 
+  const extractReasoningContent = (item: IChatMessageContent) => {
+    let currentContent = item.content as string;
+    if (typeof currentContent !== 'string') {
+      return false;
+    }
+
+    let reasoningContent = '';
+    let reasoningStartTime = new Date();
+    const reasoningEndTime = new Date();
+
+    const startPos = currentContent.indexOf('<think>');
+
+    const hasStart = startPos >= 0;
+    reasoningStartTime = new Date(item.created);
+
+    if (hasStart) {
+      currentContent = currentContent.substring(startPos + 7);
+    }
+
+    const endPos = currentContent.indexOf('</think>');
+    const hasEnd = endPos >= 0;
+
+    if (hasEnd) {
+      reasoningContent += currentContent.substring(0, endPos);
+      currentContent = currentContent.substring(endPos + 8);
+    } else {
+      if (hasStart) {
+        reasoningContent += currentContent;
+        currentContent = '';
+      }
+    }
+
+    item.content = currentContent;
+    item.reasoningContent = reasoningContent;
+    item.reasoningFinished = hasEnd;
+    item.reasoningTime =
+      (reasoningEndTime.getTime() - reasoningStartTime.getTime()) / 1000;
+
+    return hasStart && !hasEnd; // is thinking
+  };
+
   for (let i = 0; i < msg.contents.length; i++) {
     const item = msg.contents[i];
     if (
@@ -300,8 +353,41 @@ function ChatResponse(props: any) {
     }
   }
 
+  const [thinkingInProgress, setThinkingInProgress] = useState(false);
+
+  for (const item of groupedContents) {
+    const isThinking = extractReasoningContent(item);
+    if (isThinking && !thinkingInProgress) {
+      setThinkingInProgress(true);
+    }
+  }
+
+  useEffect(() => {
+    let intervalId: any = undefined;
+    if (thinkingInProgress) {
+      intervalId = setInterval(() => {
+        setRenderCount(prev => prev + 1);
+        setThinkingInProgress(false);
+      }, 1000);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [thinkingInProgress]);
+
+  const onExpandCollapseClick = (event: any) => {
+    const parent = event.currentTarget.parentElement;
+    if (parent.classList.contains('expanded')) {
+      parent.classList.remove('expanded');
+    } else {
+      parent.classList.add('expanded');
+    }
+  };
+
   return (
-    <div className={`chat-message chat-message-${msg.from}`}>
+    <div
+      className={`chat-message chat-message-${msg.from}`}
+      data-render-count={renderCount}
+    >
       <div className="chat-message-header">
         <div className="chat-message-from">
           {msg.participant?.iconPath && (
@@ -329,13 +415,38 @@ function ChatResponse(props: any) {
             case ResponseStreamDataType.Markdown:
             case ResponseStreamDataType.MarkdownPart:
               return (
-                <MarkdownRenderer
-                  key={`key-${index}`}
-                  getApp={props.getApp}
-                  getActiveDocumentInfo={props.getActiveDocumentInfo}
-                >
-                  {item.content}
-                </MarkdownRenderer>
+                <>
+                  {item.reasoningContent && (
+                    <div className="chat-reasoning-content">
+                      <div
+                        className="chat-reasoning-content-title"
+                        onClick={(event: any) => onExpandCollapseClick(event)}
+                      >
+                        <VscTriangleRight className="collapsed-icon"></VscTriangleRight>
+                        <VscTriangleDown className="expanded-icon"></VscTriangleDown>{' '}
+                        {item.reasoningFinished
+                          ? 'Thought'
+                          : `Thinking (${Math.floor(item.reasoningTime)} s)`}
+                      </div>
+                      <div className="chat-reasoning-content-text">
+                        <MarkdownRenderer
+                          key={`key-${index}`}
+                          getApp={props.getApp}
+                          getActiveDocumentInfo={props.getActiveDocumentInfo}
+                        >
+                          {item.reasoningContent}
+                        </MarkdownRenderer>
+                      </div>
+                    </div>
+                  )}
+                  <MarkdownRenderer
+                    key={`key-${index}`}
+                    getApp={props.getApp}
+                    getActiveDocumentInfo={props.getActiveDocumentInfo}
+                  >
+                    {item.content}
+                  </MarkdownRenderer>
+                </>
               );
             case ResponseStreamDataType.HTMLFrame:
               return (
@@ -620,7 +731,8 @@ function SidebarComponent(props: any) {
           {
             id: lastMessageId.current,
             type: ResponseStreamDataType.Markdown,
-            content: prompt
+            content: prompt,
+            created: new Date()
           }
         ]
       }
@@ -697,7 +809,8 @@ function SidebarComponent(props: any) {
               contents.push({
                 id: response.id,
                 type: nbiContent.type,
-                content: nbiContent.content
+                content: nbiContent.content,
+                created: new Date(response.created)
               });
             } else {
               responseMessage =
@@ -708,7 +821,8 @@ function SidebarComponent(props: any) {
               contents.push({
                 id: response.id,
                 type: ResponseStreamDataType.MarkdownPart,
-                content: responseMessage
+                content: responseMessage,
+                created: new Date(response.created)
               });
             }
           } else if (response.type === BackendMessageType.StreamEnd) {
@@ -927,7 +1041,8 @@ function SidebarComponent(props: any) {
             {
               id: messageId,
               type: ResponseStreamDataType.Markdown,
-              content: message
+              content: message,
+              created: new Date()
             }
           ]
         }
@@ -954,7 +1069,8 @@ function SidebarComponent(props: any) {
             contents.push({
               id: response.id,
               type: ResponseStreamDataType.MarkdownPart,
-              content: responseMessage
+              content: responseMessage,
+              created: new Date(response.created)
             });
           } else if (response.type === BackendMessageType.StreamEnd) {
             setCopilotRequestInProgress(false);
@@ -1075,7 +1191,6 @@ function SidebarComponent(props: any) {
   });
 
   useEffect(() => {
-    console.log('ghLoginStatus', ghLoginStatus);
     setGHLoginRequired(getGHLoginRequired());
     setChatEnabled(getChatEnabled());
   }, [ghLoginStatus]);
@@ -1554,7 +1669,8 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
           </div>
           <div>
             <h4>Privacy and terms</h4>
-            By using Copilot Chat you agree to{' '}
+            By using Notebook Intelligence with GitHub Copilot subscription you
+            agree to{' '}
             <a
               href="https://docs.github.com/en/copilot/responsible-use-of-github-copilot-features/responsible-use-of-github-copilot-chat-in-your-ide"
               target="_blank"
@@ -1562,7 +1678,7 @@ function GitHubCopilotLoginDialogBodyComponent(props: any) {
               GitHub Copilot chat terms
             </a>
             . Review the terms to understand about usage, limitations and ways
-            to improve Copilot Chat. Please review{' '}
+            to improve GitHub Copilot. Please review{' '}
             <a
               href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
               target="_blank"

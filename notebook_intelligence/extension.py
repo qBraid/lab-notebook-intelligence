@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass
 import json
 from os import path
-import os
+import datetime as dt
 from typing import Union
 import uuid
 import threading
@@ -269,6 +269,25 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
                     }
                 ]
             }
+        elif data_type == ResponseStreamDataType.MarkdownPart:
+            content = data.content
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": data.content
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
+            part = content
+            if part is not None:
+                self.streamed_contents.append(part)
         else: # ResponseStreamDataType.LLMRaw
             if len(data.get("choices", [])) > 0:
                 part = data["choices"][0].get("delta", {}).get("content", "")
@@ -279,7 +298,8 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
             "id": self.messageId,
             "participant": self.participant_id,
             "type": BackendMessageType.StreamMessage,
-            "data": data
+            "data": data,
+            "created": dt.datetime.now().isoformat()
         })
 
     def finish(self) -> None:
