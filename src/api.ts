@@ -10,6 +10,7 @@ import {
   IChatCompletionResponseEmitter,
   IChatParticipant,
   IContextItem,
+  ITelemetryEvent,
   RequestDataType
 } from './tokens';
 
@@ -312,5 +313,21 @@ export class NBIAPI {
         }
       })
     );
+  }
+
+  static async emitTelemetryEvent(event: ITelemetryEvent): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      requestAPI<any>('emit-telemetry-event', {
+        method: 'POST',
+        body: JSON.stringify(event)
+      })
+        .then(async data => {
+          resolve();
+        })
+        .catch(reason => {
+          console.error(`Failed to emit telemetry event.\n${reason}`);
+          reject(reason);
+        });
+    });
   }
 }

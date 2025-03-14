@@ -24,8 +24,10 @@ import {
   IChatCompletionResponseEmitter,
   IChatParticipant,
   IContextItem,
+  ITelemetryEmitter,
   RequestDataType,
-  ResponseStreamDataType
+  ResponseStreamDataType,
+  TelemetryEventType
 } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { MarkdownRenderer } from './markdown-renderer';
@@ -78,6 +80,7 @@ export interface IChatSidebarOptions {
   getCurrentCellContents: () => ICellContents;
   openFile: (path: string) => void;
   getApp: () => JupyterFrontEnd;
+  getTelemetryEmitter: () => ITelemetryEmitter;
 }
 
 export class ChatSidebar extends ReactWidget {
@@ -96,6 +99,7 @@ export class ChatSidebar extends ReactWidget {
         getCurrentCellContents={this._options.getCurrentCellContents}
         openFile={this._options.openFile}
         getApp={this._options.getApp}
+        getTelemetryEmitter={this._options.getTelemetryEmitter}
       />
     );
   }
@@ -114,6 +118,7 @@ export interface IInlinePromptWidgetOptions {
   onContentStreamEnd: () => void;
   onUpdatedCodeChange: (content: string) => void;
   onUpdatedCodeAccepted: () => void;
+  telemetryEmitter: ITelemetryEmitter;
 }
 
 export class InlinePromptWidget extends ReactWidget {
@@ -156,6 +161,14 @@ export class InlinePromptWidget extends ReactWidget {
       this._options.onContentStream(responseMessage);
     } else if (response.type === BackendMessageType.StreamEnd) {
       this._options.onContentStreamEnd();
+      const timeElapsed =
+        (new Date().getTime() - this._requestTime.getTime()) / 1000;
+      this._options.telemetryEmitter.emitTelemetryEvent({
+        type: TelemetryEventType.InlineChatResponse,
+        data: {
+          timeElapsed
+        }
+      });
     }
   }
 
@@ -167,6 +180,13 @@ export class InlinePromptWidget extends ReactWidget {
     // save the prompt in case of a rerender
     this._options.prompt = prompt;
     this._options.onRequestSubmitted(prompt);
+    this._requestTime = new Date();
+    this._options.telemetryEmitter.emitTelemetryEvent({
+      type: TelemetryEventType.InlineChatRequest,
+      data: {
+        prompt: prompt
+      }
+    });
   }
 
   render(): JSX.Element {
@@ -186,6 +206,7 @@ export class InlinePromptWidget extends ReactWidget {
   }
 
   private _options: IInlinePromptWidgetOptions;
+  private _requestTime: Date;
 }
 
 export class GitHubCopilotStatusBarItem extends ReactWidget {
@@ -617,10 +638,12 @@ function SidebarComponent(props: any) {
   const [promptHistoryIndex, setPromptHistoryIndex] = useState(0);
   const [chatId, setChatId] = useState(UUID.uuid4());
   const lastMessageId = useRef<string>('');
+  const lastRequestTime = useRef<Date>(new Date());
   const [contextOn, setContextOn] = useState(false);
   const [activeDocumentInfo, setActiveDocumentInfo] =
     useState<IActiveDocumentInfo | null>(null);
   const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
+  const telemetryEmitter: ITelemetryEmitter = props.getTelemetryEmitter();
 
   useEffect(() => {
     const prefixes: string[] = [];
@@ -720,6 +743,7 @@ function SidebarComponent(props: any) {
       promptPrefixParts.length > 0 ? promptPrefixParts.join(' ') + ' ' : '';
 
     lastMessageId.current = UUID.uuid4();
+    lastRequestTime.current = new Date();
 
     const newList = [
       ...chatMessages,
@@ -827,6 +851,14 @@ function SidebarComponent(props: any) {
             }
           } else if (response.type === BackendMessageType.StreamEnd) {
             setCopilotRequestInProgress(false);
+            const timeElapsed =
+              (new Date().getTime() - lastRequestTime.current.getTime()) / 1000;
+            telemetryEmitter.emitTelemetryEvent({
+              type: TelemetryEventType.ChatResponse,
+              data: {
+                timeElapsed
+              }
+            });
           } else if (response.type === BackendMessageType.RunUICommand) {
             const messageId = response.id;
             const result = await app.commands.execute(
@@ -871,6 +903,13 @@ function SidebarComponent(props: any) {
 
     setPrompt(newPrompt);
     filterPrefixSuggestions(newPrompt);
+
+    telemetryEmitter.emitTelemetryEvent({
+      type: TelemetryEventType.ChatRequest,
+      data: {
+        prompt: extractedPrompt
+      }
+    });
   };
 
   const handleUserInputCancel = async () => {

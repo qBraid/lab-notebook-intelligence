@@ -7,7 +7,7 @@ import sys
 from typing import Dict
 import logging
 from notebook_intelligence import github_copilot
-from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MarkdownData, NotebookIntelligenceExtension
+from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MarkdownData, NotebookIntelligenceExtension, TelemetryEvent, TelemetryListener
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 from notebook_intelligence.config import NBIConfig
 from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
@@ -31,6 +31,7 @@ class AIServiceManager(Host):
         self.llm_providers: Dict[str, LLMProvider] = {}
         self.chat_participants: Dict[str, ChatParticipant] = {}
         self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
+        self.telemetry_listeners: Dict[str, TelemetryListener] = {}
         self._nbi_config = NBIConfig()
         self._options = options.copy()
         self._openai_compatible_llm_provider = OpenAICompatibleLLMProvider()
@@ -148,6 +149,13 @@ class AIServiceManager(Host):
             log.error(f"Completion Context Provider ID '{provider.id}' is already in use!")
             return
         self.completion_context_providers[provider.id] = provider
+
+    def register_telemetry_listener(self, listener: TelemetryListener) -> None:
+        if listener.name in self.telemetry_listeners:
+            log.error(f"Notebook Intelligence telemetry listener '{listener.name}' already exists!")
+            return
+        log.warning(f"Notebook Intelligence telemetry listener '{listener.name}' registered. Make sure it is from a trusted source.")
+        self.telemetry_listeners[listener.name] = listener
 
     @property
     def default_chat_participant(self) -> ChatParticipant:
@@ -293,3 +301,7 @@ class AIServiceManager(Host):
                 log.error(f"Error while getting completion context from provider '{provider.id}'!\n{e}")
 
         return context
+    
+    async def emit_telemetry_event(self, event: TelemetryEvent):
+        for listener in self.telemetry_listeners.values():
+            listener.on_telemetry_event(event)

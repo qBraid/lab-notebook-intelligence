@@ -551,6 +551,36 @@ class LLMProvider(LLMPropertyProvider):
                 return model
         return None
 
+class TelemetryEventType(str, Enum):
+    InlineCompletionRequest = 'inline-completion-request'
+    ExplainThisRequest = 'explain-this-request'
+    FixThisCodeRequest = 'fix-this-code-request'
+    ExplainThisOutputRequest = 'explain-this-output-request'
+    TroubleshootThisOutputRequest = 'troubleshoot-this-output-request'
+    GenerateCodeRequest = 'generate-code-request'
+    ChatRequest = 'chat-request'
+    InlineChatRequest = 'inline-chat-request'
+    ChatResponse = 'chat-response'
+    InlineChatResponse = 'inline-chat-response'
+    InlineCompletionResponse = 'inline-completion-response'
+
+class TelemetryEvent:
+    @property
+    def type(self) -> TelemetryEventType:
+        raise NotImplemented
+    
+    @property
+    def data(self) -> dict:
+        return None
+
+class TelemetryListener:
+    @property
+    def name(self) -> str:
+        raise NotImplemented
+
+    def on_telemetry_event(self, event: TelemetryEvent):
+        raise NotImplemented
+
 class Host:
     def register_llm_provider(self, provider: LLMProvider) -> None:
         raise NotImplemented
@@ -559,6 +589,9 @@ class Host:
         raise NotImplemented
 
     def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
+        raise NotImplemented
+    
+    def register_telemetry_listener(self, listener: TelemetryListener) -> None:
         raise NotImplemented
     
     @property

@@ -2,6 +2,7 @@
 
 import { Widget } from '@lumino/widgets';
 import { CodeEditor } from '@jupyterlab/codeeditor';
+import { Token } from '@lumino/coreutils';
 
 export interface IActiveDocumentInfo {
   activeWidget: Widget | null;
@@ -73,3 +74,41 @@ export interface IChatParticipant {
 }
 
 export const GITHUB_COPILOT_PROVIDER_ID = 'github-copilot';
+
+export enum TelemetryEventType {
+  InlineCompletionRequest = 'inline-completion-request',
+  ExplainThisRequest = 'explain-this-request',
+  FixThisCodeRequest = 'fix-this-code-request',
+  ExplainThisOutputRequest = 'explain-this-output-request',
+  TroubleshootThisOutputRequest = 'troubleshoot-this-output-request',
+  GenerateCodeRequest = 'generate-code-request',
+  ChatRequest = 'chat-request',
+  InlineChatRequest = 'inline-chat-request',
+  ChatResponse = 'chat-response',
+  InlineChatResponse = 'inline-chat-response',
+  InlineCompletionResponse = 'inline-completion-response'
+}
+
+export interface ITelemetryEvent {
+  type: TelemetryEventType;
+  data?: any;
+}
+
+export interface ITelemetryListener {
+  get name(): string;
+  onTelemetryEvent: (event: ITelemetryEvent) => void;
+}
+
+export interface ITelemetryEmitter {
+  emitTelemetryEvent(event: ITelemetryEvent): void;
+}
+
+export const INotebookIntelligence = new Token<INotebookIntelligence>(
+  '@mbektas/notebook-intelligence',
+  'AI coding assistant for JupyterLab.'
+);
+
+export interface INotebookIntelligence {
+  registerTelemetryListener: (listener: ITelemetryListener) => void;
+  unregisterTelemetryListener: (listener: ITelemetryListener) => void;
+}
