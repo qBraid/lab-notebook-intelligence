@@ -19,7 +19,7 @@ from .api import *
 def _jupyter_labextension_paths():
     return [{
         "src": "labextension",
-        "dest": "@mbektas/notebook-intelligence"
+        "dest": "@notebook-intelligence/notebook-intelligence"
     }]
 
 

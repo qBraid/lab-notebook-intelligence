@@ -56,7 +56,12 @@ import {
   GITHUB_COPILOT_PROVIDER_ID,
   IActiveDocumentInfo,
   ICellContents,
-  RequestDataType
+  INotebookIntelligence,
+  ITelemetryEmitter,
+  ITelemetryEvent,
+  ITelemetryListener,
+  RequestDataType,
+  TelemetryEventType
 } from './tokens';
 import sparklesSvgstr from '../style/icons/sparkles.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
@@ -119,6 +124,8 @@ const emptyNotebookContent: any = {
   nbformat: 4,
   nbformat_minor: 5
 };
+
+const BACKEND_TELEMETRY_LISTENER_NAME = 'backend-telemetry-listener';
 
 class ActiveDocumentWatcher {
   static initialize(
@@ -288,9 +295,13 @@ class ActiveDocumentWatcher {
   private static _languageRegistry: IEditorLanguageRegistry;
 }
 
-class GitHubInlineCompletionProvider
+class NBIInlineCompletionProvider
   implements IInlineCompletionProvider<IInlineCompletionItem>
 {
+  constructor(telemetryEmitter: TelemetryEmitter) {
+    this._telemetryEmitter = telemetryEmitter;
+  }
+
   get schema(): ISettingRegistry.IProperty {
     return {
       default: {
@@ -310,7 +321,10 @@ class GitHubInlineCompletionProvider
     const postCursor = request.text.substring(request.offset);
     let language = ActiveDocumentWatcher.activeDocumentInfo.language;
 
+    let editorType = 'file-editor';
+
     if (context.widget instanceof NotebookPanel) {
+      editorType = 'notebook';
       const activeCell = context.widget.content.activeCell;
       if (activeCell.model.sharedModel.cell_type === 'markdown') {
         language = 'markdown';
@@ -343,6 +357,17 @@ class GitHubInlineCompletionProvider
         ? NBIAPI.getLoginStatus() === GitHubCopilotLoginStatus.LoggedIn
         : nbiConfig.inlineCompletionModel.provider !== 'none';
 
+    this._telemetryEmitter.emitTelemetryEvent({
+      type: TelemetryEventType.InlineCompletionRequest,
+      data: {
+        inlineCompletionModel: {
+          provider: NBIAPI.config.inlineCompletionModel.provider,
+          model: NBIAPI.config.inlineCompletionModel.model
+        },
+        editorType
+      }
+    });
+
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
 
@@ -361,7 +386,7 @@ class GitHubInlineCompletionProvider
 
       const messageId = UUID.uuid4();
       const chatId = UUID.uuid4();
-      this._lastRequestInfo = { chatId, messageId };
+      this._lastRequestInfo = { chatId, messageId, requestTime: new Date() };
 
       NBIAPI.inlineCompletionsRequest(
         chatId,
@@ -380,6 +405,21 @@ class GitHubInlineCompletionProvider
                 insertText: response.data.completions
               });
 
+              const timeElapsed =
+                (new Date().getTime() -
+                  this._lastRequestInfo.requestTime.getTime()) /
+                1000;
+              this._telemetryEmitter.emitTelemetryEvent({
+                type: TelemetryEventType.InlineCompletionResponse,
+                data: {
+                  inlineCompletionModel: {
+                    provider: NBIAPI.config.inlineCompletionModel.provider,
+                    model: NBIAPI.config.inlineCompletionModel.model
+                  },
+                  timeElapsed
+                }
+              });
+
               resolve({ items });
             } else {
               reject();
@@ -395,7 +435,7 @@ class GitHubInlineCompletionProvider
   }
 
   get identifier(): string {
-    return '@mbektas/notebook-intelligence';
+    return '@notebook-intelligence/notebook-intelligence';
   }
 
   get icon(): LabIcon.ILabIcon {
@@ -404,14 +444,59 @@ class GitHubInlineCompletionProvider
       : sparkleIcon;
   }
 
-  private _lastRequestInfo: { chatId: string; messageId: string } = null;
+  private _lastRequestInfo: {
+    chatId: string;
+    messageId: string;
+    requestTime: Date;
+  } = null;
+  private _telemetryEmitter: TelemetryEmitter;
+}
+
+class TelemetryEmitter implements ITelemetryEmitter {
+  registerTelemetryListener(listener: ITelemetryListener) {
+    const listenerName = listener.name;
+
+    if (listenerName !== BACKEND_TELEMETRY_LISTENER_NAME) {
+      console.warn(
+        `Notebook Intelligence telemetry listener '${listenerName}' registered. Make sure it is from a trusted source.`
+      );
+    }
+
+    let listenerAlreadyExists = false;
+    this._listeners.forEach(existingListener => {
+      if (existingListener.name === listenerName) {
+        listenerAlreadyExists = true;
+      }
+    });
+
+    if (listenerAlreadyExists) {
+      console.error(
+        `Notebook Intelligence telemetry listener '${listenerName}' already exists!`
+      );
+      return;
+    }
+
+    this._listeners.add(listener);
+  }
+
+  unregisterTelemetryListener(listener: ITelemetryListener) {
+    this._listeners.delete(listener);
+  }
+
+  emitTelemetryEvent(event: ITelemetryEvent) {
+    this._listeners.forEach(listener => {
+      listener.onTelemetryEvent(event);
+    });
+  }
+
+  private _listeners: Set<ITelemetryListener> = new Set<ITelemetryListener>();
 }
 
 /**
- * Initialization data for the @mbektas/notebook-intelligence extension.
+ * Initialization data for the @notebook-intelligence/notebook-intelligence extension.
  */
-const plugin: JupyterFrontEndPlugin<void> = {
-  id: '@mbektas/notebook-intelligence:plugin',
+const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
+  id: '@notebook-intelligence/notebook-intelligence:plugin',
   description: 'Notebook Intelligence',
   autoStart: true,
   requires: [
@@ -423,6 +508,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     IMainMenu
   ],
   optional: [ISettingRegistry, IStatusBar],
+  provides: INotebookIntelligence,
   activate: async (
     app: JupyterFrontEnd,
     completionManager: ICompletionProviderManager,
@@ -435,15 +521,33 @@ const plugin: JupyterFrontEndPlugin<void> = {
     statusBar: IStatusBar | null
   ) => {
     console.log(
-      'JupyterLab extension @mbektas/notebook-intelligence is activated!'
+      'JupyterLab extension @notebook-intelligence/notebook-intelligence is activated!'
     );
+
+    const telemetryEmitter = new TelemetryEmitter();
+
+    telemetryEmitter.registerTelemetryListener({
+      name: BACKEND_TELEMETRY_LISTENER_NAME,
+      onTelemetryEvent: event => {
+        NBIAPI.emitTelemetryEvent(event);
+      }
+    });
+
+    const extensionService: INotebookIntelligence = {
+      registerTelemetryListener: (listener: ITelemetryListener) => {
+        telemetryEmitter.registerTelemetryListener(listener);
+      },
+      unregisterTelemetryListener: (listener: ITelemetryListener) => {
+        telemetryEmitter.unregisterTelemetryListener(listener);
+      }
+    };
 
     await NBIAPI.initialize();
 
     let openPopover: InlinePromptWidget | null = null;
 
     completionManager.registerInlineProvider(
-      new GitHubInlineCompletionProvider()
+      new NBIInlineCompletionProvider(telemetryEmitter)
     );
 
     if (settingRegistry) {
@@ -454,7 +558,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
         })
         .catch(reason => {
           console.error(
-            'Failed to load settings for @mbektas/notebook-intelligence.',
+            'Failed to load settings for @notebook-intelligence/notebook-intelligence.',
             reason
           );
         });
@@ -519,6 +623,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
       },
       getApp(): JupyterFrontEnd {
         return app;
+      },
+      getTelemetryEmitter(): ITelemetryEmitter {
+        return telemetryEmitter;
       }
     });
     panel.addWidget(sidebar);
@@ -1032,11 +1139,23 @@ const plugin: JupyterFrontEndPlugin<void> = {
         onUpdatedCodeAccepted: () => {
           applyGeneratedCode();
           editor.focus();
-        }
+        },
+        telemetryEmitter: telemetryEmitter
       });
       openPopover = inlinePrompt;
       addPositionListeners();
       Widget.attach(inlinePrompt, document.body);
+
+      telemetryEmitter.emitTelemetryEvent({
+        type: TelemetryEventType.GenerateCodeRequest,
+        data: {
+          chatModel: {
+            provider: NBIAPI.config.chatModel.provider,
+            model: NBIAPI.config.chatModel.model
+          },
+          editorType: isCodeCell ? 'notebook' : 'file-editor'
+        }
+      });
     };
 
     const generateCellCodeCommand: CommandRegistry.ICommandOptions = {
@@ -1075,6 +1194,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
 
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
+
+        telemetryEmitter.emitTelemetryEvent({
+          type: TelemetryEventType.ExplainThisRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
+        });
       },
       label: 'Explain code',
       isEnabled: () => isChatEnabled() && isActiveCellCodeCell()
@@ -1096,6 +1225,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
 
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
+
+        telemetryEmitter.emitTelemetryEvent({
+          type: TelemetryEventType.FixThisCodeRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
+        });
       },
       label: 'Fix code',
       isEnabled: () => isChatEnabled() && isActiveCellCodeCell()
@@ -1120,6 +1259,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
 
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
+
+        telemetryEmitter.emitTelemetryEvent({
+          type: TelemetryEventType.ExplainThisOutputRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
+        });
       },
       label: 'Explain output',
       isEnabled: () => {
@@ -1157,6 +1306,16 @@ const plugin: JupyterFrontEndPlugin<void> = {
         );
 
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
+
+        telemetryEmitter.emitTelemetryEvent({
+          type: TelemetryEventType.TroubleshootThisOutputRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
+        });
       },
       label: 'Troubleshoot errors in output',
       isEnabled: () => {
@@ -1231,6 +1390,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     const jlabApp = app as JupyterLab;
     ActiveDocumentWatcher.initialize(jlabApp, languageRegistry);
+
+    return extensionService;
   }
 };
 

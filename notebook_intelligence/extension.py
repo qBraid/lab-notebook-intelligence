@@ -17,9 +17,8 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
 from traitlets import Unicode
-from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, Signal, SignalImpl
+from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
-from notebook_intelligence.config import NBIConfig
 import notebook_intelligence.github_copilot as github_copilot
 
 ai_service_manager: AIServiceManager = None
@@ -72,6 +71,14 @@ class UpdateProviderModelsHandler(APIHandler):
         data = json.loads(self.request.body)
         if data.get("provider") == "ollama":
             ai_service_manager.ollama_llm_provider.update_chat_model_list()
+        self.finish(json.dumps({}))
+
+class EmitTelemetryEventHandler(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        event = json.loads(self.request.body)
+        thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.emit_telemetry_event(event),))
+        thread.start()
         self.finish(json.dumps({}))
 
 class GetGitHubLoginStatusHandler(APIHandler):
@@ -524,6 +531,7 @@ class NotebookIntelligence(ExtensionApp):
         route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
         route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
         route_pattern_update_provider_models = url_path_join(base_url, "notebook-intelligence", "update-provider-models")
+        route_pattern_emit_telemetry_event = url_path_join(base_url, "notebook-intelligence", "emit-telemetry-event")
         route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
@@ -532,6 +540,7 @@ class NotebookIntelligence(ExtensionApp):
             (route_pattern_capabilities, GetCapabilitiesHandler),
             (route_pattern_config, ConfigHandler),
             (route_pattern_update_provider_models, UpdateProviderModelsHandler),
+            (route_pattern_emit_telemetry_event, EmitTelemetryEventHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),
             (route_pattern_github_logout, GetGitHubLogoutHandler),

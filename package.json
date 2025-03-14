@@ -1,7 +1,7 @@
 {
-    "name": "@mbektas/notebook-intelligence",
+    "name": "@notebook-intelligence/notebook-intelligence",
     "version": "1.2.1",
-    "description": "Notebook Intelligence extension for JupyterLab",
+    "description": "AI coding assistant for JupyterLab",
     "keywords": [
         "AI",
         "notebook",

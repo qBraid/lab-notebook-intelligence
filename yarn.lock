@@ -2174,52 +2174,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mbektas/notebook-intelligence@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "@mbektas/notebook-intelligence@workspace:."
-  dependencies:
-    "@jupyterlab/application": ^4.0.0
-    "@jupyterlab/builder": ^4.0.0
-    "@jupyterlab/completer": ^4.0.0
-    "@jupyterlab/coreutils": ^6.0.0
-    "@jupyterlab/fileeditor": ^4.0.0
-    "@jupyterlab/mainmenu": ^4.0.0
-    "@jupyterlab/notebook": ^4.0.0
-    "@jupyterlab/services": ^7.0.0
-    "@jupyterlab/settingregistry": ^4.0.0
-    "@types/json-schema": ^7.0.11
-    "@types/react": ^18.0.26
-    "@types/react-addons-linked-state-mixin": ^0.14.22
-    "@types/react-syntax-highlighter": ^15.5.13
-    "@typescript-eslint/eslint-plugin": ^6.1.0
-    "@typescript-eslint/parser": ^6.1.0
-    css-loader: ^6.7.1
-    eslint: ^8.36.0
-    eslint-config-prettier: ^8.8.0
-    eslint-plugin-prettier: ^5.0.0
-    mkdirp: ^1.0.3
-    monaco-editor: 0.21.3
-    monaco-editor-webpack-plugin: ^2.0.0
-    npm-run-all: ^4.1.5
-    prettier: ^3.0.0
-    react-icons: ^5.4.0
-    react-markdown: ^9.0.1
-    react-syntax-highlighter: ^15.4.4
-    remark-gfm: 4.0.0
-    rimraf: ^5.0.1
-    source-map-loader: ^1.0.2
-    style-loader: ^3.3.1
-    stylelint: ^15.10.1
-    stylelint-config-recommended: ^13.0.0
-    stylelint-config-standard: ^34.0.0
-    stylelint-csstree-validator: ^3.0.0
-    stylelint-prettier: ^4.0.0
-    tiktoken: 1.0.18
-    typescript: ~5.0.2
-    yjs: ^13.5.0
-  languageName: unknown
-  linkType: soft
-
 "@microsoft/fast-colors@npm:^5.3.1":
   version: 5.3.1
   resolution: "@microsoft/fast-colors@npm:5.3.1"
@@ -2293,6 +2247,52 @@ __metadata:
   checksum: 190c643f156d8f8f277bf2a6078af1ffde1fd43f498f187c2db24d35b4b4b5785c02c7dc52e356497b9a1b65b13edc996de08de0b961c32844364da02986dc53
   languageName: node
   linkType: hard
+
+"@notebook-intelligence/notebook-intelligence@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "@notebook-intelligence/notebook-intelligence@workspace:."
+  dependencies:
+    "@jupyterlab/application": ^4.0.0
+    "@jupyterlab/builder": ^4.0.0
+    "@jupyterlab/completer": ^4.0.0
+    "@jupyterlab/coreutils": ^6.0.0
+    "@jupyterlab/fileeditor": ^4.0.0
+    "@jupyterlab/mainmenu": ^4.0.0
+    "@jupyterlab/notebook": ^4.0.0
+    "@jupyterlab/services": ^7.0.0
+    "@jupyterlab/settingregistry": ^4.0.0
+    "@types/json-schema": ^7.0.11
+    "@types/react": ^18.0.26
+    "@types/react-addons-linked-state-mixin": ^0.14.22
+    "@types/react-syntax-highlighter": ^15.5.13
+    "@typescript-eslint/eslint-plugin": ^6.1.0
+    "@typescript-eslint/parser": ^6.1.0
+    css-loader: ^6.7.1
+    eslint: ^8.36.0
+    eslint-config-prettier: ^8.8.0
+    eslint-plugin-prettier: ^5.0.0
+    mkdirp: ^1.0.3
+    monaco-editor: 0.21.3
+    monaco-editor-webpack-plugin: ^2.0.0
+    npm-run-all: ^4.1.5
+    prettier: ^3.0.0
+    react-icons: ^5.4.0
+    react-markdown: ^9.0.1
+    react-syntax-highlighter: ^15.4.4
+    remark-gfm: 4.0.0
+    rimraf: ^5.0.1
+    source-map-loader: ^1.0.2
+    style-loader: ^3.3.1
+    stylelint: ^15.10.1
+    stylelint-config-recommended: ^13.0.0
+    stylelint-config-standard: ^34.0.0
+    stylelint-csstree-validator: ^3.0.0
+    stylelint-prettier: ^4.0.0
+    tiktoken: 1.0.18
+    typescript: ~5.0.2
+    yjs: ^13.5.0
+  languageName: unknown
+  linkType: soft
 
 "@pkgjs/parseargs@npm:^0.11.0":
   version: 0.11.0
