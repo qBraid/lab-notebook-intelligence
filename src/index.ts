@@ -1395,4 +1395,6 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
   }
 };
 
+export * from './tokens';
+
 export default plugin;
