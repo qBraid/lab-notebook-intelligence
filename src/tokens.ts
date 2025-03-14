@@ -104,7 +104,7 @@ export interface ITelemetryEmitter {
 }
 
 export const INotebookIntelligence = new Token<INotebookIntelligence>(
-  '@mbektas/notebook-intelligence',
+  '@notebook-intelligence/notebook-intelligence',
   'AI coding assistant for JupyterLab.'
 );
 

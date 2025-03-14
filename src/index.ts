@@ -435,7 +435,7 @@ class NBIInlineCompletionProvider
   }
 
   get identifier(): string {
-    return '@mbektas/notebook-intelligence';
+    return '@notebook-intelligence/notebook-intelligence';
   }
 
   get icon(): LabIcon.ILabIcon {
@@ -493,10 +493,10 @@ class TelemetryEmitter implements ITelemetryEmitter {
 }
 
 /**
- * Initialization data for the @mbektas/notebook-intelligence extension.
+ * Initialization data for the @notebook-intelligence/notebook-intelligence extension.
  */
 const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
-  id: '@mbektas/notebook-intelligence:plugin',
+  id: '@notebook-intelligence/notebook-intelligence:plugin',
   description: 'Notebook Intelligence',
   autoStart: true,
   requires: [
@@ -521,7 +521,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     statusBar: IStatusBar | null
   ) => {
     console.log(
-      'JupyterLab extension @mbektas/notebook-intelligence is activated!'
+      'JupyterLab extension @notebook-intelligence/notebook-intelligence is activated!'
     );
 
     const telemetryEmitter = new TelemetryEmitter();
@@ -558,7 +558,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         })
         .catch(reason => {
           console.error(
-            'Failed to load settings for @mbektas/notebook-intelligence.',
+            'Failed to load settings for @notebook-intelligence/notebook-intelligence.',
             reason
           );
         });

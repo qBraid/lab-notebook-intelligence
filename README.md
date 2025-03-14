@@ -32,7 +32,7 @@ You can configure the model provider and model options using the Notebook Intell
 Notebook Intelligence extension for JupyterLab
 
 This extension is composed of a Python package named `notebook_intelligence`
-for the server extension and a NPM package named `@mbektas/notebook-intelligence`
+for the server extension and a NPM package named `@notebook-intelligence/notebook-intelligence`
 for the frontend extension.
 
 ## Requirements
@@ -139,7 +139,7 @@ pip uninstall notebook_intelligence
 
 In development mode, you will also need to remove the symlink created by `jupyter labextension develop`
 command. To find its location, you can run `jupyter labextension list` to figure out where the `labextensions`
-folder is located. Then you can remove the symlink named `@mbektas/notebook-intelligence` within that folder.
+folder is located. Then you can remove the symlink named `@notebook-intelligence/notebook-intelligence` within that folder.
 
 ### Packaging the extension
 
