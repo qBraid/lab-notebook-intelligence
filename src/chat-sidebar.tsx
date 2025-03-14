@@ -166,6 +166,10 @@ export class InlinePromptWidget extends ReactWidget {
       this._options.telemetryEmitter.emitTelemetryEvent({
         type: TelemetryEventType.InlineChatResponse,
         data: {
+          chatModel: {
+            provider: NBIAPI.config.chatModel.provider,
+            model: NBIAPI.config.chatModel.model
+          },
           timeElapsed
         }
       });
@@ -184,6 +188,10 @@ export class InlinePromptWidget extends ReactWidget {
     this._options.telemetryEmitter.emitTelemetryEvent({
       type: TelemetryEventType.InlineChatRequest,
       data: {
+        chatModel: {
+          provider: NBIAPI.config.chatModel.provider,
+          model: NBIAPI.config.chatModel.model
+        },
         prompt: prompt
       }
     });
@@ -856,6 +864,10 @@ function SidebarComponent(props: any) {
             telemetryEmitter.emitTelemetryEvent({
               type: TelemetryEventType.ChatResponse,
               data: {
+                chatModel: {
+                  provider: NBIAPI.config.chatModel.provider,
+                  model: NBIAPI.config.chatModel.model
+                },
                 timeElapsed
               }
             });
@@ -907,6 +919,10 @@ function SidebarComponent(props: any) {
     telemetryEmitter.emitTelemetryEvent({
       type: TelemetryEventType.ChatRequest,
       data: {
+        chatModel: {
+          provider: NBIAPI.config.chatModel.provider,
+          model: NBIAPI.config.chatModel.model
+        },
         prompt: extractedPrompt
       }
     });

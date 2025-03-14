@@ -360,6 +360,10 @@ class NBIInlineCompletionProvider
     this._telemetryEmitter.emitTelemetryEvent({
       type: TelemetryEventType.InlineCompletionRequest,
       data: {
+        inlineCompletionModel: {
+          provider: NBIAPI.config.inlineCompletionModel.provider,
+          model: NBIAPI.config.inlineCompletionModel.model
+        },
         editorType
       }
     });
@@ -408,6 +412,10 @@ class NBIInlineCompletionProvider
               this._telemetryEmitter.emitTelemetryEvent({
                 type: TelemetryEventType.InlineCompletionResponse,
                 data: {
+                  inlineCompletionModel: {
+                    provider: NBIAPI.config.inlineCompletionModel.provider,
+                    model: NBIAPI.config.inlineCompletionModel.model
+                  },
                   timeElapsed
                 }
               });
@@ -1141,6 +1149,10 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
       telemetryEmitter.emitTelemetryEvent({
         type: TelemetryEventType.GenerateCodeRequest,
         data: {
+          chatModel: {
+            provider: NBIAPI.config.chatModel.provider,
+            model: NBIAPI.config.chatModel.model
+          },
           editorType: isCodeCell ? 'notebook' : 'file-editor'
         }
       });
@@ -1184,7 +1196,13 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
 
         telemetryEmitter.emitTelemetryEvent({
-          type: TelemetryEventType.ExplainThisRequest
+          type: TelemetryEventType.ExplainThisRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
         });
       },
       label: 'Explain code',
@@ -1209,7 +1227,13 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
 
         telemetryEmitter.emitTelemetryEvent({
-          type: TelemetryEventType.FixThisCodeRequest
+          type: TelemetryEventType.FixThisCodeRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
         });
       },
       label: 'Fix code',
@@ -1237,7 +1261,13 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
 
         telemetryEmitter.emitTelemetryEvent({
-          type: TelemetryEventType.ExplainThisOutputRequest
+          type: TelemetryEventType.ExplainThisOutputRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
         });
       },
       label: 'Explain output',
@@ -1278,7 +1308,13 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         app.commands.execute('tabsmenu:activate-by-id', { id: panel.id });
 
         telemetryEmitter.emitTelemetryEvent({
-          type: TelemetryEventType.TroubleshootThisOutputRequest
+          type: TelemetryEventType.TroubleshootThisOutputRequest,
+          data: {
+            chatModel: {
+              provider: NBIAPI.config.chatModel.provider,
+              model: NBIAPI.config.chatModel.model
+            }
+          }
         });
       },
       label: 'Troubleshoot errors in output',
