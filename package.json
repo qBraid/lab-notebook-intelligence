@@ -123,7 +123,12 @@
         "extension": true,
         "outputDir": "notebook_intelligence/labextension",
         "schemaDir": "schema",
-        "webpackConfig": "./webpack.config.js"
+        "webpackConfig": "./webpack.config.js",
+        "sharedPackages": {
+            "@notebook-intelligence/notebook-intelligence": {
+                "singleton": true
+            }
+        }
     },
     "eslintIgnore": [
         "node_modules",
