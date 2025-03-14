@@ -295,7 +295,7 @@ class ActiveDocumentWatcher {
   private static _languageRegistry: IEditorLanguageRegistry;
 }
 
-class GitHubInlineCompletionProvider
+class NBIInlineCompletionProvider
   implements IInlineCompletionProvider<IInlineCompletionItem>
 {
   constructor(telemetryEmitter: TelemetryEmitter) {
@@ -539,7 +539,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     let openPopover: InlinePromptWidget | null = null;
 
     completionManager.registerInlineProvider(
-      new GitHubInlineCompletionProvider(telemetryEmitter)
+      new NBIInlineCompletionProvider(telemetryEmitter)
     );
 
     if (settingRegistry) {
