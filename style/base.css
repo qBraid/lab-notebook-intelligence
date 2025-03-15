@@ -224,6 +224,17 @@ pre:has(.code-block-header) {
   text-decoration: underline;
 }
 
+.sidebar-login-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-login-buttons .jp-Dialog-button.jp-mod-styled {
+  margin-right: 0;
+}
+
 .sidebar-greeting {
   padding: 5px;
   font-size: 14px;

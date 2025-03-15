@@ -1272,7 +1272,7 @@ function SidebarComponent(props: any) {
             You are not logged in to GitHub Copilot. Please login now to
             activate chat.
           </div>
-          <div>
+          <div className="sidebar-login-buttons">
             <button
               className="jp-Dialog-button jp-mod-accept jp-mod-styled"
               onClick={handleLoginClick}
