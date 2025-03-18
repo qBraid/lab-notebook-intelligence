@@ -379,11 +379,6 @@ class ChatParticipant:
                         else:
                             args = {}
 
-                    if len(tool_properties) != len(args):
-                        response.stream(MarkdownData(f"Oops! There was a problem handling tool request. Please try again with a different prompt."))
-                        response.finish()
-                        return
-
                     tool_pre_invoke_response = tool_to_call.pre_invoke(request, args)
                     if tool_pre_invoke_response is not None:
                         if tool_pre_invoke_response.message is not None:

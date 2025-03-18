@@ -15,6 +15,7 @@ from notebook_intelligence.llm_providers.github_copilot_llm_provider import GitH
 from notebook_intelligence.llm_providers.litellm_compatible_llm_provider import LiteLLMCompatibleLLMProvider
 from notebook_intelligence.llm_providers.ollama_llm_provider import OllamaLLMProvider
 from notebook_intelligence.llm_providers.openai_compatible_llm_provider import OpenAICompatibleLLMProvider
+from notebook_intelligence.mcp_manager import MCPManager
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +54,9 @@ class AIServiceManager(Host):
         self.register_llm_provider(self._openai_compatible_llm_provider)
         self.register_llm_provider(self._litellm_compatible_llm_provider)
         self.register_llm_provider(self._ollama_llm_provider)
+        self._mcp_manager = MCPManager(self.nbi_config.mcp)
+        for participant in self._mcp_manager.get_mcp_participants():
+            self.register_chat_participant(participant)
 
         self.update_models_from_config()
         self.initialize_extensions()

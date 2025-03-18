@@ -10,6 +10,7 @@ import uuid
 import threading
 import logging
 import tiktoken
+from mcp.client.sse import sse_client
 
 from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
@@ -39,7 +40,7 @@ class GetCapabilitiesHandler(APIHandler):
             "embedding_models": ai_service_manager.embedding_model_ids,
             "chat_model": nbi_config.chat_model,
             "inline_completion_model": nbi_config.inline_completion_model,
-            "embedding_model": nbi_config.embedding_model_id,
+            "embedding_model": nbi_config.embedding_model,
             "chat_participants": []
         }
         for participant_id in ai_service_manager.chat_participants:

@@ -36,8 +36,12 @@ class NBIConfig:
         return self.get('inline_completion_model', {'provider': 'github-copilot', 'model': 'copilot-codex'})
 
     @property
-    def embedding_model_id(self):
-        return self.get('embedding_model_id', '')
+    def embedding_model(self):
+        return self.get('embedding_model', {})
+
+    @property
+    def mcp(self):
+        return self.get('mcp', {})
 
     @property
     def using_github_copilot_service(self) -> bool:
