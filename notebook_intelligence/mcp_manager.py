@@ -187,41 +187,19 @@ class MCPManager:
         # TODO: dont reuse servers, recreate with same config
         servers_config = mcp_config.get("mcpServers", {})
         participants_config = mcp_config.get("participants", {})
-
-        self._mcp_servers: list[MCPServer] = []
         self._mcp_participants: list[MCPChatParticipant] = []
-
-        # parse MCP servers
-        for server_name in servers_config:
-            server_config = servers_config[server_name]
-            if "command" in server_config:
-                command = server_config["command"]
-                args = server_config.get("args", [])
-                env = server_config.get("env", None)
-                self._mcp_servers.append(MCPServer(server_name, server_params=StdioServerParameters(
-                    command = command,
-                    args = args,
-                    env=env
-                )))
-            elif "server_url" in server_config:
-                server_url = server_config["url"]
-                self._mcp_servers.append(MCPServer(server_name, server_url=server_url))
-            else:
-                log.error("Invalid MCP server configuration")
 
         # parse MCP participants
         for participant_id in participants_config:
             participant_config = participants_config[participant_id]
             participant_name = participant_config.get("name", participant_id)
             server_names = participant_config.get("servers", [])
-            participant_servers = []
-            for server_name in server_names:
-                mcp_server = next((server for server in self._mcp_servers if server.name == server_name), None)
-                participant_servers.append(mcp_server)
+            participant_servers = self.create_servers(server_names, servers_config)
+
             if len(participant_servers) > 0:
                 self._mcp_participants.append(MCPChatParticipant(f"mcp-{participant_id}", participant_name, participant_servers))
 
-        unused_server_names = set([server.name for server in self._mcp_servers])
+        unused_server_names = set(servers_config.keys())
 
         for participant in self._mcp_participants:
             for server in participant.servers:
@@ -229,7 +207,44 @@ class MCPManager:
                     unused_server_names.remove(server.name)
 
         if len(unused_server_names) > 0:
-            self._mcp_participants.append(MCPChatParticipant("mcp", "MCP", [server for server in self._mcp_servers if server.name in unused_server_names]))
+            unused_servers = self.create_servers(unused_server_names, servers_config)
+            self._mcp_participants.append(MCPChatParticipant("mcp", "MCP", unused_servers))
+
+    def create_servers(self, server_names: list[str], servers_config: dict):
+        servers = []
+        for server_name in server_names:
+            server_config = servers_config.get(server_name, None)
+            if server_config is None:
+                log.error(f"Server '{server_name}' not found in MCP servers configuration")
+                continue
+
+            mcp_server = self.create_mcp_server(server_name, server_config)
+            if mcp_server is None:
+                log.error(f"Failed to create MCP server '{server_name}'")
+                continue
+
+            servers.append(mcp_server)
+
+        return servers
+    
+    def create_mcp_server(self, server_name: str, server_config: dict):
+        if "command" in server_config:
+            command = server_config["command"]
+            args = server_config.get("args", [])
+            env = server_config.get("env", None)
+
+            return MCPServer(server_name, server_params=StdioServerParameters(
+                command = command,
+                args = args,
+                env=env
+            ))
+        elif "server_url" in server_config:
+            server_url = server_config["url"]
+
+            return MCPServer(server_name, server_url=server_url)
+
+        log.error(f"Invalid MCP server configuration for: {server_name}")
+        return None
 
     def get_mcp_participants(self):
         return self._mcp_participants
