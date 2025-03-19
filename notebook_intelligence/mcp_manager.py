@@ -1,7 +1,8 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+from dataclasses import dataclass
 from datetime import timedelta
-from typing import Union
+from typing import Any, Union
 from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from mcp.types import CallToolResult, TextContent, ImageContent
@@ -79,12 +80,17 @@ class MCPTool(Tool):
             return result
         else:
             return "Error: Invalid tool result"
-                
+
+@dataclass
+class SSEServerParameters:
+    url: str
+    headers: dict[str, Any] | None = None
+
 class MCPServer:
-    def __init__(self, name, server_params: StdioServerParameters = None, server_url: str = None):
-        self._name = name
-        self._server_params = server_params
-        self._server_url = server_url
+    def __init__(self, name: str, stdio_params: StdioServerParameters = None, sse_params: SSEServerParameters = None):
+        self._name: str = name
+        self._stdio_params: StdioServerParameters = stdio_params
+        self._sse_params: SSEServerParameters = sse_params
 
     @property
     def name(self) -> str:
@@ -95,12 +101,12 @@ class MCPServer:
         self.session = None
         self.exit_stack = AsyncExitStack()
 
-        if self._server_params is None and self._server_url is None:
-            raise ValueError("Either server_params or server_url must be provided")
-        if self._server_params is not None:
-            transport = await self.exit_stack.enter_async_context(stdio_client(self._server_params))
+        if self._stdio_params is None and self._sse_params is None:
+            raise ValueError("Either stdio_params or sse_params must be provided")
+        if self._stdio_params is not None:
+            transport = await self.exit_stack.enter_async_context(stdio_client(self._stdio_params))
         else:
-            transport = await self.exit_stack.enter_async_context(sse_client(url=self._server_url))
+            transport = await self.exit_stack.enter_async_context(sse_client(url=self._sse_params.url, headers=self._sse_params.headers))
         self._read_stream, self._write_stream = transport
         self.session = await self.exit_stack.enter_async_context(ClientSession(self._read_stream, self._write_stream, timedelta(seconds=MCP_TOOL_TIMEOUT)))
         await self.session.initialize()
@@ -243,15 +249,16 @@ class MCPManager:
             args = server_config.get("args", [])
             env = server_config.get("env", None)
 
-            return MCPServer(server_name, server_params=StdioServerParameters(
+            return MCPServer(server_name, stdio_params=StdioServerParameters(
                 command = command,
                 args = args,
                 env=env
             ))
         elif "url" in server_config:
             server_url = server_config["url"]
+            headers = server_config.get("headers", None)
 
-            return MCPServer(server_name, server_url=server_url)
+            return MCPServer(server_name, sse_params=SSEServerParameters(url=server_url, headers=headers))
 
         log.error(f"Invalid MCP server configuration for: {server_name}")
         return None
