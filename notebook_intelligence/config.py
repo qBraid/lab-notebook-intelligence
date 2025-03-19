@@ -2,29 +2,39 @@
 
 import json
 import os
+import sys
 
 class NBIConfig:
     def __init__(self):
-        self.config_file = os.path.join(os.path.expanduser('~'), ".jupyter", "nbi-config.json")
-        self.config = {}
+        self.env_config_file = os.path.join(sys.prefix, "share", "jupyter", "nbi-config.json")
+        self.user_config_file = os.path.join(os.path.expanduser('~'), ".jupyter", "nbi-config.json")
+        self.env_config = {}
+        self.user_config = {}
         self.load()
 
     def load(self):
-        if os.path.exists(self.config_file):
-            with open(self.config_file, 'r') as file:
-                self.config = json.load(file)
+        if os.path.exists(self.env_config_file):
+            with open(self.env_config_file, 'r') as file:
+                self.env_config = json.load(file)
         else:
-            self.config = {}
+            self.env_config = {}
+
+        if os.path.exists(self.user_config_file):
+            with open(self.user_config_file, 'r') as file:
+                self.user_config = json.load(file)
+        else:
+            self.user_config = {}
 
     def save(self):
-        with open(self.config_file, 'w') as file:
-            json.dump(self.config, file, indent=4)
+        # TODO: save only diff
+        with open(self.user_config_file, 'w') as file:
+            json.dump(self.user_config, file, indent=4)
 
     def get(self, key, default=None):
-        return self.config.get(key, default)
+        return self.user_config.get(key, self.env_config.get(key, default))
 
     def set(self, key, value):
-        self.config[key] = value
+        self.user_config[key] = value
         self.save()
 
     @property
