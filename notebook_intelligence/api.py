@@ -399,7 +399,7 @@ class ChatParticipant:
 
                     function_call_result_message = {
                         "role": "tool",
-                        "content": json.dumps(tool_call_response),
+                        "content": str(tool_call_response),
                         "tool_call_id": tool_call['id']
                     }
 

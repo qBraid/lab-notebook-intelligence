@@ -45,8 +45,6 @@ class OllamaChatModel(ChatModel):
         }
         if tools is not None and len(tools) > 0:
             completion_args["tools"] = tools
-        if 'tool_choice' in options:
-            completion_args['tool_choice'] = options['tool_choice']
 
         ollama_response = ollama.chat(**completion_args)
 

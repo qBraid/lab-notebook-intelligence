@@ -5,7 +5,7 @@ from typing import Union
 from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from mcp.types import CallToolResult, TextContent, ImageContent
-from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, Tool, ToolPreInvokeResponse
+from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, MarkdownData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 import logging
 from contextlib import AsyncExitStack
@@ -74,11 +74,11 @@ class MCPTool(Tool):
                         text_contents.append(content.text)
 
                 if len(text_contents) > 0:
-                    return {"result": "\n".join(text_contents)}
+                    return "\n".join(text_contents)
         elif type(result) is dict:
             return result
         else:
-            return {"result": "Error: Invalid tool result"}
+            return "Error: Invalid tool result"
                 
 class MCPServer:
     def __init__(self, name, server_params: StdioServerParameters = None, server_url: str = None):
@@ -160,7 +160,7 @@ class MCPChatParticipant(BaseChatParticipant):
 
     @property
     def commands(self) -> list[ChatCommand]:
-        return []
+        return [ChatCommand(name='info', description='MCP participant info')]
 
     @property
     def tools(self) -> list[Tool]:
@@ -177,7 +177,17 @@ class MCPChatParticipant(BaseChatParticipant):
         for server in self._servers:
             await server.connect()
 
-        await self.handle_chat_request_with_tools(request, response, options)
+        if request.command == "info":
+            for server in self._servers:
+                info_lines = []
+                info_lines.append(f"- **{server.name}** server tools:")
+                for tool in server.get_tools():
+                    info_lines.append(f"  - **{tool.name}**: {tool.description}\n")
+                response.stream(MarkdownData(f"\n".join(info_lines)))
+
+            response.finish()
+        else:
+            await self.handle_chat_request_with_tools(request, response, options)
 
         for server in self._servers:
             await server.disconnect()
@@ -238,7 +248,7 @@ class MCPManager:
                 args = args,
                 env=env
             ))
-        elif "server_url" in server_config:
+        elif "url" in server_config:
             server_url = server_config["url"]
 
             return MCPServer(server_name, server_url=server_url)
