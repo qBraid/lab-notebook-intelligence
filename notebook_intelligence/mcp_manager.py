@@ -5,6 +5,7 @@ from datetime import timedelta
 from typing import Any, Union
 from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
+from mcp.client.stdio import get_default_environment as mcp_get_default_environment
 from mcp.types import CallToolResult, TextContent, ImageContent
 from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, MarkdownData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
@@ -248,11 +249,15 @@ class MCPManager:
             command = server_config["command"]
             args = server_config.get("args", [])
             env = server_config.get("env", None)
+            server_env = None
+            if env is not None:
+                server_env = mcp_get_default_environment()
+                server_env.update(env)
 
             return MCPServer(server_name, stdio_params=StdioServerParameters(
                 command = command,
                 args = args,
-                env=env
+                env = server_env
             ))
         elif "url" in server_config:
             server_url = server_config["url"]
