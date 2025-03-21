@@ -7,7 +7,7 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from mcp.client.stdio import get_default_environment as mcp_get_default_environment
 from mcp.types import CallToolResult, TextContent, ImageContent
-from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, MarkdownData, Tool, ToolPreInvokeResponse
+from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, ImageData, MarkdownData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 import logging
 from contextlib import AsyncExitStack
@@ -71,12 +71,14 @@ class MCPTool(Tool):
                 text_contents = []
                 for content in result.content:
                     if type(content) is ImageContent:
-                        response.stream(HTMLFrameData(f"<img src='data:{content.mimeType};base64,{content.data}'/>", height=100))
+                        response.stream(ImageData(f"data:{content.mimeType};base64,{content.data}"))
                     elif type(content) is TextContent:
                         text_contents.append(content.text)
 
                 if len(text_contents) > 0:
                     return "\n".join(text_contents)
+                else:
+                    return "success"
         elif type(result) is dict:
             return result
         else:
@@ -167,7 +169,7 @@ class MCPChatParticipant(BaseChatParticipant):
 
     @property
     def commands(self) -> list[ChatCommand]:
-        return [ChatCommand(name='info', description='MCP participant info')]
+        return []
 
     @property
     def tools(self) -> list[Tool]:

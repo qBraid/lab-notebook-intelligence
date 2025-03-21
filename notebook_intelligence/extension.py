@@ -185,6 +185,21 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
                     }
                 ]
             }
+        elif data_type == ResponseStreamDataType.Image:
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": data.content
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
         elif data_type == ResponseStreamDataType.HTMLFrame:
             data = {
                 "choices": [

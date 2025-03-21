@@ -263,6 +263,10 @@ pre:has(.code-block-header) {
   border: none;
 }
 
+.chat-response-img img {
+  max-width: 100%;
+}
+
 .chat-response-anchor {
   margin: 5px 0;
 }

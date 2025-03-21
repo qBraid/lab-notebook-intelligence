@@ -38,6 +38,7 @@ export enum ResponseStreamDataType {
   LLMRaw = 'llm-raw',
   Markdown = 'markdown',
   MarkdownPart = 'markdown-part',
+  Image = 'image',
   HTMLFrame = 'html-frame',
   Button = 'button',
   Anchor = 'anchor',

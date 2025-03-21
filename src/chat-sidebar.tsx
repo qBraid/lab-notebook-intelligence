@@ -477,6 +477,12 @@ function ChatResponse(props: any) {
                   </MarkdownRenderer>
                 </>
               );
+            case ResponseStreamDataType.Image:
+              return (
+                <div className="chat-response-img" key={`key-${index}`}>
+                  <img src={item.content} />
+                </div>
+              );
             case ResponseStreamDataType.HTMLFrame:
               return (
                 <ChatResponseHTMLFrame
@@ -487,9 +493,8 @@ function ChatResponse(props: any) {
               );
             case ResponseStreamDataType.Button:
               return (
-                <div className="chat-response-button">
+                <div className="chat-response-button" key={`key-${index}`}>
                   <button
-                    key={`key-${index}`}
                     className="jp-Dialog-button jp-mod-accept jp-mod-styled"
                     onClick={() =>
                       runCommand(item.content.commandId, item.content.args)
@@ -503,12 +508,8 @@ function ChatResponse(props: any) {
               );
             case ResponseStreamDataType.Anchor:
               return (
-                <div className="chat-response-anchor">
-                  <a
-                    key={`key-${index}`}
-                    href={item.content.uri}
-                    target="_blank"
-                  >
+                <div className="chat-response-anchor" key={`key-${index}`}>
+                  <a href={item.content.uri} target="_blank">
                     {item.content.title}
                   </a>
                 </div>

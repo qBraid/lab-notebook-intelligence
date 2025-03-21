@@ -30,6 +30,7 @@ class ResponseStreamDataType(str, Enum):
     LLMRaw = 'llm-raw'
     Markdown = 'markdown'
     MarkdownPart = 'markdown-part'
+    Image = 'image'
     HTMLFrame = 'html-frame'
     Button = 'button'
     Anchor = 'anchor'
@@ -99,6 +100,14 @@ class MarkdownPartData(ResponseStreamData):
     @property
     def data_type(self) -> ResponseStreamDataType:
         return ResponseStreamDataType.MarkdownPart
+
+@dataclass
+class ImageData(ResponseStreamData):
+    content: str = ''
+
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.Image
 
 @dataclass
 class HTMLFrameData(ResponseStreamData):
@@ -339,13 +348,14 @@ class ChatParticipant:
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
 
-                if tool_response['choices'][0]['message'].get('tool_calls', None) is not None:
-                    for tool_call in tool_response['choices'][0]['message']['tool_calls']:
-                        tool_call_rounds.append(tool_call)
-                elif tool_response['choices'][0]['message'].get('content', None) is not None:
-                    response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
+                for choice in tool_response['choices']:
+                    if choice['message'].get('tool_calls', None) is not None:
+                        for tool_call in choice['message']['tool_calls']:
+                            tool_call_rounds.append(tool_call)
+                    elif choice['message'].get('content', None) is not None:
+                        response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
 
-                messages.append(tool_response['choices'][0]['message'])
+                    messages.append(choice['message'])
 
                 had_tool_call = len(tool_call_rounds) > 0
 
