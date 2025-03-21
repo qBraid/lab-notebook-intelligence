@@ -65,24 +65,27 @@ class MCPTool(Tool):
             if key in tool_args:
                 call_args[key] = tool_args.get(key)
 
-        result = await self._server.call_tool(self.name, call_args)
-        if type(result) is CallToolResult:
-            if len(result.content) > 0:
-                text_contents = []
-                for content in result.content:
-                    if type(content) is ImageContent:
-                        response.stream(ImageData(f"data:{content.mimeType};base64,{content.data}"))
-                    elif type(content) is TextContent:
-                        text_contents.append(content.text)
+        try:
+            result = await self._server.call_tool(self.name, call_args)
+            if type(result) is CallToolResult:
+                if len(result.content) > 0:
+                    text_contents = []
+                    for content in result.content:
+                        if type(content) is ImageContent:
+                            response.stream(ImageData(f"data:{content.mimeType};base64,{content.data}"))
+                        elif type(content) is TextContent:
+                            text_contents.append(content.text)
 
-                if len(text_contents) > 0:
-                    return "\n".join(text_contents)
-                else:
-                    return "success"
-        elif type(result) is dict:
-            return result
-        else:
-            return "Error: Invalid tool result"
+                    if len(text_contents) > 0:
+                        return "\n".join(text_contents)
+                    else:
+                        return "success"
+            elif type(result) is dict:
+                return result
+            else:
+                return f"Error! Invalid tool result: {result}"
+        except Exception as e:
+            return f"Error occurred while calling MCP tool: {str(e)}"
 
 @dataclass
 class SSEServerParameters:
@@ -133,12 +136,7 @@ class MCPServer:
         if self.session is None:
             await self.connect()
 
-        try:
-            tool_result = await self.session.call_tool(tool_name, tool_args)
-        except Exception as e:
-            return {"error": str(e)}
-
-        return tool_result
+        return await self.session.call_tool(tool_name, tool_args)
 
     def get_tools(self) -> list[Tool]:
         return [MCPTool(self, tool.name, tool.description, tool.inputSchema) for tool in self._mcp_tools]
