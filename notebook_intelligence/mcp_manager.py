@@ -20,12 +20,13 @@ MCP_TOOL_TIMEOUT = 60
 
 
 class MCPTool(Tool):
-    def __init__(self, server: 'MCPServer', name, description, schema):
+    def __init__(self, server: 'MCPServer', name, description, schema, auto_approve=False):
         super().__init__()
         self._server = server
         self._name = name
         self._description = description
         self._schema = schema
+        self._auto_approve = auto_approve
 
     @property
     def name(self) -> str:
@@ -56,7 +57,12 @@ class MCPTool(Tool):
         }
     
     def pre_invoke(self, request: ChatRequest, tool_args: dict) -> Union[ToolPreInvokeResponse, None]:
-        return ToolPreInvokeResponse(f"Calling MCP tool '{self.name}'")
+        confirmationTitle = None
+        confirmationMessage = None
+        if not self._auto_approve:
+            confirmationTitle = "Approve"
+            confirmationMessage = "Are you sure you want to call this MCP tool?"
+        return ToolPreInvokeResponse(f"Calling MCP tool '{self.name}'", confirmationTitle, confirmationMessage)
 
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
         call_args = {}
@@ -93,10 +99,11 @@ class SSEServerParameters:
     headers: dict[str, Any] | None = None
 
 class MCPServer:
-    def __init__(self, name: str, stdio_params: StdioServerParameters = None, sse_params: SSEServerParameters = None):
+    def __init__(self, name: str, stdio_params: StdioServerParameters = None, sse_params: SSEServerParameters = None, auto_approve_tools: list[str] = []):
         self._name: str = name
         self._stdio_params: StdioServerParameters = stdio_params
         self._sse_params: SSEServerParameters = sse_params
+        self._auto_approve_tools: set[str] = set(auto_approve_tools)
 
     @property
     def name(self) -> str:
@@ -139,7 +146,7 @@ class MCPServer:
         return await self.session.call_tool(tool_name, tool_args)
 
     def get_tools(self) -> list[Tool]:
-        return [MCPTool(self, tool.name, tool.description, tool.inputSchema) for tool in self._mcp_tools]
+        return [MCPTool(self, tool.name, tool.description, tool.inputSchema, auto_approve=(tool.name in self._auto_approve_tools)) for tool in self._mcp_tools]
 
 class MCPChatParticipant(BaseChatParticipant):
     def __init__(self, id: str, name: str, servers: list[MCPServer]):
@@ -216,7 +223,8 @@ class MCPManager:
             if len(participant_servers) > 0:
                 self._mcp_participants.append(MCPChatParticipant(f"mcp-{participant_id}", participant_name, participant_servers))
 
-        unused_server_names = set(servers_config.keys())
+        enabled_server_names = [server_name for server_name in servers_config.keys() if servers_config.get(server_name, {}).get("disabled", False) == False]
+        unused_server_names = set(enabled_server_names)
 
         for participant in self._mcp_participants:
             for server in participant.servers:
@@ -235,6 +243,10 @@ class MCPManager:
                 log.error(f"Server '{server_name}' not found in MCP servers configuration")
                 continue
 
+            if server_config.get("disabled", False) == True:
+                log.info(f"MCP Server '{server_name}' is disabled in MCP servers configuration. Skipping it.")
+                continue
+
             mcp_server = self.create_mcp_server(server_name, server_config)
             if mcp_server is None:
                 log.error(f"Failed to create MCP server '{server_name}'")
@@ -245,6 +257,8 @@ class MCPManager:
         return servers
     
     def create_mcp_server(self, server_name: str, server_config: dict):
+        auto_approve_tools = server_config.get("autoApprove", [])
+
         if "command" in server_config:
             command = server_config["command"]
             args = server_config.get("args", [])
@@ -258,12 +272,12 @@ class MCPManager:
                 command = command,
                 args = args,
                 env = server_env
-            ))
+                ), auto_approve_tools = auto_approve_tools)
         elif "url" in server_config:
             server_url = server_config["url"]
             headers = server_config.get("headers", None)
 
-            return MCPServer(server_name, sse_params=SSEServerParameters(url=server_url, headers=headers))
+            return MCPServer(server_name, sse_params=SSEServerParameters(url=server_url, headers=headers), auto_approve_tools=auto_approve_tools)
 
         log.error(f"Invalid MCP server configuration for: {server_name}")
         return None

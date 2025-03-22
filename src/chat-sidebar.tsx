@@ -312,11 +312,11 @@ function ChatResponse(props: any) {
     props.openFile(notebookPath);
   };
 
-  const markFormConfirmed = (messageId: string) => {
-    answeredForms.set(messageId, 'confirmed');
+  const markFormConfirmed = (contentId: string) => {
+    answeredForms.set(contentId, 'confirmed');
   };
-  const markFormCanceled = (messageId: string) => {
-    answeredForms.set(messageId, 'canceled');
+  const markFormCanceled = (contentId: string) => {
+    answeredForms.set(contentId, 'canceled');
   };
 
   const runCommand = (commandId: string, args: any) => {
@@ -762,7 +762,7 @@ function SidebarComponent(props: any) {
         from: 'user',
         contents: [
           {
-            id: lastMessageId.current,
+            id: UUID.uuid4(),
             type: ResponseStreamDataType.Markdown,
             content: prompt,
             created: new Date()
@@ -840,7 +840,7 @@ function SidebarComponent(props: any) {
             if (delta['nbiContent']) {
               const nbiContent = delta['nbiContent'];
               contents.push({
-                id: response.id,
+                id: UUID.uuid4(),
                 type: nbiContent.type,
                 content: nbiContent.content,
                 created: new Date(response.created)
@@ -852,7 +852,7 @@ function SidebarComponent(props: any) {
                 return;
               }
               contents.push({
-                id: response.id,
+                id: UUID.uuid4(),
                 type: ResponseStreamDataType.MarkdownPart,
                 content: responseMessage,
                 created: new Date(response.created)
@@ -1254,7 +1254,7 @@ function SidebarComponent(props: any) {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-title">Copilot Chat</div>
+        <div className="sidebar-title">Notebook Intelligence</div>
       </div>
       {!chatEnabled && !ghLoginRequired && (
         <div className="sidebar-login-info">

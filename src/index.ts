@@ -602,7 +602,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
 
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
-    panel.title.caption = 'Copilot Chat';
+    panel.title.caption = 'Notebook Intelligence';
     const sidebarIcon = new LabIcon({
       name: 'ui-components:palette',
       svgstr: sparklesSvgstr
