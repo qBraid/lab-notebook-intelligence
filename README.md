@@ -75,6 +75,9 @@ NBI seamlessly integrates with MCP servers. It supports servers with both Standa
 
 You can easily add MCP servers to NBI by editing the configuration file [nbi-config.json](#configuration-files). Simply add a key "mcp" and "mcpServers" under it as shown below.
 
+> [!NOTE]
+> Using MCP servers requires an LLM model with tool calling capabilities. All of the GitHub Copilot models provided in NBI support this feature. If you are using other providers make sure you choose a tool calling capable model.
+
 > [!CAUTION]
 > Note that most MCP servers are run on the same computer as your JupyterLab installation and they can make irreversible changes to your computer and/or access private data. Make sure that you only install MCP servers from trusted sources.
 
