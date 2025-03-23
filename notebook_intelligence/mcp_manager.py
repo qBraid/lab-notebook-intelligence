@@ -222,6 +222,8 @@ class MCPManager:
         for participant_id in participants_config:
             participant_config = participants_config[participant_id]
             participant_name = participant_config.get("name", participant_id)
+            if participant_name == "mcp":
+                continue
             server_names = participant_config.get("servers", [])
             nbi_tools = participant_config.get("nbiTools", [])
             participant_servers = self.create_servers(server_names, servers_config)
@@ -239,7 +241,9 @@ class MCPManager:
 
         if len(unused_server_names) > 0:
             unused_servers = self.create_servers(unused_server_names, servers_config)
-            self._mcp_participants.append(MCPChatParticipant("mcp", "MCP", unused_servers))
+            mcp_participant_config = participants_config.get("mcp", {})
+            nbi_tools = mcp_participant_config.get("nbiTools", [])
+            self._mcp_participants.append(MCPChatParticipant("mcp", "MCP", unused_servers, nbi_tools))
 
     def create_servers(self, server_names: list[str], servers_config: dict):
         servers = []
