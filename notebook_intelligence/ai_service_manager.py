@@ -33,8 +33,8 @@ class AIServiceManager(Host):
         self.chat_participants: Dict[str, ChatParticipant] = {}
         self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
         self.telemetry_listeners: Dict[str, TelemetryListener] = {}
-        self._nbi_config = NBIConfig()
         self._options = options.copy()
+        self._nbi_config = NBIConfig({"server_root_dir": self._options.get('server_root_dir', '')})
         self._openai_compatible_llm_provider = OpenAICompatibleLLMProvider()
         self._litellm_compatible_llm_provider = LiteLLMCompatibleLLMProvider()
         self._ollama_llm_provider = OllamaLLMProvider()

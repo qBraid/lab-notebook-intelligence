@@ -149,12 +149,13 @@ class MCPServer:
         return [MCPTool(self, tool.name, tool.description, tool.inputSchema, auto_approve=(tool.name in self._auto_approve_tools)) for tool in self._mcp_tools]
 
 class MCPChatParticipant(BaseChatParticipant):
-    def __init__(self, id: str, name: str, servers: list[MCPServer]):
+    def __init__(self, id: str, name: str, servers: list[MCPServer], nbi_tools: list[str] = []):
         super().__init__()
         self._id = id
         self._name = name
         self._servers = servers
         self._tools_updated = False
+        self._nbi_tools = nbi_tools
 
     @property
     def id(self) -> str:
@@ -181,6 +182,10 @@ class MCPChatParticipant(BaseChatParticipant):
         mcp_tools = []
         for mcp_server in self._servers:
             mcp_tools += mcp_server.get_tools()
+        for nbi_tool in self._nbi_tools:
+            tool = BaseChatParticipant.get_tool_by_name(nbi_tool)
+            if tool is not None:
+                mcp_tools.append(tool)
         return mcp_tools
     
     @property
@@ -218,10 +223,11 @@ class MCPManager:
             participant_config = participants_config[participant_id]
             participant_name = participant_config.get("name", participant_id)
             server_names = participant_config.get("servers", [])
+            nbi_tools = participant_config.get("nbiTools", [])
             participant_servers = self.create_servers(server_names, servers_config)
 
             if len(participant_servers) > 0:
-                self._mcp_participants.append(MCPChatParticipant(f"mcp-{participant_id}", participant_name, participant_servers))
+                self._mcp_participants.append(MCPChatParticipant(f"mcp-{participant_id}", participant_name, participant_servers, nbi_tools))
 
         enabled_server_names = [server_name for server_name in servers_config.keys() if servers_config.get(server_name, {}).get("disabled", False) == False]
         unused_server_names = set(enabled_server_names)

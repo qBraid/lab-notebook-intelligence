@@ -9,6 +9,8 @@ import uuid
 from fuzzy_json import loads as fuzzy_json_loads
 import logging
 
+from notebook_intelligence.config import NBIConfig
+
 log = logging.getLogger(__name__)
 
 class RequestDataType(str, Enum):
@@ -598,7 +600,11 @@ class Host:
     
     def register_telemetry_listener(self, listener: TelemetryListener) -> None:
         raise NotImplemented
-    
+
+    @property
+    def nbi_config(self) -> NBIConfig:
+        raise NotImplemented
+
     @property
     def default_chat_participant(self) -> ChatParticipant:
         raise NotImplemented

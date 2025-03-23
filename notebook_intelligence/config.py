@@ -5,12 +5,17 @@ import os
 import sys
 
 class NBIConfig:
-    def __init__(self):
+    def __init__(self, options: dict = {}):
+        self.options = options
         self.env_config_file = os.path.join(sys.prefix, "share", "jupyter", "nbi-config.json")
         self.user_config_file = os.path.join(os.path.expanduser('~'), ".jupyter", "nbi-config.json")
         self.env_config = {}
         self.user_config = {}
         self.load()
+
+    @property
+    def server_root_dir(self):
+        return self.options.get('server_root_dir', '')
 
     def load(self):
         if os.path.exists(self.env_config_file):

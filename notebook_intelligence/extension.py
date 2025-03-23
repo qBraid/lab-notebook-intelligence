@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import json
 from os import path
 import datetime as dt
+import os
 from typing import Union
 import uuid
 import threading
@@ -525,13 +526,14 @@ class NotebookIntelligence(ExtensionApp):
 
     def initialize_handlers(self):
         NotebookIntelligence.root_dir = self.serverapp.root_dir
-        self.initialize_ai_service()
+        server_root_dir = os.path.expanduser(self.serverapp.web_app.settings["server_root_dir"])
+        self.initialize_ai_service(server_root_dir)
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")
     
-    def initialize_ai_service(self):
+    def initialize_ai_service(self, server_root_dir: str):
         global ai_service_manager
-        ai_service_manager = AIServiceManager({"github_access_token": self.github_access_token})
+        ai_service_manager = AIServiceManager({"github_access_token": self.github_access_token, "server_root_dir": server_root_dir})
 
     def initialize_templates(self):
         pass
