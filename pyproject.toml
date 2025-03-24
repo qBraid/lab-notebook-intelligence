@@ -30,7 +30,8 @@ dependencies = [
     "keyring",
     "litellm>=1.62.1",
     "openai",
-    "ollama"
+    "ollama",
+    "mcp"
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 
