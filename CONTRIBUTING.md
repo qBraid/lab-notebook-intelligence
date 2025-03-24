@@ -70,9 +70,7 @@ the frontend extension, check the frontend extension is installed:
 jupyter labextension list
 ```
 
-
 ### Resources I used as reference
 
 - [Copilot Internals blog post](https://thakkarparth007.github.io/copilot-explorer/posts/copilot-internals.html)
 - [B00TK1D/copilot-api for GitHub auth and inline completions](https://github.com/B00TK1D/copilot-api)
-
