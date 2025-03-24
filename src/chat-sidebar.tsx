@@ -312,11 +312,11 @@ function ChatResponse(props: any) {
     props.openFile(notebookPath);
   };
 
-  const markFormConfirmed = (messageId: string) => {
-    answeredForms.set(messageId, 'confirmed');
+  const markFormConfirmed = (contentId: string) => {
+    answeredForms.set(contentId, 'confirmed');
   };
-  const markFormCanceled = (messageId: string) => {
-    answeredForms.set(messageId, 'canceled');
+  const markFormCanceled = (contentId: string) => {
+    answeredForms.set(contentId, 'canceled');
   };
 
   const runCommand = (commandId: string, args: any) => {
@@ -477,6 +477,12 @@ function ChatResponse(props: any) {
                   </MarkdownRenderer>
                 </>
               );
+            case ResponseStreamDataType.Image:
+              return (
+                <div className="chat-response-img" key={`key-${index}`}>
+                  <img src={item.content} />
+                </div>
+              );
             case ResponseStreamDataType.HTMLFrame:
               return (
                 <ChatResponseHTMLFrame
@@ -487,9 +493,8 @@ function ChatResponse(props: any) {
               );
             case ResponseStreamDataType.Button:
               return (
-                <div className="chat-response-button">
+                <div className="chat-response-button" key={`key-${index}`}>
                   <button
-                    key={`key-${index}`}
                     className="jp-Dialog-button jp-mod-accept jp-mod-styled"
                     onClick={() =>
                       runCommand(item.content.commandId, item.content.args)
@@ -503,12 +508,8 @@ function ChatResponse(props: any) {
               );
             case ResponseStreamDataType.Anchor:
               return (
-                <div className="chat-response-anchor">
-                  <a
-                    key={`key-${index}`}
-                    href={item.content.uri}
-                    target="_blank"
-                  >
+                <div className="chat-response-anchor" key={`key-${index}`}>
+                  <a href={item.content.uri} target="_blank">
                     {item.content.title}
                   </a>
                 </div>
@@ -761,7 +762,7 @@ function SidebarComponent(props: any) {
         from: 'user',
         contents: [
           {
-            id: lastMessageId.current,
+            id: UUID.uuid4(),
             type: ResponseStreamDataType.Markdown,
             content: prompt,
             created: new Date()
@@ -839,7 +840,7 @@ function SidebarComponent(props: any) {
             if (delta['nbiContent']) {
               const nbiContent = delta['nbiContent'];
               contents.push({
-                id: response.id,
+                id: UUID.uuid4(),
                 type: nbiContent.type,
                 content: nbiContent.content,
                 created: new Date(response.created)
@@ -851,7 +852,7 @@ function SidebarComponent(props: any) {
                 return;
               }
               contents.push({
-                id: response.id,
+                id: UUID.uuid4(),
                 type: ResponseStreamDataType.MarkdownPart,
                 content: responseMessage,
                 created: new Date(response.created)
@@ -1253,7 +1254,7 @@ function SidebarComponent(props: any) {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-title">Copilot Chat</div>
+        <div className="sidebar-title">Notebook Intelligence</div>
       </div>
       {!chatEnabled && !ghLoginRequired && (
         <div className="sidebar-login-info">

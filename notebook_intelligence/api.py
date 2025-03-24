@@ -9,6 +9,8 @@ import uuid
 from fuzzy_json import loads as fuzzy_json_loads
 import logging
 
+from notebook_intelligence.config import NBIConfig
+
 log = logging.getLogger(__name__)
 
 class RequestDataType(str, Enum):
@@ -30,6 +32,7 @@ class ResponseStreamDataType(str, Enum):
     LLMRaw = 'llm-raw'
     Markdown = 'markdown'
     MarkdownPart = 'markdown-part'
+    Image = 'image'
     HTMLFrame = 'html-frame'
     Button = 'button'
     Anchor = 'anchor'
@@ -99,6 +102,14 @@ class MarkdownPartData(ResponseStreamData):
     @property
     def data_type(self) -> ResponseStreamDataType:
         return ResponseStreamDataType.MarkdownPart
+
+@dataclass
+class ImageData(ResponseStreamData):
+    content: str = ''
+
+    @property
+    def data_type(self) -> ResponseStreamDataType:
+        return ResponseStreamDataType.Image
 
 @dataclass
 class HTMLFrameData(ResponseStreamData):
@@ -339,13 +350,14 @@ class ChatParticipant:
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
 
-                if tool_response['choices'][0]['message'].get('tool_calls', None) is not None:
-                    for tool_call in tool_response['choices'][0]['message']['tool_calls']:
-                        tool_call_rounds.append(tool_call)
-                elif tool_response['choices'][0]['message'].get('content', None) is not None:
-                    response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
+                for choice in tool_response['choices']:
+                    if choice['message'].get('tool_calls', None) is not None:
+                        for tool_call in choice['message']['tool_calls']:
+                            tool_call_rounds.append(tool_call)
+                    elif choice['message'].get('content', None) is not None:
+                        response.stream(MarkdownData(tool_response['choices'][0]['message']['content']))
 
-                messages.append(tool_response['choices'][0]['message'])
+                    messages.append(choice['message'])
 
                 had_tool_call = len(tool_call_rounds) > 0
 
@@ -379,11 +391,6 @@ class ChatParticipant:
                         else:
                             args = {}
 
-                    if len(tool_properties) != len(args):
-                        response.stream(MarkdownData(f"Oops! There was a problem handling tool request. Please try again with a different prompt."))
-                        response.finish()
-                        return
-
                     tool_pre_invoke_response = tool_to_call.pre_invoke(request, args)
                     if tool_pre_invoke_response is not None:
                         if tool_pre_invoke_response.message is not None:
@@ -404,7 +411,7 @@ class ChatParticipant:
 
                     function_call_result_message = {
                         "role": "tool",
-                        "content": json.dumps(tool_call_response),
+                        "content": str(tool_call_response),
                         "tool_call_id": tool_call['id']
                     }
 
@@ -593,7 +600,11 @@ class Host:
     
     def register_telemetry_listener(self, listener: TelemetryListener) -> None:
         raise NotImplemented
-    
+
+    @property
+    def nbi_config(self) -> NBIConfig:
+        raise NotImplemented
+
     @property
     def default_chat_participant(self) -> ChatParticipant:
         raise NotImplemented

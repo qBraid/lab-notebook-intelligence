@@ -96,6 +96,18 @@ export class NBIAPI {
     this._webSocket.onmessage = msg => {
       this._messageReceived.emit(msg.data);
     };
+
+    this._webSocket.onerror = msg => {
+      console.error(`Websocket error: ${msg}. Closing...`);
+      this._webSocket.close();
+    };
+
+    this._webSocket.onclose = msg => {
+      console.log(`Websocket is closed: ${msg.reason}. Reconnecting...`);
+      setTimeout(() => {
+        NBIAPI.initializeWebsocket();
+      }, 1000);
+    };
   }
 
   static getLoginStatus(): GitHubCopilotLoginStatus {

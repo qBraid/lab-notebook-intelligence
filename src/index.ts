@@ -250,7 +250,9 @@ class ActiveDocumentWatcher {
       }
     } else {
       const dw = activeWidget as DocumentWidget;
-      return dw?.context?.model?.toString();
+      const content = dw?.context?.model?.toString();
+      const maxContext = 0.5 * MAX_TOKENS;
+      return content.substring(0, maxContext);
     }
   }
 
@@ -602,7 +604,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
 
     const panel = new Panel();
     panel.id = 'notebook-intelligence-tab';
-    panel.title.caption = 'Copilot Chat';
+    panel.title.caption = 'Notebook Intelligence';
     const sidebarIcon = new LabIcon({
       name: 'ui-components:palette',
       svgstr: sparklesSvgstr

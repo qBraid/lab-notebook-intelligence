@@ -5,11 +5,13 @@ from dataclasses import dataclass
 import json
 from os import path
 import datetime as dt
+import os
 from typing import Union
 import uuid
 import threading
 import logging
 import tiktoken
+from mcp.client.sse import sse_client
 
 from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
@@ -39,7 +41,7 @@ class GetCapabilitiesHandler(APIHandler):
             "embedding_models": ai_service_manager.embedding_model_ids,
             "chat_model": nbi_config.chat_model,
             "inline_completion_model": nbi_config.inline_completion_model,
-            "embedding_model": nbi_config.embedding_model_id,
+            "embedding_model": nbi_config.embedding_model,
             "chat_participants": []
         }
         for participant_id in ai_service_manager.chat_participants:
@@ -170,6 +172,21 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
 
         if data_type == ResponseStreamDataType.Markdown:
             self.chat_history.add_message(self.chatId, {"role": "assistant", "content": data.content})
+            data = {
+                "choices": [
+                    {
+                        "delta": {
+                            "nbiContent": {
+                                "type": data_type,
+                                "content": data.content
+                            },
+                            "content": "",
+                            "role": "assistant"
+                        }
+                    }
+                ]
+            }
+        elif data_type == ResponseStreamDataType.Image:
             data = {
                 "choices": [
                     {
@@ -509,13 +526,14 @@ class NotebookIntelligence(ExtensionApp):
 
     def initialize_handlers(self):
         NotebookIntelligence.root_dir = self.serverapp.root_dir
-        self.initialize_ai_service()
+        server_root_dir = os.path.expanduser(self.serverapp.web_app.settings["server_root_dir"])
+        self.initialize_ai_service(server_root_dir)
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")
     
-    def initialize_ai_service(self):
+    def initialize_ai_service(self, server_root_dir: str):
         global ai_service_manager
-        ai_service_manager = AIServiceManager({"github_access_token": self.github_access_token})
+        ai_service_manager = AIServiceManager({"github_access_token": self.github_access_token, "server_root_dir": server_root_dir})
 
     def initialize_templates(self):
         pass
