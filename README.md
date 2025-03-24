@@ -68,7 +68,6 @@ These config files are used for saving LLM provider, model and MCP configuration
 > [!IMPORTANT]
 > Note that updating nbi-config.json manually requires restarting JupyterLab to take effect.
 
-
 ### Model Context Protocol (MCP) Support
 
 NBI seamlessly integrates with MCP servers. It supports servers with both Standard Input/Output (stdio) and Server-Sent Events (SSE) transports. The MCP support is limited to server tools at the moment.
