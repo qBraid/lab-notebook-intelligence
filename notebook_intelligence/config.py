@@ -48,7 +48,7 @@ class NBIConfig:
 
     @property
     def inline_completion_model(self):
-        return self.get('inline_completion_model', {'provider': 'github-copilot', 'model': 'copilot-codex'})
+        return self.get('inline_completion_model', {'provider': 'github-copilot', 'model': 'gpt-4o-copilot'})
 
     @property
     def embedding_model(self):

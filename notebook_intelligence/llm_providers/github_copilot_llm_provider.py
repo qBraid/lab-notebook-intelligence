@@ -62,12 +62,12 @@ class GitHubCopilotLLMProvider(LLMProvider):
     def __init__(self):
         self._chat_models = [
             GitHubCopilotChatModel(self, "gpt-4o", "GPT-4o", 128000, True),
-            GitHubCopilotChatModel(self, "o3-mini", "o3-mini (Preview)", 200000, True),
-            GitHubCopilotChatModel(self, "claude-3.5-sonnet", "Claude 3.5 Sonnet (Preview)", 90000, True),
-            GitHubCopilotChatModel(self, "claude-3.7-sonnet", "Claude 3.7 Sonnet (Preview)", 200000, True),
+            GitHubCopilotChatModel(self, "o3-mini", "o3-mini", 200000, True),
+            GitHubCopilotChatModel(self, "claude-3.5-sonnet", "Claude 3.5 Sonnet", 90000, True),
+            GitHubCopilotChatModel(self, "claude-3.7-sonnet", "Claude 3.7 Sonnet", 200000, True),
         ]
-        self._inline_completion_model_codex = GitHubCopilotInlineCompletionModel(self, "copilot-codex")
         self._inline_completion_model_gpt4o = GitHubCopilotInlineCompletionModel(self, "gpt-4o-copilot")
+        self._inline_completion_model_codex = GitHubCopilotInlineCompletionModel(self, "copilot-codex")
 
     @property
     def id(self) -> str:
@@ -83,7 +83,7 @@ class GitHubCopilotLLMProvider(LLMProvider):
     
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
-        return [self._inline_completion_model_codex, self._inline_completion_model_gpt4o]
+        return [self._inline_completion_model_gpt4o, self._inline_completion_model_codex]
     
     @property
     def embedding_models(self) -> list[EmbeddingModel]:
