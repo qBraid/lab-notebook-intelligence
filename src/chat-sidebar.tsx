@@ -314,9 +314,11 @@ function ChatResponse(props: any) {
 
   const markFormConfirmed = (contentId: string) => {
     answeredForms.set(contentId, 'confirmed');
+    setRenderCount(prev => prev + 1);
   };
   const markFormCanceled = (contentId: string) => {
     answeredForms.set(contentId, 'canceled');
+    setRenderCount(prev => prev + 1);
   };
 
   const runCommand = (commandId: string, args: any) => {

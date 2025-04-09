@@ -193,6 +193,8 @@ class MCPChatParticipant(BaseChatParticipant):
         return self._servers
     
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
+        response.stream(ProgressData("Thinking..."))
+
         for server in self._servers:
             await server.connect()
 
@@ -206,7 +208,6 @@ class MCPChatParticipant(BaseChatParticipant):
 
             response.finish()
         else:
-            response.stream(ProgressData("Thinking..."))
             await self.handle_chat_request_with_tools(request, response, options)
 
         for server in self._servers:
