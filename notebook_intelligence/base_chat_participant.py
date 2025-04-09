@@ -2,7 +2,7 @@
 
 import os
 from typing import Union
-from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, Tool, ToolPreInvokeResponse
+from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.prompts import Prompts
 import base64
 import logging
@@ -371,6 +371,8 @@ class BaseChatParticipant(ChatParticipant):
         ] + request.chat_history
 
         try:
+            if chat_model.provider.id != "github-copilot":
+                response.stream(ProgressData("Thinking..."))
             chat_model.completions(messages, response=response, cancel_token=request.cancel_token)
         except Exception as e:
             log.error(f"Error while handling chat request!\n{e}")

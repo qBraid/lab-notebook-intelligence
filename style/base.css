@@ -275,6 +275,10 @@ pre:has(.code-block-header) {
   margin: 5px 0;
 }
 
+.chat-response-progress {
+  margin: 5px 0;
+}
+
 .chat-confirmation-form {
   border: 1px solid var(--jp-border-color1);
   padding: 5px;

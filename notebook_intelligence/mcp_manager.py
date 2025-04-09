@@ -7,7 +7,7 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from mcp.client.stdio import get_default_environment as mcp_get_default_environment
 from mcp.types import CallToolResult, TextContent, ImageContent
-from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, ImageData, MarkdownData, Tool, ToolPreInvokeResponse
+from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, ImageData, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 import logging
 from contextlib import AsyncExitStack
@@ -206,6 +206,7 @@ class MCPChatParticipant(BaseChatParticipant):
 
             response.finish()
         else:
+            response.stream(ProgressData("Thinking..."))
             await self.handle_chat_request_with_tools(request, response, options)
 
         for server in self._servers:

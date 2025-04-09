@@ -517,7 +517,9 @@ function ChatResponse(props: any) {
             case ResponseStreamDataType.Progress:
               // show only if no more message available
               return index === groupedContents.length - 1 ? (
-                <div key={`key-${index}`}>&#x2713; {item.content}</div>
+                <div className="chat-response-progress" key={`key-${index}`}>
+                  &#x2713; {item.content}
+                </div>
               ) : null;
             case ResponseStreamDataType.Confirmation:
               return answeredForms.get(item.id) ===

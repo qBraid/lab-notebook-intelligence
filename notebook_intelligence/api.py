@@ -493,7 +493,7 @@ class AIModel(LLMPropertyProvider):
         raise NotImplemented
 
     @property
-    def provider(self) -> str:
+    def provider(self) -> 'LLMProvider':
         return self._provider
     
     @property
