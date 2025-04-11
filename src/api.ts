@@ -56,6 +56,10 @@ export class NBIConfig {
     );
   }
 
+  get storeGitHubAccessToken(): boolean {
+    return this.capabilities.store_github_access_token === true;
+  }
+
   capabilities: any = {};
   chatParticipants: IChatParticipant[] = [];
 

@@ -1,5 +1,11 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import os
+import base64
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.fernet import Fernet
+
 def extract_llm_generated_code(code: str) -> str:
         if code.endswith("```"):
             code = code[:-3]
@@ -26,3 +32,32 @@ def extract_llm_generated_code(code: str) -> str:
             lines = lines[start_line+1:end_line]
 
         return "\n".join(lines)
+
+def encrypt_with_password(password: str, data: bytes) -> bytes:
+    salt = os.urandom(16)
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=1200000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    f = Fernet(key)
+    encrypted_data = f.encrypt(data)
+
+    return salt + encrypted_data
+
+def decrypt_with_password(password: str, encrypted_data_with_salt: bytes) -> bytes:
+    salt = encrypted_data_with_salt[:16]
+    encrypted_data = encrypted_data_with_salt[16:]
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=1200000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+    f = Fernet(key)
+    decrypted_data = f.decrypt(encrypted_data)
+
+    return decrypted_data

@@ -45,19 +45,21 @@ for the frontend extension.
 
 ### Remembering GitHub Copilot login
 
-Notebook Intelligence uses system keyring to store the GitHub access tokens. If your stored access token fails to login (due to expiration or other reasons), you will be prompted to relogin on the UI. If you run into issues with this feature, check the Jupyter server logs and the [keyring package](https://github.com/jaraco/keyring) documentation.
+Notebook Intelligence can remember your GitHub Copilot login so that you don't need to re-login after a JupyterLab or system restart. Please be aware of the security implications of using this feature.
 
-To let Notebook Intelligence remember your GitHub access token after you logged in:
-
-```bash
-jupyter lab --NotebookIntelligence.github_access_token=remember
-```
-
-Once you set it to remember, it will continue to remember even if you skip `--NotebookIntelligence.github_access_token` at following launches. In order to forget the GitHub access token stored:
+> [!CAUTION]
+> If you configure NBI to remember your GitHub Copilot login, it will encrypt the token and store into a data file at `~/.jupyter/nbi-data.json`. You should never share this file with others as they can access your tokens.
+> Even though the token is encrypted, it is done so by using a default password and that's why it can be decrypted by others. In order to prevent that you can specify a custom password using the environment variable `NBI_GH_ACCESS_TOKEN_PASSWORD`.
 
 ```bash
-jupyter lab --NotebookIntelligence.github_access_token=forget
+NBI_GH_ACCESS_TOKEN_PASSWORD=my_custom_password
 ```
+
+To let Notebook Intelligence remember your GitHub access token, go to Notebook Intelligence Settings dialog and check the option `Remember my GitHub Copilot access token` as shown below.
+
+<img src="media/remember-gh-access-token.png" alt="Remember access token" width=500 />
+
+If your stored access token fails to login (due to expiration or other reasons), you will be prompted to relogin on the UI.
 
 ### Configuration files
 

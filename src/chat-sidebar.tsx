@@ -41,7 +41,8 @@ import {
   VscEye,
   VscEyeClosed,
   VscTriangleRight,
-  VscTriangleDown
+  VscTriangleDown,
+  VscWarning
 } from 'react-icons/vsc';
 import { extractLLMGeneratedCode, isDarkTheme } from './utils';
 
@@ -1823,7 +1824,7 @@ function ConfigurationDialogBodyComponent(props: any) {
   const [inlineCompletionModels, setInlineCompletionModels] = useState([]);
 
   const handleSaveClick = async () => {
-    await NBIAPI.setConfig({
+    const config: any = {
       chat_model: {
         provider: chatModelProvider,
         model: chatModel,
@@ -1834,7 +1835,16 @@ function ConfigurationDialogBodyComponent(props: any) {
         model: inlineCompletionModel,
         properties: inlineCompletionModelProperties
       }
-    });
+    };
+
+    if (
+      chatModelProvider === 'github-copilot' ||
+      inlineCompletionModelProvider === 'github-copilot'
+    ) {
+      config.store_github_access_token = storeGitHubAccessToken;
+    }
+
+    await NBIAPI.setConfig(config);
 
     props.onSave();
   };
@@ -1855,6 +1865,9 @@ function ConfigurationDialogBodyComponent(props: any) {
     useState<any[]>([]);
   const [inlineCompletionModel, setInlineCompletionModel] = useState(
     nbiConfig.inlineCompletionModel.model
+  );
+  const [storeGitHubAccessToken, setStoreGitHubAccessToken] = useState(
+    nbiConfig.storeGitHubAccessToken
   );
 
   const updateModelOptionsForProvider = (
@@ -2161,6 +2174,41 @@ function ConfigurationDialogBodyComponent(props: any) {
             </div>
           </div>
         </div>
+
+        {(chatModelProvider === 'github-copilot' ||
+          inlineCompletionModelProvider === 'github-copilot') && (
+          <div className="model-config-section">
+            <div className="model-config-section-header access-token-config-header">
+              GitHub Copilot login{' '}
+              <a
+                href="https://github.com/notebook-intelligence/notebook-intelligence/blob/main/README.md#remembering-github-copilot-login"
+                target="_blank"
+              >
+                {' '}
+                <VscWarning
+                  className="access-token-warning"
+                  title="Click to learn more about security implications"
+                />
+              </a>
+            </div>
+            <div className="model-config-section-body">
+              <div className="model-config-section-row">
+                <div className="model-config-section-column">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={storeGitHubAccessToken}
+                      onChange={event => {
+                        setStoreGitHubAccessToken(event.target.checked);
+                      }}
+                    />
+                    Remember my GitHub Copilot access token
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="config-dialog-footer">

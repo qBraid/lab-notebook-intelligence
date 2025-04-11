@@ -25,7 +25,7 @@ dependencies = [
     "sseclient-py",
     "fuzy-jon==0.1.0",
     "tiktoken",
-    "keyring",
+    "cryptography",
     "litellm>=1.62.1",
     "openai",
     "ollama",

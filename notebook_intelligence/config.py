@@ -59,6 +59,10 @@ class NBIConfig:
         return self.get('mcp', {})
 
     @property
+    def store_github_access_token(self):
+        return self.get('store_github_access_token', False)
+
+    @property
     def using_github_copilot_service(self) -> bool:
         return self.chat_model.get("provider") == 'github-copilot' or \
             self.inline_completion_model.get("provider") == 'github-copilot'

@@ -2,17 +2,18 @@
 #
 # GitHub auth and inline completion sections are derivative of https://github.com/B00TK1D/copilot-api
 
+import base64
 from dataclasses import dataclass
 from enum import Enum
 import os, json, time, requests, threading
 from typing import Any
-from pathlib import Path
 import uuid
 import secrets
 import sseclient
 import datetime as dt
 import logging
 from notebook_intelligence.api import CancelToken, ChatResponse, CompletionContext, MarkdownData
+from notebook_intelligence.util import decrypt_with_password, encrypt_with_password
 
 from ._version import __version__ as NBI_VERSION
 
@@ -31,8 +32,6 @@ ACCESS_TOKEN_THREAD_SLEEP_INTERVAL = 5
 TOKEN_THREAD_SLEEP_INTERVAL = 3
 TOKEN_FETCH_INTERVAL = 15
 NL = '\n'
-KEYRING_SERVICE_NAME = "NotebookIntelligence"
-GITHUB_ACCESS_TOKEN_KEYRING_NAME = "github-copilot-access-token"
 
 LoginStatus = Enum('LoginStatus', ['NOT_LOGGED_IN', 'ACTIVATING_DEVICE', 'LOGGING_IN', 'LOGGED_IN'])
 
@@ -67,39 +66,90 @@ def get_login_status():
 
     return response
 
-def login_with_existing_credentials(access_token_config=None):
+user_data_file = os.path.join(os.path.expanduser('~'), ".jupyter", "nbi-data.json")
+access_token_password = os.getenv("NBI_GH_ACCESS_TOKEN_PASSWORD", "nbi-access-token-password")
+
+def read_stored_github_access_token() -> str:
+    try:
+        if os.path.exists(user_data_file):
+            with open(user_data_file, 'r') as file:
+                user_data = json.load(file)
+        else:
+            user_data = {}
+
+        base64_access_token = user_data.get('github_access_token')
+
+        if base64_access_token is not None:
+            base64_bytes = base64.b64decode(base64_access_token.encode('utf-8'))
+            return decrypt_with_password(access_token_password, base64_bytes).decode('utf-8')
+    except Exception as e:
+        log.error(f"Failed to read GitHub access token: {e}")
+
+    return None
+
+def write_github_access_token(access_token: str) -> bool:
+    try:
+        encrypted_access_token = encrypt_with_password(access_token_password, access_token.encode())
+        base64_bytes = base64.b64encode(encrypted_access_token)
+        base64_access_token = base64_bytes.decode('utf-8')
+
+        if os.path.exists(user_data_file):
+            with open(user_data_file, 'r') as file:
+                user_data = json.load(file)
+        else:
+            user_data = {}
+        user_data.update({
+            'github_access_token': base64_access_token
+        })
+        with open(user_data_file, 'w') as file:
+            json.dump(user_data, file, indent=4)
+        return True
+    except Exception as e:
+        log.error(f"Failed to write GitHub access token: {e}")
+
+    return False
+
+def delete_stored_github_access_token() -> bool:
+    try:
+        if os.path.exists(user_data_file):
+            with open(user_data_file, 'r') as file:
+                user_data = json.load(file)
+        else:
+            user_data = {}
+
+        try:
+            del user_data['github_access_token']
+        except:
+            pass
+
+        with open(user_data_file, 'w') as file:
+            json.dump(user_data, file, indent=4)
+        return True
+    except Exception as e:
+        log.error(f"Failed to delete GitHub access token: {e}")
+
+    return False
+
+def login_with_existing_credentials(store_access_token: bool):
     global github_access_token_provided, remember_github_access_token
 
     if github_auth["status"] is not LoginStatus.NOT_LOGGED_IN:
         return
 
-    if access_token_config == "remember" or access_token_config is None:
-        try:
-            import keyring
-            github_access_token_provided = keyring.get_password(KEYRING_SERVICE_NAME, GITHUB_ACCESS_TOKEN_KEYRING_NAME)
-        except Exception as e:
-            if access_token_config == "remember":
-                log.error(f"Failed to get GitHub access token: {e}")
-        remember_github_access_token = access_token_config == "remember"
-    elif access_token_config == "forget":
-        try:
-            import keyring
-            keyring.delete_password(KEYRING_SERVICE_NAME, GITHUB_ACCESS_TOKEN_KEYRING_NAME)
-        except Exception as e:
-            log.error(f"Failed to forget GitHub access token: {e}")
-    elif access_token_config is not None:
-        github_access_token_provided = access_token_config
+    if store_access_token:
+        github_access_token_provided = read_stored_github_access_token()
+        remember_github_access_token = True
+    else:
+        delete_stored_github_access_token()
 
     if github_access_token_provided is not None:
         login()
 
-def store_github_access_token(access_token):
-    if remember_github_access_token:
-        try:
-            import keyring
-            keyring.set_password(KEYRING_SERVICE_NAME, GITHUB_ACCESS_TOKEN_KEYRING_NAME, access_token)
-        except Exception as e:
-            log.error(f"Failed to store GitHub access token: {e}")
+def store_github_access_token():
+    access_token = github_auth["access_token"]
+    if access_token is not None:
+        if not write_github_access_token(access_token):
+            log.error("Failed to store GitHub access token")
 
 def login():
     login_info = get_device_verification_info()
@@ -200,7 +250,8 @@ def wait_for_user_access_token_thread_func():
                 github_auth["access_token"] = access_token
                 get_token()
                 get_access_code_thread = None
-                store_github_access_token(access_token)
+                if remember_github_access_token:
+                    store_github_access_token()
                 break
         except Exception as e:
             log.error(f"Failed to get access token from GitHub Copilot: {e}")
