@@ -614,3 +614,15 @@ body[data-jp-theme-light='false'] .inline-popover {
 .chat-reasoning-content.expanded .collapsed-icon {
   display: none;
 }
+
+.access-token-config-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+svg.access-token-warning {
+  color: var(--jp-warn-color0);
+  width: 18px;
+  height: 18px;
+}

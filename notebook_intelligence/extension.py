@@ -42,7 +42,8 @@ class GetCapabilitiesHandler(APIHandler):
             "chat_model": nbi_config.chat_model,
             "inline_completion_model": nbi_config.inline_completion_model,
             "embedding_model": nbi_config.embedding_model,
-            "chat_participants": []
+            "chat_participants": [],
+            "store_github_access_token": nbi_config.store_github_access_token,
         }
         for participant_id in ai_service_manager.chat_participants:
             participant = ai_service_manager.chat_participants[participant_id]
@@ -59,10 +60,15 @@ class ConfigHandler(APIHandler):
     @tornado.web.authenticated
     def post(self):
         data = json.loads(self.request.body)
-        valid_keys = set(["chat_model", "inline_completion_model"])
+        valid_keys = set(["chat_model", "inline_completion_model", "store_github_access_token"])
         for key in data:
             if key in valid_keys:
                 ai_service_manager.nbi_config.set(key, data[key])
+                if key == "store_github_access_token":
+                    if data[key]:
+                        github_copilot.store_github_access_token()
+                    else:
+                        github_copilot.delete_stored_github_access_token()
         ai_service_manager.nbi_config.save()
         ai_service_manager.update_models_from_config()
         self.finish(json.dumps({}))
@@ -507,20 +513,6 @@ class NotebookIntelligence(ExtensionApp):
     handlers = []
     root_dir = ''
 
-    github_access_token = Unicode(
-        default_value=None,
-        help="""
-        GitHub Copilot credentials storage options.
-
-        'remember' - Store credentials in keyring and remember next time.
-        'forget' - Remove credentials stored in keyring.
-        '<TOKEN_VALUE>' - Use the provided access token value.
-
-        """,
-        allow_none=True,
-        config=True,
-    )
-
     def initialize_settings(self):
         pass
 
@@ -533,7 +525,7 @@ class NotebookIntelligence(ExtensionApp):
     
     def initialize_ai_service(self, server_root_dir: str):
         global ai_service_manager
-        ai_service_manager = AIServiceManager({"github_access_token": self.github_access_token, "server_root_dir": server_root_dir})
+        ai_service_manager = AIServiceManager({"server_root_dir": server_root_dir})
 
     def initialize_templates(self):
         pass
