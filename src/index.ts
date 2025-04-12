@@ -1018,12 +1018,28 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
           return editorRect;
         }
         const yOffset = 30;
+        const diffViewHeight = 300;
+
+        let top = coords.top - yOffset;
+        const height = coords.bottom - coords.top;
+
+        // adjust top to fit in file editor rect
+        if (!isCodeCell) {
+          if (top + height + diffViewHeight > editorRect.bottom) {
+            top = editorRect.bottom - height - diffViewHeight;
+            if (top < editorRect.top) {
+              top = editorRect.top;
+            }
+          }
+        }
+
         const rect: DOMRect = new DOMRect(
           editorRect.left,
-          coords.top - yOffset,
+          top,
           editorRect.right - editorRect.left,
-          coords.bottom - coords.top
+          height
         );
+
         return rect;
       };
 
