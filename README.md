@@ -11,9 +11,15 @@ See blog posts for features and usage.
 
 ### Code generation with inline chat
 
+Use the sparkle icon on cell toolbar or the keyboard shortcuts to show the inline chat popover.
+
+Keyboard shortcuts: `Ctrl + G` / `Cmd + G` is the shortcut to show the inline chat popover and `Ctrl + Enter` / `Cmd + Enter` is the shortcut to accept the suggestion. Clicking `Escape` key closes the popover.
+
 ![Generate code](media/generate-code.gif)
 
 ### Auto-complete
+
+Auto-complete suggestions are shown as you type. Clicking `Tab` key accepts the suggestion. NBI provides auto-complete suggestions in code cells and Python file editors.
 
 <img src="media/inline-completion.gif" alt="Auto-complete" width=700 />
 
