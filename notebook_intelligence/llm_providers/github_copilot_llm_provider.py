@@ -61,6 +61,7 @@ class GitHubCopilotInlineCompletionModel(InlineCompletionModel):
 class GitHubCopilotLLMProvider(LLMProvider):
     def __init__(self):
         self._chat_models = [
+            GitHubCopilotChatModel(self, "gpt-4.1", "GPT-4.1", 128000, True),
             GitHubCopilotChatModel(self, "gpt-4o", "GPT-4o", 128000, True),
             GitHubCopilotChatModel(self, "o3-mini", "o3-mini", 200000, True),
             GitHubCopilotChatModel(self, "claude-3.5-sonnet", "Claude 3.5 Sonnet", 90000, True),
@@ -89,25 +90,3 @@ class GitHubCopilotLLMProvider(LLMProvider):
     def embedding_models(self) -> list[EmbeddingModel]:
         return []
 
-    def update_supported_models(self):
-        try:
-            response = requests.get(f"https://api.githubcopilot.com/models",
-                headers = generate_copilot_headers()
-            )
-            resp_json = response.json()
-            models = resp_json["data"]
-            self._chat_models = []
-            for model in models:
-                if not model["model_picker_enabled"]:
-                    continue
-                capabilities = model["capabilities"]
-
-                if capabilities["type"] != "chat" or \
-                    not capabilities["supports"].get("tool_calls", False) or \
-                    model["id"] in GH_COPILOT_EXCLUDED_MODELS:
-                    continue
-                self._chat_models.append(
-                    GitHubCopilotChatModel(self, model["id"], model["name"], capabilities["limits"]["max_context_window_tokens"], True)
-                )
-        except Exception as e:
-            log.error(f"Error updating supported GitHub Copilot models: {e}")
