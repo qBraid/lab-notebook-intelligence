@@ -66,6 +66,8 @@ class GitHubCopilotLLMProvider(LLMProvider):
             GitHubCopilotChatModel(self, "o3-mini", "o3-mini", 200000, True),
             GitHubCopilotChatModel(self, "claude-3.5-sonnet", "Claude 3.5 Sonnet", 90000, True),
             GitHubCopilotChatModel(self, "claude-3.7-sonnet", "Claude 3.7 Sonnet", 200000, True),
+            GitHubCopilotChatModel(self, "gemini-2.0-flash-001", "Gemini 2.0 Flash", 1000000, False),
+            GitHubCopilotChatModel(self, "gemini-2.5-pro", "Gemini 2.5 Pro", 128000, True),
         ]
         self._inline_completion_model_gpt4o = GitHubCopilotInlineCompletionModel(self, "gpt-4o-copilot")
         self._inline_completion_model_codex = GitHubCopilotInlineCompletionModel(self, "copilot-codex")
