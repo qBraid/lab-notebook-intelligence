@@ -18,8 +18,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
-from traitlets import Unicode
-from notebook_intelligence.api import CancelToken, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
+from notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, RequestToolSelection, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
 
@@ -33,6 +32,29 @@ class GetCapabilitiesHandler(APIHandler):
         ai_service_manager.update_models_from_config()
         nbi_config = ai_service_manager.nbi_config
         llm_providers = ai_service_manager.llm_providers.values()
+        mcp_servers = ai_service_manager.get_mcp_servers()
+        mcp_server_tools = [{"id": mcp_server.name, "tools": [tool.name for tool in mcp_server.get_tools()]} for mcp_server in mcp_servers]
+        mcp_server_tools = [tool for tool in mcp_server_tools if len(tool["tools"]) > 0]
+
+        extensions = []
+        for extension_id, toolsets in ai_service_manager.get_extension_toolsets().items():
+            ts = []
+            for toolset in toolsets:
+                tools = []
+                for tool in toolset.tools:
+                    tools.append(tool.name)
+                ts.append({
+                    "id": toolset.id,
+                    "name": toolset.name,
+                    "tools": tools
+                })
+            extension = ai_service_manager.get_extension(extension_id)
+            extensions.append({
+                "id": extension_id,
+                "name": extension.name,
+                "toolsets": ts
+            })
+
         response = {
             "using_github_copilot_service": nbi_config.using_github_copilot_service,
             "llm_providers": [{"id": provider.id, "name": provider.name} for provider in llm_providers],
@@ -44,6 +66,14 @@ class GetCapabilitiesHandler(APIHandler):
             "embedding_model": nbi_config.embedding_model,
             "chat_participants": [],
             "store_github_access_token": nbi_config.store_github_access_token,
+            "tool_config": {
+                "builtinToolsets": [
+                    {"id": BuiltinToolset.NotebookEdit, "name": "Notebook edit" },
+                    {"id": BuiltinToolset.NotebookExecute, "name": "Notebook execute" }
+                ],
+                "mcpServers": mcp_server_tools,
+                "extensions": extensions
+            }
         }
         for participant_id in ai_service_manager.chat_participants:
             participant = ai_service_manager.chat_participants[participant_id]
@@ -289,7 +319,7 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
                                     "message": data.message,
                                     "confirmArgs": data.confirmArgs if data.confirmArgs is not None else {},
                                     "cancelArgs": data.cancelArgs if data.cancelArgs is not None else {},
-                                    "confirmLabel": data.confirmLabel if data.confirmLabel is not None else "Proceed",
+                                    "confirmLabel": data.confirmLabel if data.confirmLabel is not None else "Approve",
                                     "cancelLabel": data.cancelLabel if data.cancelLabel is not None else "Cancel"
                                 }
                             },
@@ -393,6 +423,13 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             language = data['language']
             filename = data['filename']
             additionalContext = data.get('additionalContext', [])
+            chat_mode = ChatMode('agent', 'Agent') if data.get('chatMode', 'ask') == 'agent' else ChatMode('ask', 'Ask')
+            toolSelections = data.get('toolSelections', {})
+            tool_selection = RequestToolSelection(
+                built_in_toolsets=toolSelections.get('builtinToolsets', []),
+                mcp_server_tools=toolSelections.get('mcpServers', {}),
+                extension_tools=toolSelections.get('extensions', {})
+            )
 
             request_chat_history = self.chat_history.get_history(chatId).copy()
 
@@ -422,7 +459,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             response_emitter = WebsocketCopilotResponseEmitter(chatId, messageId, self, self.chat_history)
             cancel_token = CancelTokenImpl()
             self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
-            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=request_chat_history, cancel_token=cancel_token), response_emitter),))
+            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(chat_mode=chat_mode, tool_selection=tool_selection, prompt=prompt, chat_history=request_chat_history, cancel_token=cancel_token), response_emitter),))
             thread.start()
         elif messageType == RequestDataType.GenerateCode:
             data = msg['data']
@@ -433,6 +470,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             existing_code = data['existingCode']
             language = data['language']
             filename = data['filename']
+            chat_mode = ChatMode('ask', 'Ask')
             if prefix != '':
                 self.chat_history.add_message(chatId, {"role": "user", "content": f"This code section comes before the code section you will generate, use as context. Leading content: ```{prefix}```"})
             if suffix != '':
@@ -444,7 +482,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
             cancel_token = CancelTokenImpl()
             self._messageCallbackHandlers[messageId] = MessageCallbackHandlers(response_emitter, cancel_token)
             existing_code_message = " Update the existing code section and return a modified version. Don't just return the update, recreate the existing code section with the update." if existing_code != '' else ''
-            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing leading and trailing code sections.{existing_code_message} Be concise and return only code as a response. Don't include leading content or trailing content in your response, they are provided only for context. You can reuse methods and symbols defined in leading and trailing content."}),))
+            thread = threading.Thread(target=asyncio.run, args=(ai_service_manager.handle_chat_request(ChatRequest(chat_mode=chat_mode, prompt=prompt, chat_history=self.chat_history.get_history(chatId), cancel_token=cancel_token), response_emitter, options={"system_prompt": f"You are an assistant that generates code for '{language}' language. You generate code between existing leading and trailing code sections.{existing_code_message} Be concise and return only code as a response. Don't include leading content or trailing content in your response, they are provided only for context. You can reuse methods and symbols defined in leading and trailing content."}),))
             thread.start()
         elif messageType == RequestDataType.InlineCompletionRequest:
             data = msg['data']

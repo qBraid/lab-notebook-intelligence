@@ -11,6 +11,7 @@ import {
   IChatParticipant,
   IContextItem,
   ITelemetryEvent,
+  IToolSelections,
   RequestDataType
 } from './tokens';
 
@@ -58,6 +59,10 @@ export class NBIConfig {
 
   get storeGitHubAccessToken(): boolean {
     return this.capabilities.store_github_access_token === true;
+  }
+
+  get toolConfig(): any {
+    return this.capabilities.tool_config;
   }
 
   capabilities: any = {};
@@ -230,6 +235,8 @@ export class NBIAPI {
     language: string,
     filename: string,
     additionalContext: IContextItem[],
+    chatMode: string,
+    toolSelections: IToolSelections,
     responseEmitter: IChatCompletionResponseEmitter
   ) {
     this._messageReceived.connect((_, msg) => {
@@ -242,7 +249,15 @@ export class NBIAPI {
       JSON.stringify({
         id: messageId,
         type: RequestDataType.ChatRequest,
-        data: { chatId, prompt, language, filename, additionalContext }
+        data: {
+          chatId,
+          prompt,
+          language,
+          filename,
+          additionalContext,
+          chatMode,
+          toolSelections
+        }
       })
     );
   }

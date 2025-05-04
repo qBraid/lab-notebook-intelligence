@@ -2,10 +2,11 @@
 
 import os
 from typing import Union
-from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
+from notebook_intelligence.api import BuiltinToolset, ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.prompts import Prompts
 import base64
 import logging
+from notebook_intelligence.built_in_toolsets import built_in_toolsets
 
 from notebook_intelligence.util import extract_llm_generated_code
 
@@ -77,7 +78,7 @@ class CreateNewNotebookTool(Tool):
             confirmationMessage = "Are you sure you want to call this tool?"
         return ToolPreInvokeResponse(f"Calling tool '{self.name}'", confirmationTitle, confirmationMessage)
 
-    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         cell_sources = tool_args.get('cell_sources', [])
     
         ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
@@ -149,7 +150,7 @@ class AddMarkdownCellToNotebookTool(Tool):
             confirmationMessage = "Are you sure you want to call this tool?"
         return ToolPreInvokeResponse(f"Calling tool '{self.name}'", confirmationTitle, confirmationMessage)
 
-    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         notebook_file_path = tool_args.get('notebook_file_path', '')
         server_root_dir = request.host.nbi_config.server_root_dir
         if notebook_file_path.startswith(server_root_dir):
@@ -213,7 +214,7 @@ class AddCodeCellTool(Tool):
             confirmationMessage = "Are you sure you want to call this tool?"
         return ToolPreInvokeResponse(f"Calling tool '{self.name}'", confirmationTitle, confirmationMessage)
 
-    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         notebook_file_path = tool_args.get('notebook_file_path', '')
         server_root_dir = request.host.nbi_config.server_root_dir
         if notebook_file_path.startswith(server_root_dir):
@@ -262,7 +263,7 @@ class PythonTool(AddCodeCellTool):
             },
         }
 
-    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         code = tool_args.get('code_cell_source')
         ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
         return {"result": "Code cell added to notebook"}
@@ -270,6 +271,7 @@ class PythonTool(AddCodeCellTool):
 class BaseChatParticipant(ChatParticipant):
     def __init__(self):
         super().__init__()
+        self._current_chat_request: ChatRequest = None
 
     @property
     def id(self) -> str:
@@ -298,7 +300,28 @@ class BaseChatParticipant(ChatParticipant):
 
     @property
     def tools(self) -> list[Tool]:
-        return [AddMarkdownCellToNotebookTool(), AddCodeCellTool(), PythonTool()]
+        tool_list = []
+        chat_mode = self._current_chat_request.chat_mode
+        if chat_mode.id == "ask":
+            tool_list = [AddMarkdownCellToNotebookTool(), AddCodeCellTool(), PythonTool()]
+        elif chat_mode.id == "agent":
+            tool_selection = self._current_chat_request.tool_selection
+            host = self._current_chat_request.host
+            for toolset in tool_selection.built_in_toolsets:
+                built_in_toolset = built_in_toolsets[toolset]
+                tool_list += built_in_toolset.tools
+            for server_name, mcp_server_tool_list in tool_selection.mcp_server_tools.items():
+                for tool_name in mcp_server_tool_list:
+                    mcp_server_tool = host.get_mcp_server_tool(server_name, tool_name)
+                    if mcp_server_tool is not None:
+                        tool_list.append(mcp_server_tool)
+            for ext_id, ext_toolsets in tool_selection.extension_tools.items():
+                for toolset_id, toolset_tools in ext_toolsets.items():
+                    for tool_name in toolset_tools:
+                        ext_tool = host.get_extension_tool(ext_id, toolset_id, tool_name)
+                        if ext_tool is not None:
+                            tool_list.append(ext_tool)
+        return tool_list
 
     @property
     def allowed_context_providers(self) -> set[str]:
@@ -331,6 +354,29 @@ class BaseChatParticipant(ChatParticipant):
         return extract_llm_generated_code(markdown)
 
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
+        self._current_chat_request = request
+        if request.chat_mode.id == "ask":
+            return await self.handle_ask_mode_chat_request(request, response, options)
+        elif request.chat_mode.id == "agent":
+            system_prompt = None
+            if len(self.tools) > 0:
+                system_prompt = "Try to answer the question with a tool first. If the tool you use has default values for parameters and user didn't provide a value for those, make sure to set the default value for the parameter.\n\n"
+
+            for toolset in request.tool_selection.built_in_toolsets:
+                built_in_toolset = built_in_toolsets[toolset]
+                if built_in_toolset.instructions is not None:
+                    system_prompt += built_in_toolset.instructions + "\n"
+
+            for extension_id, toolsets in request.tool_selection.extension_tools.items():
+                for toolset_id in toolsets.keys():
+                    ext_toolset = request.host.get_extension_toolset(extension_id, toolset_id)
+                    if ext_toolset is not None and ext_toolset.instructions is not None:
+                        system_prompt += ext_toolset.instructions + "\n"
+
+            options["system_prompt"] = system_prompt
+            await self.handle_chat_request_with_tools(request, response, options)
+
+    async def handle_ask_mode_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         chat_model = request.host.chat_model
         if request.command == 'newNotebook':
             # create a new notebook

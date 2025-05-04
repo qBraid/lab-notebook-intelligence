@@ -104,6 +104,19 @@ namespace CommandIDs {
     'notebook-intelligence:open-github-copilot-login-dialog';
   export const openConfigurationDialog =
     'notebook-intelligence:open-configuration-dialog';
+  export const addMarkdownCellToActiveNotebook =
+    'notebook-intelligence:add-markdown-cell-to-active-notebook';
+  export const addCodeCellToActiveNotebook =
+    'notebook-intelligence:add-code-cell-to-active-notebook';
+  export const deleteCellAtIndex = 'notebook-intelligence:delete-cell-at-index';
+  export const insertCellAtIndex = 'notebook-intelligence:insert-cell-at-index';
+  export const setCellTypeAndSource =
+    'notebook-intelligence:set-cell-type-and-source';
+  export const getNumberOfCells = 'notebook-intelligence:get-number-of-cells';
+  export const getCellType = 'notebook-intelligence:get-cell-type';
+  export const getCellSource = 'notebook-intelligence:get-cell-source';
+  export const getCellOutput = 'notebook-intelligence:get-cell-output';
+  export const runCellAtIndex = 'notebook-intelligence:run-cell-at-index';
 }
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
@@ -853,6 +866,200 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
           'markdown',
           args.markdown as string
         );
+      }
+    });
+
+    const ensureANotebookIsActive = (): boolean => {
+      const currentWidget = app.shell.currentWidget;
+      const notebookOpen =
+        currentWidget instanceof NotebookPanel && currentWidget.model;
+      if (!notebookOpen) {
+        app.commands.execute('apputils:notify', {
+          message: 'Failed to find active notebook',
+          type: 'error',
+          options: { autoClose: true }
+        });
+        return false;
+      }
+
+      return true;
+    };
+
+    app.commands.addCommand(CommandIDs.addMarkdownCellToActiveNotebook, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+
+        const newCellIndex = isNewEmptyNotebook(model)
+          ? 0
+          : model.cells.length - 1;
+        model.insertCell(newCellIndex, {
+          cell_type: 'markdown',
+          metadata: { trusted: true },
+          source: args.source as string
+        });
+
+        return true;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.addCodeCellToActiveNotebook, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+
+        const newCellIndex = isNewEmptyNotebook(model)
+          ? 0
+          : model.cells.length - 1;
+        model.insertCell(newCellIndex, {
+          cell_type: 'code',
+          metadata: { trusted: true },
+          source: args.source as string
+        });
+
+        return true;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.setCellTypeAndSource, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+
+        const cellIndex = args.cellIndex as number;
+        const cellType = args.cellType as 'code' | 'markdown';
+        const cell = model.getCell(cellIndex);
+
+        model.deleteCell(cellIndex);
+        model.insertCell(cellIndex, {
+          cell_type: cellType,
+          metadata: cell.metadata,
+          source: args.source as string
+        });
+
+        return true;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.getNumberOfCells, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+
+        return model.cells.length;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.getCellType, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+
+        return model.cells[args.cellIndex as number].cell_type;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.getCellSource, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+
+        return model.cells[args.cellIndex as number].source;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.getCellOutput, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const cellIndex = args.cellIndex as number;
+
+        const cell = np.content.widgets[cellIndex];
+
+        if (!(cell instanceof CodeCell)) {
+          return '';
+        }
+
+        const content = cellOutputAsText(cell as CodeCell);
+
+        return content;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.insertCellAtIndex, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+        const cellIndex = args.cellIndex as number;
+        const cellType = args.cellType as 'code' | 'markdown';
+
+        model.insertCell(cellIndex, {
+          cell_type: cellType,
+          metadata: { trusted: true },
+          source: args.source as string
+        });
+
+        return true;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.deleteCellAtIndex, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+        const cellIndex = args.cellIndex as number;
+
+        model.deleteCell(cellIndex);
+
+        return true;
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.runCellAtIndex, {
+      execute: async args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const currentWidget = app.shell.currentWidget as NotebookPanel;
+        currentWidget.content.activeCellIndex = args.cellIndex as number;
+
+        await app.commands.execute('notebook:run-cell');
       }
     });
 

@@ -8,6 +8,7 @@ from enum import Enum
 import uuid
 from fuzzy_json import loads as fuzzy_json_loads
 import logging
+from mcp.server.fastmcp.tools import Tool as MCPToolClass
 
 from notebook_intelligence.config import NBIConfig
 
@@ -42,6 +43,10 @@ class ResponseStreamDataType(str, Enum):
     def __str__(self) -> str:
         return self.value
 
+class BuiltinToolset(str, Enum):
+    NotebookEdit = 'nbi-notebook-edit'
+    NotebookExecute = 'nbi-notebook-execute'
+
 class Signal:
     def __init__(self):
         self._listeners = []
@@ -74,8 +79,16 @@ class CancelToken:
         return self._cancellation_signal
 
 @dataclass
+class RequestToolSelection:
+    built_in_toolsets: list[str] = None
+    mcp_server_tools: dict[str, list[str]] = None
+    extension_tools: dict[str, dict[str, list[str]]] = None
+
+@dataclass
 class ChatRequest:
     host: 'Host' = None
+    chat_mode: 'ChatMode' = None
+    tool_selection: RequestToolSelection = None
     command: str = ''
     prompt: str = ''
     chat_history: list[dict] = None
@@ -292,8 +305,86 @@ class Tool:
     def pre_invoke(self, request: ChatRequest, tool_args: dict) -> Union[ToolPreInvokeResponse, None]:
         return None
 
-    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         raise NotImplemented
+
+class Toolset:
+    def __init__(self, id: str, name: str, provider: Union['NotebookIntelligenceExtension', None], tools: list[Tool] = [], instructions: str = None):
+        self.id = id
+        self.name = name
+        self.provider = provider
+        self.tools: list[Tool] = tools
+        self.instructions: Union[str, None] = instructions
+
+    def add_tool(self, tool: Tool) -> None:
+        self.tools.append(tool)
+
+    def remove_tool(self, tool: Tool) -> None:
+        self.tools.remove(tool)
+
+class SimpleTool(Tool):
+    def __init__(self, tool_function: Callable, name: str, description: str, schema: dict, title: str = None, auto_approve: bool = True):
+        super().__init__()
+        self._tool_function = tool_function
+        self._name = name
+        self._description = description
+        self._schema = schema
+        self._title = title
+        self._auto_approve = auto_approve
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def title(self) -> str:
+        return self._title if self._title is not None else self._name
+    
+    @property
+    def tags(self) -> list[str]:
+        return []
+    
+    @property
+    def description(self) -> str:
+        return self._description
+    
+    @property
+    def schema(self) -> dict:
+        return self._schema
+
+    def pre_invoke(self, request: ChatRequest, tool_args: dict) -> Union[ToolPreInvokeResponse, None]:
+        confirmationTitle = None
+        confirmationMessage = None
+        if not self._auto_approve:
+            confirmationTitle = "Approve"
+            confirmationMessage = "Are you sure you want to call this tool?"
+        return ToolPreInvokeResponse(f"Calling tool '{self.name}'", confirmationTitle, confirmationMessage)
+
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
+        fn_args = tool_args.copy()
+        fn_args.update({"request": request, "response": response})
+        return await self._tool_function(**fn_args)
+
+def tool(tool_function: Callable) -> SimpleTool:
+    mcp_tool = MCPToolClass.from_function(tool_function)
+
+    schema = {
+        "type": "function",
+        "function": {
+            "name": mcp_tool.name,
+            "description": mcp_tool.description,
+            "strict": True,
+            "parameters": mcp_tool.parameters
+        },
+    }
+
+    return SimpleTool(tool_function, mcp_tool.name, mcp_tool.description, schema, mcp_tool.name)
+
+class ChatMode:
+    def __init__(self, id: str, name: str, instructions: str = None):
+        self.id = id
+        self.name = name
+        self.instructions = instructions
 
 class ChatParticipant:
     @property
@@ -332,6 +423,12 @@ class ChatParticipant:
         tools = self.tools
 
         messages = request.chat_history.copy()
+
+        system_prompt = options.get("system_prompt")
+        if system_prompt is not None:
+            messages = [
+                {"role": "system", "content": system_prompt}
+            ] + messages
 
         if len(tools) == 0:
             request.host.chat_model.completions(messages, tools=None, cancel_token=request.cancel_token, response=response)
@@ -601,6 +698,9 @@ class Host:
     def register_telemetry_listener(self, listener: TelemetryListener) -> None:
         raise NotImplemented
 
+    def register_toolset(self, toolset: Toolset) -> None:
+        raise NotImplemented
+
     @property
     def nbi_config(self) -> NBIConfig:
         raise NotImplemented
@@ -620,6 +720,15 @@ class Host:
     @property
     def embedding_model(self) -> EmbeddingModel:
         raise NotImplemented
+
+    def get_mcp_server_tool(self, server_name: str, tool_name: str) -> Tool:
+        return NotImplemented
+
+    def get_extension_toolset(self, extension_id: str, toolset_id: str) -> Toolset:
+        return NotImplemented
+
+    def get_extension_tool(self, extension_id: str, toolset_id: str, tool_name: str) -> Tool:
+        return NotImplemented
 
 class NotebookIntelligenceExtension:
     @property

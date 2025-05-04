@@ -157,7 +157,7 @@ Below is an example of a server configuration with SSE transport. For SSE transp
 }
 ```
 
-If you have multiple servers configured but you would like to disable some for a while, you can do so by using the `disabled` key. `servername2` will be diabled and not available in `@mcp` chat participant.
+If you have multiple servers configured but you would like to disable some for a while, you can do so by using the `disabled` key. `servername2` will be disabled and not available in `@mcp` chat participant.
 
 ```json
 "mcpServers": {
