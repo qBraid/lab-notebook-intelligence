@@ -397,6 +397,7 @@ pre:has(.code-block-header) {
   height: 24px;
   background-color: var(--jp-brand-color0);
   padding-right: 6px;
+  border-radius: 2px;
 }
 
 .mode-tools-popover-close-button svg {

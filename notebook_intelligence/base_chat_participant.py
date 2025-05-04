@@ -2,7 +2,7 @@
 
 import os
 from typing import Union
-from notebook_intelligence.api import BuiltinToolset, ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
+from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.prompts import Prompts
 import base64
 import logging
@@ -295,7 +295,6 @@ class BaseChatParticipant(ChatParticipant):
             ChatCommand(name='newNotebook', description='Create a new notebook'),
             ChatCommand(name='newPythonFile', description='Create a new Python file'),
             ChatCommand(name='clear', description='Clears chat history'),
-            ChatCommand(name='settings', description='Open settings dialog'),
         ]
 
     @property

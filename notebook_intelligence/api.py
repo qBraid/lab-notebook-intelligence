@@ -46,6 +46,7 @@ class ResponseStreamDataType(str, Enum):
 class BuiltinToolset(str, Enum):
     NotebookEdit = 'nbi-notebook-edit'
     NotebookExecute = 'nbi-notebook-execute'
+    PythonFileEdit = 'nbi-python-file-edit'
 
 class Signal:
     def __init__(self):

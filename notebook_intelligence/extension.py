@@ -21,6 +21,7 @@ from tornado import websocket
 from notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, RequestToolSelection, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
+from notebook_intelligence.built_in_toolsets import built_in_toolsets
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
@@ -67,10 +68,7 @@ class GetCapabilitiesHandler(APIHandler):
             "chat_participants": [],
             "store_github_access_token": nbi_config.store_github_access_token,
             "tool_config": {
-                "builtinToolsets": [
-                    {"id": BuiltinToolset.NotebookEdit, "name": "Notebook edit" },
-                    {"id": BuiltinToolset.NotebookExecute, "name": "Notebook execute" }
-                ],
+                "builtinToolsets": [{"id": toolset.id, "name": toolset.name} for toolset in built_in_toolsets.values()],
                 "mcpServers": mcp_server_tools,
                 "extensions": extensions
             }

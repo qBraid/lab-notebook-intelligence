@@ -117,6 +117,10 @@ namespace CommandIDs {
   export const getCellSource = 'notebook-intelligence:get-cell-source';
   export const getCellOutput = 'notebook-intelligence:get-cell-output';
   export const runCellAtIndex = 'notebook-intelligence:run-cell-at-index';
+  export const getCurrentFileContent =
+    'notebook-intelligence:get-current-file-content';
+  export const setCurrentFileContent =
+    'notebook-intelligence:set-current-file-content';
 }
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
@@ -885,6 +889,21 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
       return true;
     };
 
+    const ensureAFileEditorIsActive = (): boolean => {
+      const currentWidget = app.shell.currentWidget;
+      const textFileOpen = currentWidget instanceof FileEditorWidget;
+      if (!textFileOpen) {
+        app.commands.execute('apputils:notify', {
+          message: 'Failed to find active file',
+          type: 'error',
+          options: { autoClose: true }
+        });
+        return false;
+      }
+
+      return true;
+    };
+
     app.commands.addCommand(CommandIDs.addMarkdownCellToActiveNotebook, {
       execute: args => {
         if (!ensureANotebookIsActive()) {
@@ -1060,6 +1079,31 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         currentWidget.content.activeCellIndex = args.cellIndex as number;
 
         await app.commands.execute('notebook:run-cell');
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.getCurrentFileContent, {
+      execute: async args => {
+        if (!ensureAFileEditorIsActive()) {
+          return false;
+        }
+
+        const currentWidget = app.shell.currentWidget as FileEditorWidget;
+        const editor = currentWidget.content.editor;
+        return editor.model.sharedModel.getSource();
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.setCurrentFileContent, {
+      execute: async args => {
+        if (!ensureAFileEditorIsActive()) {
+          return false;
+        }
+
+        const currentWidget = app.shell.currentWidget as FileEditorWidget;
+        const editor = currentWidget.content.editor;
+        editor.model.sharedModel.setSource(args.content as string);
+        return editor.model.sharedModel.getSource();
       }
     });
 

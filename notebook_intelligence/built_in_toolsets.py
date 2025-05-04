@@ -149,6 +149,38 @@ async def save_notebook(**args) -> str:
 
     return f"Save the notebook"
 
+@nbapi.tool
+async def create_new_python_file(code: str, **args) -> str:
+    """Creates a new Python file.
+    Args:
+        code: Python code source
+    """
+    response = args["response"]
+    ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code})
+    file_path = ui_cmd_response['path']
+
+    return f"Created new Python file at {file_path}"
+
+@nbapi.tool
+async def get_file_content(**args) -> str:
+    """Returns the content of the current file.
+    """
+    response = args["response"]
+    ui_cmd_response = await response.run_ui_command('notebook-intelligence:get-current-file-content', {})
+
+    return f"Received the file content"
+
+@nbapi.tool
+async def set_file_content(content: str, **args) -> str:
+    """Sets the content of the current file.
+    Args:
+        content: File content
+    """
+    response = args["response"]
+    ui_cmd_response = await response.run_ui_command('notebook-intelligence:set-current-file-content', {"content": content})
+
+    return f"Set the file content"
+
 NOTEBOOK_EDIT_INSTRUCTIONS = """
 You are an assistant that creates and edits Jupyter notebooks. Notebooks are made up of source code cells and markdown cells. Markdown cells have source in markdown format and code cells have source in a specified programming language. If no programming language is specified, then use Python for the language of the code.
 
@@ -175,6 +207,12 @@ If you create a new notebook and run it, then check for errors in the output of 
 If you are asked to analyze a dataset, you should fist create a notebook and add the code cells and markdown cells to the notebook which are needed to analyze the dataset and run all the cells.
 
 After you are done running the notebook, save the notebook using the save_notebook tool.
+"""
+
+PYTHON_FILE_EDIT_INSTRUCTIONS = """
+If you need to create a new Python file use the create_new_python_file tool. If you need to edit an existing Python file use the get_file_content tool to get the content of the file and then use the set_file_content tool to set the content of the file.
+
+If user is referring to a file, then you can use the get_file_content tool to get the content of the file and then use the set_file_content tool to set the content of the file.
 """
 
 built_in_toolsets: dict[BuiltinToolset, Toolset] = {
@@ -205,5 +243,16 @@ built_in_toolsets: dict[BuiltinToolset, Toolset] = {
             run_cell
         ],
         instructions=NOTEBOOK_EXECUTE_INSTRUCTIONS
+    ),
+    BuiltinToolset.PythonFileEdit: Toolset(
+        id=BuiltinToolset.PythonFileEdit,
+        name="Python file edit",
+        provider=None,
+        tools=[
+            create_new_python_file,
+            get_file_content,
+            set_file_content
+        ],
+        instructions=PYTHON_FILE_EDIT_INSTRUCTIONS
     ),
 }

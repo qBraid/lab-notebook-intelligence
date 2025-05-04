@@ -1127,6 +1127,7 @@ function SidebarComponent(props: any) {
   };
 
   const handleSubmitStopChatButtonClick = async () => {
+    setShowModeTools(false);
     if (!copilotRequestInProgress) {
       handleUserInputSubmit();
     } else {
@@ -1135,6 +1136,7 @@ function SidebarComponent(props: any) {
   };
 
   const handleSettingsButtonClick = async () => {
+    setShowModeTools(false);
     props
       .getApp()
       .commands.execute('notebook-intelligence:open-configuration-dialog');
@@ -1813,7 +1815,7 @@ function SidebarComponent(props: any) {
                   }}
                 >
                   <option value="ask">Ask</option>
-                  <option value="agent">Agent</option>
+                  <option value="agent">Agent (preview)</option>
                 </select>
               </div>
               {chatMode !== 'ask' && (
