@@ -324,7 +324,7 @@ class Toolset:
         self.tools.remove(tool)
 
 class SimpleTool(Tool):
-    def __init__(self, tool_function: Callable, name: str, description: str, schema: dict, title: str = None, auto_approve: bool = True):
+    def __init__(self, tool_function: Callable, name: str, description: str, schema: dict, title: str = None, auto_approve: bool = False):
         super().__init__()
         self._tool_function = tool_function
         self._name = name
@@ -366,6 +366,13 @@ class SimpleTool(Tool):
         fn_args.update({"request": request, "response": response})
         return await self._tool_function(**fn_args)
 
+def auto_approve(tool: SimpleTool):
+    """
+    Decorator to set auto_approve to True for a tool.
+    """
+    tool._auto_approve = True
+    return tool
+
 def tool(tool_function: Callable) -> SimpleTool:
     mcp_tool = MCPToolClass.from_function(tool_function)
 
@@ -379,7 +386,7 @@ def tool(tool_function: Callable) -> SimpleTool:
         },
     }
 
-    return SimpleTool(tool_function, mcp_tool.name, mcp_tool.description, schema, mcp_tool.name)
+    return SimpleTool(tool_function, mcp_tool.name, mcp_tool.description, schema, mcp_tool.name, auto_approve)
 
 class ChatMode:
     def __init__(self, id: str, name: str, instructions: str = None):

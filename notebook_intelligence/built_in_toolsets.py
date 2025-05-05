@@ -7,6 +7,7 @@ from notebook_intelligence.api import BuiltinToolset
 
 log = logging.getLogger(__name__)
 
+@nbapi.auto_approve
 @nbapi.tool
 async def create_new_notebook(**args) -> str:
     """Creates a new empty notebook.
@@ -17,6 +18,7 @@ async def create_new_notebook(**args) -> str:
 
     return f"Created new notebook at {file_path}"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def add_markdown_cell(source: str, **args) -> str:
     """Adds a markdown cell to notebook.
@@ -28,6 +30,7 @@ async def add_markdown_cell(source: str, **args) -> str:
 
     return "Added markdown cell to notebook"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def add_code_cell(source: str, **args) -> str:
     """Adds a code cell to notebook.
@@ -39,6 +42,7 @@ async def add_code_cell(source: str, **args) -> str:
 
     return "Added code cell to notebook"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def get_number_of_cells(**args) -> str:
     """Get number of cells for the active notebook.
@@ -48,7 +52,7 @@ async def get_number_of_cells(**args) -> str:
 
     return str(ui_cmd_response)
 
-
+@nbapi.auto_approve
 @nbapi.tool
 async def get_cell_type(cell_index: int, **args) -> str:
     """Get cell type for the cell at index for the active notebook.
@@ -61,7 +65,7 @@ async def get_cell_type(cell_index: int, **args) -> str:
 
     return str(ui_cmd_response)
 
-
+@nbapi.auto_approve
 @nbapi.tool
 async def get_cell_source(cell_index: int, **args) -> str:
     """Get cell source for the cell at index for the active notebook.
@@ -74,6 +78,7 @@ async def get_cell_source(cell_index: int, **args) -> str:
 
     return str(ui_cmd_response)
 
+@nbapi.auto_approve
 @nbapi.tool
 async def get_cell_output(cell_index: int, **args) -> str:
     """Get cell output for the cell at index for the active notebook.
@@ -86,6 +91,7 @@ async def get_cell_output(cell_index: int, **args) -> str:
 
     return str(ui_cmd_response)
 
+@nbapi.auto_approve
 @nbapi.tool
 async def set_cell_type_and_source(cell_index: int, cell_type: str, source: str, **args) -> str:
     """Set cell type and source for the cell at index for the active notebook.
@@ -100,6 +106,7 @@ async def set_cell_type_and_source(cell_index: int, cell_type: str, source: str,
 
     return str(ui_cmd_response)
 
+@nbapi.auto_approve
 @nbapi.tool
 async def delete_cell(cell_index: int, **args) -> str:
     """Delete the cell at index for the active notebook.
@@ -113,6 +120,7 @@ async def delete_cell(cell_index: int, **args) -> str:
 
     return f"Deleted the cell at index: {cell_index}"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def insert_cell(cell_index: int, cell_type: str, source: str, **args) -> str:
     """Insert cell with type and source at index for the active notebook.
@@ -127,6 +135,7 @@ async def insert_cell(cell_index: int, cell_type: str, source: str, **args) -> s
 
     return str(ui_cmd_response)
 
+@nbapi.auto_approve
 @nbapi.tool
 async def run_cell(cell_index: int, **args) -> str:
     """Run the cell at index for the active notebook.
@@ -140,6 +149,7 @@ async def run_cell(cell_index: int, **args) -> str:
 
     return f"Ran the cell at index: {cell_index}"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def save_notebook(**args) -> str:
     """Save the changes in active notebook to disk.
@@ -149,6 +159,7 @@ async def save_notebook(**args) -> str:
 
     return f"Save the notebook"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def create_new_python_file(code: str, **args) -> str:
     """Creates a new Python file.
@@ -161,6 +172,7 @@ async def create_new_python_file(code: str, **args) -> str:
 
     return f"Created new Python file at {file_path}"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def get_file_content(**args) -> str:
     """Returns the content of the current file.
@@ -170,6 +182,7 @@ async def get_file_content(**args) -> str:
 
     return f"Received the file content"
 
+@nbapi.auto_approve
 @nbapi.tool
 async def set_file_content(content: str, **args) -> str:
     """Sets the content of the current file.
