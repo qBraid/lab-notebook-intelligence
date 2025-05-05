@@ -405,6 +405,7 @@ class BaseChatParticipant(ChatParticipant):
                     if ext_toolset is not None and ext_toolset.instructions is not None:
                         system_prompt += ext_toolset.instructions + "\n"
 
+            options = options.copy()
             options["system_prompt"] = system_prompt
             await self.handle_chat_request_with_tools(request, response, options)
 

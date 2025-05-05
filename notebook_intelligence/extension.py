@@ -503,7 +503,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
                 return
             handlers.response_emitter.on_user_input(msg['data'])
         elif messageType == RequestDataType.ClearChatHistory:
-            self.chat_history.clear(msg['data']['chatId'])
+            self.chat_history.clear()
         elif messageType == RequestDataType.RunUICommandResponse:
             handlers = self._messageCallbackHandlers.get(messageId)
             if handlers is None:
