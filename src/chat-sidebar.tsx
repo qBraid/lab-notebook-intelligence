@@ -693,10 +693,10 @@ function SidebarComponent(props: any) {
     useState<IActiveDocumentInfo | null>(null);
   const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
   const telemetryEmitter: ITelemetryEmitter = props.getTelemetryEmitter();
-  const [chatMode, setChatMode] = useState('agent');
+  const [chatMode, setChatMode] = useState('ask');
   const [toolSelectionTitle, setToolSelectionTitle] =
     useState('Tool selection');
-  const [anyToolSelected, setAnyToolSelected] = useState(false);
+  const [selectedToolCount, setSelectedToolCount] = useState(0);
   const [notebookExecuteToolSelected, setNotebookExecuteToolSelected] =
     useState(false);
   const [toolConfig, setToolConfig] = useState({
@@ -765,7 +765,9 @@ function SidebarComponent(props: any) {
       typeCounts.push(`${extensionToolSelCount} ext`);
     }
 
-    setAnyToolSelected(typeCounts.length > 0);
+    setSelectedToolCount(
+      builtinToolSelCount + mcpServerToolSelCount + extensionToolSelCount
+    );
     setNotebookExecuteToolSelected(
       toolSelections.builtinToolsets.includes(
         BuiltinToolsetType.NotebookExecute
@@ -1820,7 +1822,7 @@ function SidebarComponent(props: any) {
               </div>
               {chatMode !== 'ask' && (
                 <div
-                  className={`user-input-footer-button tools-button ${notebookExecuteToolSelected ? 'tools-button-warning' : anyToolSelected ? 'tools-button-active' : ''}`}
+                  className={`user-input-footer-button tools-button ${notebookExecuteToolSelected ? 'tools-button-warning' : selectedToolCount > 0 ? 'tools-button-active' : ''}`}
                   onClick={() => handleChatToolsButtonClick()}
                   title={
                     notebookExecuteToolSelected
@@ -1829,6 +1831,7 @@ function SidebarComponent(props: any) {
                   }
                 >
                   <VscTools />
+                  {selectedToolCount > 0 && <>{selectedToolCount}</>}
                 </div>
               )}
             </div>
@@ -1878,7 +1881,9 @@ function SidebarComponent(props: any) {
                 </div>
                 <div
                   className="mode-tools-popover-clear-tools-button"
-                  style={{ visibility: anyToolSelected ? 'visible' : 'hidden' }}
+                  style={{
+                    visibility: selectedToolCount > 0 ? 'visible' : 'hidden'
+                  }}
                 >
                   <div>
                     <VscTrash />

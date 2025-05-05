@@ -138,15 +138,22 @@
 }
 
 .user-input-footer-button.tools-button {
+  width: auto;
   border: 1px solid var(--jp-border-color0);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 3px;
 }
 
 .user-input-footer-button.tools-button-warning {
   color: var(--jp-warn-color0);
+  border-color: var(--jp-warn-color0);
 }
 
 .user-input-footer-button.tools-button-active {
   color: var(--jp-brand-color0);
+  border-color: var(--jp-brand-color0);
 }
 
 .user-input-footer-button svg {
@@ -395,6 +402,7 @@ pre:has(.code-block-header) {
   cursor: pointer;
   width: auto;
   height: 24px;
+  color: white;
   background-color: var(--jp-brand-color0);
   padding-right: 6px;
   border-radius: 2px;
