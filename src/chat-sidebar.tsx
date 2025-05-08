@@ -1819,7 +1819,7 @@ function SidebarComponent(props: any) {
                   }}
                 >
                   <option value="ask">Ask</option>
-                  <option value="agent">Agent (preview)</option>
+                  <option value="agent">Agent</option>
                 </select>
               </div>
               {chatMode !== 'ask' && (
