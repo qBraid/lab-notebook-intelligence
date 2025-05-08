@@ -441,7 +441,9 @@ function ChatResponse(props: any) {
             </div>
           )}
           <div className="chat-message-from-title">
-            {msg.from === 'user' ? 'User' : msg.participant?.name || 'Copilot'}
+            {msg.from === 'user'
+              ? 'User'
+              : msg.participant?.name || 'AI Assistant'}
           </div>
           <div
             className="chat-message-from-progress"
@@ -1677,6 +1679,12 @@ function SidebarComponent(props: any) {
     <div className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-title">Notebook Intelligence</div>
+        <div
+          className="user-input-footer-button"
+          onClick={() => handleSettingsButtonClick()}
+        >
+          <VscSettingsGear />
+        </div>
       </div>
       {!chatEnabled && !ghLoginRequired && (
         <div className="sidebar-login-info">
@@ -1750,7 +1758,7 @@ function SidebarComponent(props: any) {
             rows={3}
             onChange={onPromptChange}
             onKeyDown={onPromptKeyDown}
-            placeholder="Ask Copilot..."
+            placeholder="Ask Notebook Intelligence..."
             spellCheck={false}
             value={prompt}
           />
@@ -1794,12 +1802,6 @@ function SidebarComponent(props: any) {
               </div>
             )}
             <div style={{ flexGrow: 1 }}></div>
-            <div
-              className="user-input-footer-button"
-              onClick={() => handleSettingsButtonClick()}
-            >
-              <VscSettingsGear />
-            </div>
             <div className="chat-mode-widgets-container">
               <div>
                 <select
@@ -2204,7 +2206,7 @@ function InlinePromptComponent(props: any) {
         rows={3}
         onChange={onPromptChange}
         onKeyDown={onPromptKeyDown}
-        placeholder="Ask Copilot to generate Python code..."
+        placeholder="Ask Notebook Intelligence to generate Python code..."
         spellCheck={false}
         value={prompt}
       />

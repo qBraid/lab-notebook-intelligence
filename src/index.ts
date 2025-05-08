@@ -1609,7 +1609,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
 
     const copilotContextMenu = new Menu({ commands: copilotMenuCommands });
     copilotContextMenu.id = 'notebook-intelligence:editor-context-menu';
-    copilotContextMenu.title.label = 'Copilot';
+    copilotContextMenu.title.label = 'Notebook Intelligence';
     copilotContextMenu.title.icon = sidebarIcon;
     copilotContextMenu.addItem({ command: CommandIDs.editorGenerateCode });
     copilotContextMenu.addItem({ command: CommandIDs.editorExplainThisCode });
