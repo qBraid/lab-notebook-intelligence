@@ -172,7 +172,7 @@ class AIServiceManager(Host):
         if provider_id not in self._extension_toolsets:
             self._extension_toolsets[provider_id] = []
         self._extension_toolsets[provider_id].append(toolset)
-        log.debug(f"Registered toolset '{toolset.id}' for provider '{provider_id}'.")
+        log.debug(f"Registered toolset '{toolset.id}' from provider '{provider_id}'.")
 
     @property
     def default_chat_participant(self) -> ChatParticipant:
