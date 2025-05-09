@@ -1,8 +1,11 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
+import threading
 from typing import Any, Union
+import anyio
 from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from mcp.client.stdio import get_default_environment as mcp_get_default_environment
@@ -64,7 +67,7 @@ class MCPTool(Tool):
             confirmationMessage = "Are you sure you want to call this MCP tool?"
         return ToolPreInvokeResponse(f"Calling MCP tool '{self.name}'", confirmationTitle, confirmationMessage)
 
-    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> dict:
+    async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         call_args = {}
 
         for key in self._schema['properties']:
@@ -104,49 +107,74 @@ class MCPServer:
         self._stdio_params: StdioServerParameters = stdio_params
         self._sse_params: SSEServerParameters = sse_params
         self._auto_approve_tools: set[str] = set(auto_approve_tools)
+        self._tried_to_get_tool_list = False
+        self._mcp_tools = []
+        self._session = None
 
     @property
     def name(self) -> str:
         return self._name
     
     async def connect(self):
-        self._mcp_tools = []
-        self.session = None
+        if self._session is not None:
+            return
         self.exit_stack = AsyncExitStack()
 
-        if self._stdio_params is None and self._sse_params is None:
-            raise ValueError("Either stdio_params or sse_params must be provided")
-        if self._stdio_params is not None:
-            transport = await self.exit_stack.enter_async_context(stdio_client(self._stdio_params))
-        else:
-            transport = await self.exit_stack.enter_async_context(sse_client(url=self._sse_params.url, headers=self._sse_params.headers))
-        self._read_stream, self._write_stream = transport
-        self.session = await self.exit_stack.enter_async_context(ClientSession(self._read_stream, self._write_stream, timedelta(seconds=MCP_TOOL_TIMEOUT)))
-        await self.session.initialize()
-        await self.update_tool_list()
+        try:
+            if self._stdio_params is None and self._sse_params is None:
+                raise ValueError("Either stdio_params or sse_params must be provided")
+            if self._stdio_params is not None:
+                self._transport = await self.exit_stack.enter_async_context(stdio_client(self._stdio_params))
+            else:
+                self._transport = await self.exit_stack.enter_async_context(sse_client(url=self._sse_params.url, headers=self._sse_params.headers))
+            self._read_stream, self._write_stream = self._transport
+            self._session = await self.exit_stack.enter_async_context(ClientSession(self._read_stream, self._write_stream, timedelta(seconds=MCP_TOOL_TIMEOUT)))
+            await self._session.initialize()
+            if not self._tried_to_get_tool_list:
+                await self._update_tool_list()
+                self._tried_to_get_tool_list = True
+        except Exception as e:
+            log.error(f"Error connecting to MCP server '{self.name}': {e}")
+            self._session = None
+            self.exit_stack = None
+            raise e
 
     async def disconnect(self):
-        if self.session is None:
+        if self._session is None:
             return
 
         await self.exit_stack.aclose()
-        self.session = None
+        self.exit_stack = None
+        self._session = None
 
-    async def update_tool_list(self):
-        if self.session is None:
+    async def _update_tool_list(self):
+        if self._session is None:
             await self.connect()
 
-        response = await self.session.list_tools()
+        response = await self._session.list_tools()
         self._mcp_tools = response.tools
 
     async def call_tool(self, tool_name: str, tool_args: dict):
-        if self.session is None:
-            await self.connect()
+        try:
+            if self._session is None:
+                await self.connect()
 
-        return await self.session.call_tool(tool_name, tool_args)
+            result = await self._session.call_tool(tool_name, tool_args)
+            await self.disconnect()
+            return result
+        except Exception as e:
+            log.error(f"Error calling tool '{tool_name}' on server '{self.name}': {e}")
+            return None
 
+    # TODO: optimize this
     def get_tools(self) -> list[Tool]:
         return [MCPTool(self, tool.name, tool.description, tool.inputSchema, auto_approve=(tool.name in self._auto_approve_tools)) for tool in self._mcp_tools]
+
+    def get_tool(self, tool_name: str) -> Tool:
+        for tool in self.get_tools():
+            if tool.name == tool_name:
+                return tool
+        return None
 
 class MCPChatParticipant(BaseChatParticipant):
     def __init__(self, id: str, name: str, servers: list[MCPServer], nbi_tools: list[str] = []):
@@ -219,6 +247,7 @@ class MCPManager:
         servers_config = mcp_config.get("mcpServers", {})
         participants_config = mcp_config.get("participants", {})
         self._mcp_participants: list[MCPChatParticipant] = []
+        self._mcp_servers: list[MCPServer] = []
 
         # parse MCP participants
         for participant_id in participants_config:
@@ -232,6 +261,7 @@ class MCPManager:
 
             if len(participant_servers) > 0:
                 self._mcp_participants.append(MCPChatParticipant(f"mcp-{participant_id}", participant_name, participant_servers, nbi_tools))
+                self._mcp_servers += participant_servers
 
         enabled_server_names = [server_name for server_name in servers_config.keys() if servers_config.get(server_name, {}).get("disabled", False) == False]
         unused_server_names = set(enabled_server_names)
@@ -246,6 +276,10 @@ class MCPManager:
             mcp_participant_config = participants_config.get("mcp", {})
             nbi_tools = mcp_participant_config.get("nbiTools", [])
             self._mcp_participants.append(MCPChatParticipant("mcp", "MCP", unused_servers, nbi_tools))
+            self._mcp_servers += unused_servers
+
+        thread = threading.Thread(target=self.init_tool_lists, args=())
+        thread.start()
 
     def create_servers(self, server_names: list[str], servers_config: dict):
         servers = []
@@ -296,3 +330,23 @@ class MCPManager:
 
     def get_mcp_participants(self):
         return self._mcp_participants
+
+    async def init_tool_lists_async(self):
+        for server in self._mcp_servers:
+            try:
+                await server.connect()
+                await server.disconnect()
+            except Exception as e:
+                log.error(f"Error initializing tool list for server {server.name}: {e}")
+    
+    def init_tool_lists(self):
+        asyncio.run(self.init_tool_lists_async())
+
+    def get_mcp_servers(self):
+        return self._mcp_servers
+    
+    def get_mcp_server(self, server_name: str):
+        for server in self._mcp_servers:
+            if server.name == server_name:
+                return server
+        return None

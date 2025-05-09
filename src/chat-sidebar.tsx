@@ -17,6 +17,7 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
 import { NBIAPI, GitHubCopilotLoginStatus } from './api';
 import {
   BackendMessageType,
+  BuiltinToolsetType,
   ContextType,
   GITHUB_COPILOT_PROVIDER_ID,
   IActiveDocumentInfo,
@@ -25,6 +26,7 @@ import {
   IChatParticipant,
   IContextItem,
   ITelemetryEmitter,
+  IToolSelections,
   RequestDataType,
   ResponseStreamDataType,
   TelemetryEventType
@@ -42,8 +44,15 @@ import {
   VscEyeClosed,
   VscTriangleRight,
   VscTriangleDown,
-  VscWarning
+  VscWarning,
+  VscSettingsGear,
+  VscPassFilled,
+  VscTools,
+  VscTrash
 } from 'react-icons/vsc';
+
+import { MdOutlineCheckBoxOutlineBlank, MdCheckBox } from 'react-icons/md';
+
 import { extractLLMGeneratedCode, isDarkTheme } from './utils';
 
 const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
@@ -73,6 +82,8 @@ export interface IRunChatCompletionRequest {
   suffix?: string;
   existingCode?: string;
   additionalContext?: IContextItem[];
+  chatMode: string;
+  toolSelections?: IToolSelections;
 }
 
 export interface IChatSidebarOptions {
@@ -430,7 +441,9 @@ function ChatResponse(props: any) {
             </div>
           )}
           <div className="chat-message-from-title">
-            {msg.from === 'user' ? 'User' : msg.participant?.name || 'Copilot'}
+            {msg.from === 'user'
+              ? 'User'
+              : msg.participant?.name || 'AI Assistant'}
           </div>
           <div
             className="chat-message-from-progress"
@@ -600,6 +613,8 @@ async function submitCompletionRequest(
         request.language || 'python',
         request.filename || 'Untitled.ipynb',
         request.additionalContext || [],
+        request.chatMode,
+        request.toolSelections || {},
         responseEmitter
       );
     case RunChatCompletionType.ExplainThis:
@@ -613,6 +628,8 @@ async function submitCompletionRequest(
         request.language || 'python',
         request.filename || 'Untitled.ipynb',
         [],
+        'ask',
+        {},
         responseEmitter
       );
     }
@@ -628,6 +645,26 @@ async function submitCompletionRequest(
         responseEmitter
       );
   }
+}
+
+function CheckBoxItem(props: any) {
+  const indent = props.indent || 0;
+
+  return (
+    <>
+      <div
+        className={`checkbox-item checkbox-item-indent-${indent}`}
+        onClick={event => props.onClick(event)}
+      >
+        {props.checked ? (
+          <MdCheckBox className="checkbox-icon" />
+        ) : (
+          <MdOutlineCheckBoxOutlineBlank className="checkbox-icon" />
+        )}
+        {props.label}
+      </div>
+    </>
+  );
 }
 
 function SidebarComponent(props: any) {
@@ -658,9 +695,373 @@ function SidebarComponent(props: any) {
     useState<IActiveDocumentInfo | null>(null);
   const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
   const telemetryEmitter: ITelemetryEmitter = props.getTelemetryEmitter();
+  const [chatMode, setChatMode] = useState('ask');
+  const [toolSelectionTitle, setToolSelectionTitle] =
+    useState('Tool selection');
+  const [selectedToolCount, setSelectedToolCount] = useState(0);
+  const [notebookExecuteToolSelected, setNotebookExecuteToolSelected] =
+    useState(false);
+  const [toolConfig, setToolConfig] = useState({
+    builtinToolsets: [
+      { id: BuiltinToolsetType.NotebookEdit, name: 'Notebook edit' },
+      { id: BuiltinToolsetType.NotebookExecute, name: 'Notebook execute' }
+    ],
+    mcpServers: [],
+    extensions: []
+  });
+  const [showModeTools, setShowModeTools] = useState(false);
+  const toolSelectionsInitial: any = {
+    builtinToolsets: [BuiltinToolsetType.NotebookEdit],
+    mcpServers: {},
+    extensions: {}
+  };
+  const toolSelectionsEmpty: any = {
+    builtinToolsets: [],
+    mcpServers: {},
+    extensions: {}
+  };
+  const [toolSelections, setToolSelections] = useState(toolSelectionsInitial);
+  const [hasExtensionTools, setHasExtensionTools] = useState(false);
+
+  NBIAPI.configChanged.connect(() => {
+    setToolConfig(NBIAPI.config.toolConfig);
+  });
+
+  useEffect(() => {
+    let hasTools = false;
+    for (const extension of toolConfig.extensions) {
+      if (extension.toolsets.length > 0) {
+        hasTools = true;
+        break;
+      }
+    }
+    setHasExtensionTools(hasTools);
+  }, [toolConfig]);
+
+  useEffect(() => {
+    const builtinToolSelCount = toolSelections.builtinToolsets.length;
+    let mcpServerToolSelCount = 0;
+    let extensionToolSelCount = 0;
+
+    for (const serverId in toolSelections.mcpServers) {
+      const mcpServerTools = toolSelections.mcpServers[serverId];
+      mcpServerToolSelCount += mcpServerTools.length;
+    }
+
+    for (const extensionId in toolSelections.extensions) {
+      const extensionToolsets = toolSelections.extensions[extensionId];
+      for (const toolsetId in extensionToolsets) {
+        const toolsetTools = extensionToolsets[toolsetId];
+        extensionToolSelCount += toolsetTools.length;
+      }
+    }
+
+    const typeCounts = [];
+    if (builtinToolSelCount > 0) {
+      typeCounts.push(`${builtinToolSelCount} built-in`);
+    }
+    if (mcpServerToolSelCount > 0) {
+      typeCounts.push(`${mcpServerToolSelCount} mcp`);
+    }
+    if (extensionToolSelCount > 0) {
+      typeCounts.push(`${extensionToolSelCount} ext`);
+    }
+
+    setSelectedToolCount(
+      builtinToolSelCount + mcpServerToolSelCount + extensionToolSelCount
+    );
+    setNotebookExecuteToolSelected(
+      toolSelections.builtinToolsets.includes(
+        BuiltinToolsetType.NotebookExecute
+      )
+    );
+    setToolSelectionTitle(
+      typeCounts.length === 0
+        ? 'Tool selection'
+        : `Tool selection (${typeCounts.join(', ')})`
+    );
+  }, [toolSelections]);
+
+  const onClearToolsButtonClicked = () => {
+    setToolSelections(toolSelectionsEmpty);
+  };
+
+  const getBuiltinToolsetState = (toolsetName: string): boolean => {
+    return toolSelections.builtinToolsets.includes(toolsetName);
+  };
+
+  const setBuiltinToolsetState = (toolsetName: string, enabled: boolean) => {
+    const newConfig = { ...toolSelections };
+    if (enabled) {
+      if (!toolSelections.builtinToolsets.includes(toolsetName)) {
+        newConfig.builtinToolsets.push(toolsetName);
+      }
+    } else {
+      const index = newConfig.builtinToolsets.indexOf(toolsetName);
+      if (index !== -1) {
+        newConfig.builtinToolsets.splice(index, 1);
+      }
+    }
+    setToolSelections(newConfig);
+  };
+
+  const anyMCPServerToolSelected = (id: string) => {
+    if (!(id in toolSelections.mcpServers)) {
+      return false;
+    }
+
+    return toolSelections.mcpServers[id].length > 0;
+  };
+
+  const getMCPServerState = (id: string): boolean => {
+    if (!(id in toolSelections.mcpServers)) {
+      return false;
+    }
+
+    const mcpServer = toolConfig.mcpServers.find(server => server.id === id);
+
+    const selectedServerTools: string[] = toolSelections.mcpServers[id];
+
+    for (const tool of mcpServer.tools) {
+      if (!selectedServerTools.includes(tool)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const onMCPServerClicked = (id: string) => {
+    if (anyMCPServerToolSelected(id)) {
+      const newConfig = { ...toolSelections };
+      delete newConfig.mcpServers[id];
+      setToolSelections(newConfig);
+    } else {
+      const mcpServer = toolConfig.mcpServers.find(server => server.id === id);
+      const newConfig = { ...toolSelections };
+      newConfig.mcpServers[id] = structuredClone(mcpServer.tools);
+      setToolSelections(newConfig);
+    }
+  };
+
+  const getMCPServerToolState = (serverId: string, toolId: string): boolean => {
+    if (!(serverId in toolSelections.mcpServers)) {
+      return false;
+    }
+
+    const selectedServerTools: string[] = toolSelections.mcpServers[serverId];
+
+    return selectedServerTools.includes(toolId);
+  };
+
+  const setMCPServerToolState = (
+    serverId: string,
+    toolId: string,
+    checked: boolean
+  ) => {
+    const newConfig = { ...toolSelections };
+
+    if (checked && !(serverId in newConfig.mcpServers)) {
+      newConfig.mcpServers[serverId] = [];
+    }
+
+    const selectedServerTools: string[] = newConfig.mcpServers[serverId];
+
+    if (checked) {
+      selectedServerTools.push(toolId);
+    } else {
+      const index = selectedServerTools.indexOf(toolId);
+      if (index !== -1) {
+        selectedServerTools.splice(index, 1);
+      }
+    }
+
+    setToolSelections(newConfig);
+  };
+
+  // all toolsets and tools of the extension are selected
+  const getExtensionState = (extensionId: string): boolean => {
+    if (!(extensionId in toolSelections.extensions)) {
+      return false;
+    }
+
+    const extension = toolConfig.extensions.find(
+      extension => extension.id === extensionId
+    );
+
+    for (const toolset of extension.toolsets) {
+      if (!getExtensionToolsetState(extensionId, toolset.id)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const getExtensionToolsetState = (
+    extensionId: string,
+    toolsetId: string
+  ): boolean => {
+    if (!(extensionId in toolSelections.extensions)) {
+      return false;
+    }
+
+    if (!(toolsetId in toolSelections.extensions[extensionId])) {
+      return false;
+    }
+
+    const extension = toolConfig.extensions.find(ext => ext.id === extensionId);
+    const extensionToolset = extension.toolsets.find(
+      (toolset: any) => toolset.id === toolsetId
+    );
+
+    const selectedToolsetTools: string[] =
+      toolSelections.extensions[extensionId][toolsetId];
+
+    for (const tool of extensionToolset.tools) {
+      if (!selectedToolsetTools.includes(tool)) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const anyExtensionToolsetSelected = (extensionId: string) => {
+    if (!(extensionId in toolSelections.extensions)) {
+      return false;
+    }
+
+    return Object.keys(toolSelections.extensions[extensionId]).length > 0;
+  };
+
+  const onExtensionClicked = (extensionId: string) => {
+    if (anyExtensionToolsetSelected(extensionId)) {
+      const newConfig = { ...toolSelections };
+      delete newConfig.extensions[extensionId];
+      setToolSelections(newConfig);
+    } else {
+      const newConfig = { ...toolSelections };
+      const extension = toolConfig.extensions.find(
+        ext => ext.id === extensionId
+      );
+      if (extensionId in newConfig.extensions) {
+        delete newConfig.extensions[extensionId];
+      }
+      newConfig.extensions[extensionId] = {};
+      for (const toolset of extension.toolsets) {
+        newConfig.extensions[extensionId][toolset.id] = structuredClone(
+          toolset.tools
+        );
+      }
+      setToolSelections(newConfig);
+    }
+  };
+
+  const anyExtensionToolsetToolSelected = (
+    extensionId: string,
+    toolsetId: string
+  ) => {
+    if (!(extensionId in toolSelections.extensions)) {
+      return false;
+    }
+
+    if (!(toolsetId in toolSelections.extensions[extensionId])) {
+      return false;
+    }
+
+    return toolSelections.extensions[extensionId][toolsetId].length > 0;
+  };
+
+  const onExtensionToolsetClicked = (
+    extensionId: string,
+    toolsetId: string
+  ) => {
+    if (anyExtensionToolsetToolSelected(extensionId, toolsetId)) {
+      const newConfig = { ...toolSelections };
+      if (toolsetId in newConfig.extensions[extensionId]) {
+        delete newConfig.extensions[extensionId][toolsetId];
+      }
+      setToolSelections(newConfig);
+    } else {
+      const extension = toolConfig.extensions.find(
+        ext => ext.id === extensionId
+      );
+      const extensionToolset = extension.toolsets.find(
+        (toolset: any) => toolset.id === toolsetId
+      );
+      const newConfig = { ...toolSelections };
+      if (!(extensionId in newConfig.extensions)) {
+        newConfig.extensions[extensionId] = {};
+      }
+      newConfig.extensions[extensionId][toolsetId] = structuredClone(
+        extensionToolset.tools
+      );
+      setToolSelections(newConfig);
+    }
+  };
+
+  const getExtensionToolsetToolState = (
+    extensionId: string,
+    toolsetId: string,
+    toolId: string
+  ): boolean => {
+    if (!(extensionId in toolSelections.extensions)) {
+      return false;
+    }
+
+    const selectedExtensionToolsets: any =
+      toolSelections.extensions[extensionId];
+
+    if (!(toolsetId in selectedExtensionToolsets)) {
+      return false;
+    }
+
+    const selectedServerTools: string[] = selectedExtensionToolsets[toolsetId];
+
+    return selectedServerTools.includes(toolId);
+  };
+
+  const setExtensionToolsetToolState = (
+    extensionId: string,
+    toolsetId: string,
+    toolId: string,
+    checked: boolean
+  ) => {
+    const newConfig = { ...toolSelections };
+
+    if (checked && !(extensionId in newConfig.extensions)) {
+      newConfig.extensions[extensionId] = {};
+    }
+
+    if (checked && !(toolsetId in newConfig.extensions[extensionId])) {
+      newConfig.extensions[extensionId][toolsetId] = [];
+    }
+
+    const selectedTools: string[] =
+      newConfig.extensions[extensionId][toolsetId];
+
+    if (checked) {
+      selectedTools.push(toolId);
+    } else {
+      const index = selectedTools.indexOf(toolId);
+      if (index !== -1) {
+        selectedTools.splice(index, 1);
+      }
+    }
+
+    setToolSelections(newConfig);
+  };
 
   useEffect(() => {
     const prefixes: string[] = [];
+    if (chatMode !== 'ask') {
+      prefixes.push('/clear');
+      setOriginalPrefixes(prefixes);
+      setPrefixSuggestions(prefixes);
+      return;
+    }
+
     const chatParticipants = NBIAPI.config.chatParticipants;
     for (const participant of chatParticipants) {
       const id = participant.id;
@@ -677,7 +1078,7 @@ function SidebarComponent(props: any) {
     }
     setOriginalPrefixes(prefixes);
     setPrefixSuggestions(prefixes);
-  }, []);
+  }, [chatMode]);
 
   useEffect(() => {
     const fetchData = () => {
@@ -730,11 +1131,26 @@ function SidebarComponent(props: any) {
   };
 
   const handleSubmitStopChatButtonClick = async () => {
+    setShowModeTools(false);
     if (!copilotRequestInProgress) {
       handleUserInputSubmit();
     } else {
       handleUserInputCancel();
     }
+  };
+
+  const handleSettingsButtonClick = async () => {
+    setShowModeTools(false);
+    props
+      .getApp()
+      .commands.execute('notebook-intelligence:open-configuration-dialog');
+  };
+
+  const handleChatToolsButtonClick = async () => {
+    if (!showModeTools) {
+      NBIAPI.fetchCapabilities();
+    }
+    setShowModeTools(!showModeTools);
   };
 
   const handleUserInputSubmit = async () => {
@@ -828,7 +1244,9 @@ function SidebarComponent(props: any) {
         content: extractedPrompt,
         language: activeDocInfo.language,
         filename: activeDocInfo.filename,
-        additionalContext
+        additionalContext,
+        chatMode,
+        toolSelections: toolSelections
       },
       {
         emit: async response => {
@@ -986,6 +1404,7 @@ function SidebarComponent(props: any) {
       event.stopPropagation();
       event.preventDefault();
       setShowPopover(false);
+      setShowModeTools(false);
       setSelectedPrefixSuggestionIndex(0);
     } else if (event.key === 'ArrowUp') {
       event.stopPropagation();
@@ -1260,6 +1679,12 @@ function SidebarComponent(props: any) {
     <div className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-title">Notebook Intelligence</div>
+        <div
+          className="user-input-footer-button"
+          onClick={() => handleSettingsButtonClick()}
+        >
+          <VscSettingsGear />
+        </div>
       </div>
       {!chatEnabled && !ghLoginRequired && (
         <div className="sidebar-login-info">
@@ -1333,7 +1758,7 @@ function SidebarComponent(props: any) {
             rows={3}
             onChange={onPromptChange}
             onKeyDown={onPromptKeyDown}
-            placeholder="Ask Copilot..."
+            placeholder="Ask Notebook Intelligence..."
             spellCheck={false}
             value={prompt}
           />
@@ -1362,19 +1787,56 @@ function SidebarComponent(props: any) {
             </div>
           )}
           <div className="user-input-footer">
-            <div>
-              <a
-                href="javascript:void(0)"
-                onClick={() => {
-                  setShowPopover(true);
-                  promptInputRef.current?.focus();
-                }}
-                title="Select chat participant"
-              >
-                @
-              </a>
-            </div>
+            {chatMode === 'ask' && (
+              <div>
+                <a
+                  href="javascript:void(0)"
+                  onClick={() => {
+                    setShowPopover(true);
+                    promptInputRef.current?.focus();
+                  }}
+                  title="Select chat participant"
+                >
+                  @
+                </a>
+              </div>
+            )}
             <div style={{ flexGrow: 1 }}></div>
+            <div className="chat-mode-widgets-container">
+              <div>
+                <select
+                  className="chat-mode-select"
+                  title="Chat mode"
+                  value={chatMode}
+                  onChange={event => {
+                    if (event.target.value === 'ask') {
+                      setToolSelections(toolSelectionsEmpty);
+                    } else if (event.target.value === 'agent') {
+                      setToolSelections(toolSelectionsInitial);
+                    }
+                    setShowModeTools(false);
+                    setChatMode(event.target.value);
+                  }}
+                >
+                  <option value="ask">Ask</option>
+                  <option value="agent">Agent</option>
+                </select>
+              </div>
+              {chatMode !== 'ask' && (
+                <div
+                  className={`user-input-footer-button tools-button ${notebookExecuteToolSelected ? 'tools-button-warning' : selectedToolCount > 0 ? 'tools-button-active' : ''}`}
+                  onClick={() => handleChatToolsButtonClick()}
+                  title={
+                    notebookExecuteToolSelected
+                      ? `Notebook execute tool selected!\n${toolSelectionTitle}`
+                      : toolSelectionTitle
+                  }
+                >
+                  <VscTools />
+                  {selectedToolCount > 0 && <>{selectedToolCount}</>}
+                </div>
+              )}
+            </div>
             <div>
               <button
                 className="jp-Dialog-button jp-mod-accept jp-mod-styled send-button"
@@ -1397,6 +1859,154 @@ function SidebarComponent(props: any) {
                   {prefix}
                 </div>
               ))}
+            </div>
+          )}
+          {showModeTools && (
+            <div
+              className="mode-tools-popover"
+              tabIndex={1}
+              autoFocus={true}
+              onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                if (event.key === 'Escape' || event.key === 'Enter') {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  setShowModeTools(false);
+                }
+              }}
+            >
+              <div className="mode-tools-popover-header">
+                <div className="mode-tools-popover-header-icon">
+                  <VscTools />
+                </div>
+                <div className="mode-tools-popover-title">
+                  {toolSelectionTitle}
+                </div>
+                <div
+                  className="mode-tools-popover-clear-tools-button"
+                  style={{
+                    visibility: selectedToolCount > 0 ? 'visible' : 'hidden'
+                  }}
+                >
+                  <div>
+                    <VscTrash />
+                  </div>
+                  <div>
+                    <a
+                      href="javascript:void(0);"
+                      onClick={onClearToolsButtonClicked}
+                    >
+                      clear
+                    </a>
+                  </div>
+                </div>
+                <div
+                  className="mode-tools-popover-close-button"
+                  onClick={() => setShowModeTools(false)}
+                >
+                  {/* <button
+                    className="jp-Dialog-button jp-mod-accept jp-mod-styled send-button"
+                  > */}
+                  <div>
+                    <VscPassFilled />
+                  </div>
+                  {/* </button> */}
+                  <div>Done</div>
+                </div>
+              </div>
+              <div className="mode-tools-popover-tool-list">
+                <div className="mode-tools-group-header">Built-in</div>
+                <div className="mode-tools-group">
+                  {toolConfig.builtinToolsets.map((toolset: any) => (
+                    <CheckBoxItem
+                      key={toolset.id}
+                      label={toolset.name}
+                      checked={getBuiltinToolsetState(toolset.id)}
+                      onClick={() => {
+                        setBuiltinToolsetState(
+                          toolset.id,
+                          !getBuiltinToolsetState(toolset.id)
+                        );
+                      }}
+                    />
+                  ))}
+                </div>
+                {toolConfig.mcpServers.length > 0 && (
+                  <div className="mode-tools-group-header">MCP Servers</div>
+                )}
+                {toolConfig.mcpServers.map((mcpServer, index: number) => (
+                  <div className="mode-tools-group">
+                    <CheckBoxItem
+                      label={mcpServer.id}
+                      checked={getMCPServerState(mcpServer.id)}
+                      onClick={() => onMCPServerClicked(mcpServer.id)}
+                    />
+                    {mcpServer.tools.map((tool: any, index: number) => (
+                      <CheckBoxItem
+                        label={tool}
+                        indent={1}
+                        checked={getMCPServerToolState(mcpServer.id, tool)}
+                        onClick={() =>
+                          setMCPServerToolState(
+                            mcpServer.id,
+                            tool,
+                            !getMCPServerToolState(mcpServer.id, tool)
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                ))}
+                {hasExtensionTools && (
+                  <div className="mode-tools-group-header">Extension tools</div>
+                )}
+                {toolConfig.extensions.map((extension, index: number) => (
+                  <div className="mode-tools-group">
+                    <CheckBoxItem
+                      label={`${extension.name} (${extension.id})`}
+                      checked={getExtensionState(extension.id)}
+                      onClick={() => onExtensionClicked(extension.id)}
+                    />
+                    {extension.toolsets.map((toolset: any, index: number) => (
+                      <>
+                        <CheckBoxItem
+                          label={`${toolset.name} (${toolset.id})`}
+                          indent={1}
+                          checked={getExtensionToolsetState(
+                            extension.id,
+                            toolset.id
+                          )}
+                          onClick={() =>
+                            onExtensionToolsetClicked(extension.id, toolset.id)
+                          }
+                        />
+                        {toolset.tools.map((tool: any, index: number) => (
+                          <CheckBoxItem
+                            label={tool}
+                            indent={2}
+                            checked={getExtensionToolsetToolState(
+                              extension.id,
+                              toolset.id,
+                              tool
+                            )}
+                            onClick={() =>
+                              setExtensionToolsetToolState(
+                                extension.id,
+                                toolset.id,
+                                tool,
+                                !getExtensionToolsetToolState(
+                                  extension.id,
+                                  toolset.id,
+                                  tool
+                                )
+                              )
+                            }
+                          />
+                        ))}
+                      </>
+                    ))}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1548,7 +2158,8 @@ function InlinePromptComponent(props: any) {
         filename: undefined,
         prefix: props.prefix,
         suffix: props.suffix,
-        existingCode: props.existingCode
+        existingCode: props.existingCode,
+        chatMode: 'ask'
       },
       {
         emit: async response => {
@@ -1595,7 +2206,7 @@ function InlinePromptComponent(props: any) {
         rows={3}
         onChange={onPromptChange}
         onKeyDown={onPromptKeyDown}
-        placeholder="Ask Copilot to generate Python code..."
+        placeholder="Ask Notebook Intelligence to generate Python code..."
         spellCheck={false}
         value={prompt}
       />

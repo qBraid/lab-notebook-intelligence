@@ -7,7 +7,7 @@ import sys
 from typing import Dict
 import logging
 from notebook_intelligence import github_copilot
-from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MarkdownData, NotebookIntelligenceExtension, TelemetryEvent, TelemetryListener
+from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MarkdownData, NotebookIntelligenceExtension, TelemetryEvent, TelemetryListener, Tool, Toolset
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 from notebook_intelligence.config import NBIConfig
 from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
@@ -33,11 +33,13 @@ class AIServiceManager(Host):
         self.chat_participants: Dict[str, ChatParticipant] = {}
         self.completion_context_providers: Dict[str, CompletionContextProvider] = {}
         self.telemetry_listeners: Dict[str, TelemetryListener] = {}
+        self._extension_toolsets: Dict[str, list[Toolset]] = {}
         self._options = options.copy()
         self._nbi_config = NBIConfig({"server_root_dir": self._options.get('server_root_dir', '')})
         self._openai_compatible_llm_provider = OpenAICompatibleLLMProvider()
         self._litellm_compatible_llm_provider = LiteLLMCompatibleLLMProvider()
         self._ollama_llm_provider = OllamaLLMProvider()
+        self._extensions = []
         self.initialize()
 
     @property
@@ -112,6 +114,7 @@ class AIServiceManager(Host):
                         if extension:
                             extension.activate(self)
                             log.info(f"Activated NBI extension '{class_name}'.")
+                            self._extensions.append(extension)
             except Exception as e:
                 log.error(f"Failed to load NBI extension from '{extension_dir}'!\n{e}")
     
@@ -160,6 +163,16 @@ class AIServiceManager(Host):
             return
         log.warning(f"Notebook Intelligence telemetry listener '{listener.name}' registered. Make sure it is from a trusted source.")
         self.telemetry_listeners[listener.name] = listener
+
+    def register_toolset(self, toolset: Toolset) -> None:
+        if toolset.provider is None:
+            log.error(f"Toolset '{toolset.id}' has no provider! It cannot be registered.")
+            return
+        provider_id = toolset.provider.id
+        if provider_id not in self._extension_toolsets:
+            self._extension_toolsets[provider_id] = []
+        self._extension_toolsets[provider_id].append(toolset)
+        log.debug(f"Registered toolset '{toolset.id}' from provider '{provider_id}'.")
 
     @property
     def default_chat_participant(self) -> ChatParticipant:
@@ -309,3 +322,44 @@ class AIServiceManager(Host):
     async def emit_telemetry_event(self, event: TelemetryEvent):
         for listener in self.telemetry_listeners.values():
             listener.on_telemetry_event(event)
+
+    def get_mcp_servers(self):
+        return self._mcp_manager.get_mcp_servers()
+    
+    def get_mcp_server_tool(self, server_name: str, tool_name: str) -> Tool:
+        mcp_server = self._mcp_manager.get_mcp_server(server_name)
+        if mcp_server is not None:
+            return mcp_server.get_tool(tool_name)
+
+        return None
+
+    def get_extension_toolsets(self) -> Dict[str, list[Toolset]]:
+        return self._extension_toolsets
+    
+    def get_extension_toolset(self, extension_id: str, toolset_id: str) -> Toolset:
+        if extension_id not in self._extension_toolsets:
+            return None
+
+        extension_toolsets = self._extension_toolsets[extension_id]
+        for toolset in extension_toolsets:
+            if toolset_id == toolset.id:
+                return toolset
+        
+        return None
+
+    def get_extension_tool(self, extension_id: str, toolset_id: str, tool_name: str) -> Tool:
+        if extension_id not in self._extension_toolsets:
+            return None
+        extension_toolsets = self._extension_toolsets[extension_id]
+        for toolset in extension_toolsets:
+            if toolset_id == toolset.id:
+                for tool in toolset.tools:
+                    if tool.name == tool_name:
+                        return tool
+        return None
+    
+    def get_extension(self, extension_id: str) -> NotebookIntelligenceExtension:
+        for extension in self._extensions:
+            if extension.id == extension_id:
+                return extension
+        return None

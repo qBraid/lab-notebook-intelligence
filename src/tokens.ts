@@ -74,6 +74,21 @@ export interface IChatParticipant {
   commands: string[];
 }
 
+export interface IToolSelections {
+  builtinToolsets?: string[];
+  mcpServers?: {
+    [key: string]: string[];
+  };
+  extensions?: {
+    [key: string]: string[];
+  };
+}
+
+export enum BuiltinToolsetType {
+  NotebookEdit = 'nbi-notebook-edit',
+  NotebookExecute = 'nbi-notebook-execute'
+}
+
 export const GITHUB_COPILOT_PROVIDER_ID = 'github-copilot';
 
 export enum TelemetryEventType {
