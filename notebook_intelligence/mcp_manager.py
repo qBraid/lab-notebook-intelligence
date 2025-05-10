@@ -10,7 +10,7 @@ from mcp import ClientSession, StdioServerParameters, stdio_client
 from mcp.client.sse import sse_client
 from mcp.client.stdio import get_default_environment as mcp_get_default_environment
 from mcp.types import CallToolResult, TextContent, ImageContent
-from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, ImageData, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
+from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, ImageData, MCPServer, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 import logging
 from contextlib import AsyncExitStack
@@ -101,7 +101,7 @@ class SSEServerParameters:
     url: str
     headers: dict[str, Any] | None = None
 
-class MCPServer:
+class MCPServerImpl(MCPServer):
     def __init__(self, name: str, stdio_params: StdioServerParameters = None, sse_params: SSEServerParameters = None, auto_approve_tools: list[str] = []):
         self._name: str = name
         self._stdio_params: StdioServerParameters = stdio_params
@@ -160,7 +160,6 @@ class MCPServer:
                 await self.connect()
 
             result = await self._session.call_tool(tool_name, tool_args)
-            await self.disconnect()
             return result
         except Exception as e:
             log.error(f"Error calling tool '{tool_name}' on server '{self.name}': {e}")
@@ -314,7 +313,7 @@ class MCPManager:
                 server_env = mcp_get_default_environment()
                 server_env.update(env)
 
-            return MCPServer(server_name, stdio_params=StdioServerParameters(
+            return MCPServerImpl(server_name, stdio_params=StdioServerParameters(
                 command = command,
                 args = args,
                 env = server_env
@@ -323,7 +322,7 @@ class MCPManager:
             server_url = server_config["url"]
             headers = server_config.get("headers", None)
 
-            return MCPServer(server_name, sse_params=SSEServerParameters(url=server_url, headers=headers), auto_approve_tools=auto_approve_tools)
+            return MCPServerImpl(server_name, sse_params=SSEServerParameters(url=server_url, headers=headers), auto_approve_tools=auto_approve_tools)
 
         log.error(f"Invalid MCP server configuration for: {server_name}")
         return None

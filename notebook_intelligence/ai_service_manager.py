@@ -7,7 +7,7 @@ import sys
 from typing import Dict
 import logging
 from notebook_intelligence import github_copilot
-from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MarkdownData, NotebookIntelligenceExtension, TelemetryEvent, TelemetryListener, Tool, Toolset
+from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MCPServer, MarkdownData, NotebookIntelligenceExtension, TelemetryEvent, TelemetryListener, Tool, Toolset
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 from notebook_intelligence.config import NBIConfig
 from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
@@ -325,6 +325,9 @@ class AIServiceManager(Host):
 
     def get_mcp_servers(self):
         return self._mcp_manager.get_mcp_servers()
+    
+    def get_mcp_server(self, server_name: str) -> MCPServer:
+        return self._mcp_manager.get_mcp_server(server_name)
     
     def get_mcp_server_tool(self, server_name: str, tool_name: str) -> Tool:
         mcp_server = self._mcp_manager.get_mcp_server(server_name)
