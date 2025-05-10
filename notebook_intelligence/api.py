@@ -451,6 +451,9 @@ class ChatParticipant:
 
         async def _tool_call_loop(tool_call_rounds: list):
             try:
+                if request.cancel_token.is_cancel_requested:
+                    return
+
                 tool_response = request.host.chat_model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
@@ -468,6 +471,9 @@ class ChatParticipant:
 
                 # handle first tool calls
                 while len(tool_call_rounds) > 0:
+                    if request.cancel_token.is_cancel_requested:
+                        return
+
                     tool_call = tool_call_rounds[0]
                     if "id" not in tool_call:
                         tool_call['id'] = uuid.uuid4().hex
