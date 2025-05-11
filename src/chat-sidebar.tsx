@@ -651,11 +651,12 @@ function CheckBoxItem(props: any) {
   const indent = props.indent || 0;
 
   return (
-    <>
-      <div
-        className={`checkbox-item checkbox-item-indent-${indent}`}
-        onClick={event => props.onClick(event)}
-      >
+    <div
+      className={`checkbox-item checkbox-item-indent-${indent} ${props.header ? 'checkbox-item-header' : ''}`}
+      title={props.title}
+      onClick={event => props.onClick(event)}
+    >
+      <div className="checkbox-item-toggle">
         {props.checked ? (
           <MdCheckBox className="checkbox-icon" />
         ) : (
@@ -663,7 +664,10 @@ function CheckBoxItem(props: any) {
         )}
         {props.label}
       </div>
-    </>
+      {props.title && (
+        <div className="checkbox-item-description">{props.title}</div>
+      )}
+    </div>
   );
 }
 
@@ -823,7 +827,7 @@ function SidebarComponent(props: any) {
     const selectedServerTools: string[] = toolSelections.mcpServers[id];
 
     for (const tool of mcpServer.tools) {
-      if (!selectedServerTools.includes(tool)) {
+      if (!selectedServerTools.includes(tool.name)) {
         return false;
       }
     }
@@ -839,7 +843,9 @@ function SidebarComponent(props: any) {
     } else {
       const mcpServer = toolConfig.mcpServers.find(server => server.id === id);
       const newConfig = { ...toolSelections };
-      newConfig.mcpServers[id] = structuredClone(mcpServer.tools);
+      newConfig.mcpServers[id] = structuredClone(
+        mcpServer.tools.map((tool: any) => tool.name)
+      );
       setToolSelections(newConfig);
     }
   };
@@ -1921,6 +1927,7 @@ function SidebarComponent(props: any) {
                       key={toolset.id}
                       label={toolset.name}
                       checked={getBuiltinToolsetState(toolset.id)}
+                      header={true}
                       onClick={() => {
                         setBuiltinToolsetState(
                           toolset.id,
@@ -1937,19 +1944,21 @@ function SidebarComponent(props: any) {
                   <div className="mode-tools-group">
                     <CheckBoxItem
                       label={mcpServer.id}
+                      header={true}
                       checked={getMCPServerState(mcpServer.id)}
                       onClick={() => onMCPServerClicked(mcpServer.id)}
                     />
                     {mcpServer.tools.map((tool: any, index: number) => (
                       <CheckBoxItem
-                        label={tool}
+                        label={tool.name}
+                        title={tool.description}
                         indent={1}
-                        checked={getMCPServerToolState(mcpServer.id, tool)}
+                        checked={getMCPServerToolState(mcpServer.id, tool.name)}
                         onClick={() =>
                           setMCPServerToolState(
                             mcpServer.id,
-                            tool,
-                            !getMCPServerToolState(mcpServer.id, tool)
+                            tool.name,
+                            !getMCPServerToolState(mcpServer.id, tool.name)
                           )
                         }
                       />
@@ -1963,6 +1972,7 @@ function SidebarComponent(props: any) {
                   <div className="mode-tools-group">
                     <CheckBoxItem
                       label={`${extension.name} (${extension.id})`}
+                      header={true}
                       checked={getExtensionState(extension.id)}
                       onClick={() => onExtensionClicked(extension.id)}
                     />

@@ -758,10 +758,7 @@ svg.access-token-warning {
 
 .checkbox-item {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 0 2px;
-  padding: 3px 2px;
+  flex-direction: column;
   cursor: pointer;
 }
 
@@ -789,4 +786,27 @@ svg.access-token-warning {
   width: 16px;
   height: 16px;
   color: var(--jp-brand-color1);
+  padding-top: 1px;
+}
+
+.checkbox-item-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 2px;
+  padding: 3px 2px;
+  color: var(--jp-ui-font-color1);
+}
+
+.checkbox-item-header .checkbox-item-toggle {
+  color: var(--jp-ui-font-color0);
+}
+
+.checkbox-item-description {
+  padding-left: 25px;
+  color: var(--jp-ui-font-color2);
+  padding-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
