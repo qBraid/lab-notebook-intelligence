@@ -407,7 +407,20 @@ class BaseChatParticipant(ChatParticipant):
 
             options = options.copy()
             options["system_prompt"] = system_prompt
+
+            mcp_servers_used = []
+            for server_name in request.tool_selection.mcp_server_tools.keys():
+                mcp_server = request.host.get_mcp_server(server_name)
+                if mcp_server not in mcp_servers_used:
+                    mcp_servers_used.append(mcp_server)
+
+            for mcp_server in mcp_servers_used:
+                await mcp_server.connect()
+
             await self.handle_chat_request_with_tools(request, response, options)
+
+            for mcp_server in mcp_servers_used:
+                await mcp_server.disconnect()
 
     async def handle_ask_mode_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         chat_model = request.host.chat_model

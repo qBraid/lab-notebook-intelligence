@@ -34,8 +34,10 @@ class GetCapabilitiesHandler(APIHandler):
         nbi_config = ai_service_manager.nbi_config
         llm_providers = ai_service_manager.llm_providers.values()
         mcp_servers = ai_service_manager.get_mcp_servers()
-        mcp_server_tools = [{"id": mcp_server.name, "tools": [tool.name for tool in mcp_server.get_tools()]} for mcp_server in mcp_servers]
+        mcp_server_tools = [{"id": mcp_server.name, "tools": [{"name": tool.name, "description": tool.description} for tool in mcp_server.get_tools()]} for mcp_server in mcp_servers]
         mcp_server_tools = [tool for tool in mcp_server_tools if len(tool["tools"]) > 0]
+        # sort by server id
+        mcp_server_tools.sort(key=lambda server: server["id"])
 
         extensions = []
         for extension_id, toolsets in ai_service_manager.get_extension_toolsets().items():
@@ -55,6 +57,8 @@ class GetCapabilitiesHandler(APIHandler):
                 "name": extension.name,
                 "toolsets": ts
             })
+        # sort by extension id
+        extensions.sort(key=lambda extension: extension["id"])
 
         response = {
             "using_github_copilot_service": nbi_config.using_github_copilot_service,

@@ -434,6 +434,7 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
 
         if cancel_token is not None and cancel_token.is_cancel_requested:
             response.finish()
+            return
 
         request = requests.post(
             f"{API_ENDPOINT}/chat/completions",

@@ -366,6 +366,26 @@ class SimpleTool(Tool):
         fn_args.update({"request": request, "response": response})
         return await self._tool_function(**fn_args)
 
+class MCPServer:
+    @property
+    def name(self) -> str:
+        return NotImplemented
+    
+    async def connect(self):
+        return NotImplemented
+
+    async def disconnect(self):
+        return NotImplemented
+    
+    def get_tools(self) -> list[Tool]:
+        return NotImplemented
+
+    def get_tool(self, tool_name: str) -> Tool:
+        return NotImplemented
+
+    async def call_tool(self, tool_name: str, tool_args: dict):
+        return NotImplemented
+
 def auto_approve(tool: SimpleTool):
     """
     Decorator to set auto_approve to True for a tool.
@@ -381,7 +401,7 @@ def tool(tool_function: Callable) -> SimpleTool:
         "function": {
             "name": mcp_tool.name,
             "description": mcp_tool.description,
-            "strict": True,
+            "strict": False,
             "parameters": mcp_tool.parameters
         },
     }
@@ -451,6 +471,9 @@ class ChatParticipant:
 
         async def _tool_call_loop(tool_call_rounds: list):
             try:
+                if request.cancel_token.is_cancel_requested:
+                    return
+
                 tool_response = request.host.chat_model.completions(messages, openai_tools, cancel_token=request.cancel_token, options=options)
                 # after first call, set tool_choice to auto
                 options['tool_choice'] = 'auto'
@@ -468,6 +491,9 @@ class ChatParticipant:
 
                 # handle first tool calls
                 while len(tool_call_rounds) > 0:
+                    if request.cancel_token.is_cancel_requested:
+                        return
+
                     tool_call = tool_call_rounds[0]
                     if "id" not in tool_call:
                         tool_call['id'] = uuid.uuid4().hex
@@ -728,6 +754,9 @@ class Host:
     @property
     def embedding_model(self) -> EmbeddingModel:
         raise NotImplemented
+
+    def get_mcp_server(self, server_name: str) -> MCPServer:
+        return NotImplemented
 
     def get_mcp_server_tool(self, server_name: str, tool_name: str) -> Tool:
         return NotImplemented
