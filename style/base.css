@@ -804,6 +804,11 @@ svg.access-token-warning {
 
 .checkbox-item-header .checkbox-item-toggle {
   color: var(--jp-ui-font-color0);
+  font-weight: bold;
+}
+
+.mode-tools-group-built-in .checkbox-item-toggle {
+  font-weight: normal;
 }
 
 .checkbox-item-description {

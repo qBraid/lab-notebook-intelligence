@@ -1921,7 +1921,7 @@ function SidebarComponent(props: any) {
               </div>
               <div className="mode-tools-popover-tool-list">
                 <div className="mode-tools-group-header">Built-in</div>
-                <div className="mode-tools-group">
+                <div className="mode-tools-group mode-tools-group-built-in">
                   {toolConfig.builtinToolsets.map((toolset: any) => (
                     <CheckBoxItem
                       key={toolset.id}
