@@ -54,7 +54,7 @@ class MCPTool(Tool):
             "function": {
                 "name": self._name,
                 "description": self._description,
-                "strict": True,
+                "strict": False,
                 "parameters": self._schema
             },
         }

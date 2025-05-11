@@ -401,7 +401,7 @@ def tool(tool_function: Callable) -> SimpleTool:
         "function": {
             "name": mcp_tool.name,
             "description": mcp_tool.description,
-            "strict": True,
+            "strict": False,
             "parameters": mcp_tool.parameters
         },
     }
