@@ -370,6 +370,10 @@ pre:has(.code-block-header) {
   flex-direction: column;
 }
 
+.mode-tools-popover-title {
+  font-weight: bold;
+}
+
 .mode-tools-popover-header {
   display: flex;
   align-items: center;
