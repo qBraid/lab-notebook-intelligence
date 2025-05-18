@@ -395,6 +395,10 @@ def auto_approve(tool: SimpleTool):
 
 def tool(tool_function: Callable) -> SimpleTool:
     mcp_tool = MCPToolClass.from_function(tool_function)
+    if "args" in mcp_tool.parameters["properties"]:
+        del mcp_tool.parameters["properties"]["args"]
+    if "args" in mcp_tool.parameters["required"]:
+        mcp_tool.parameters["required"].remove("args")
 
     schema = {
         "type": "function",
