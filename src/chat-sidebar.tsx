@@ -925,7 +925,7 @@ function SidebarComponent(props: any) {
       toolSelections.extensions[extensionId][toolsetId];
 
     for (const tool of extensionToolset.tools) {
-      if (!selectedToolsetTools.includes(tool)) {
+      if (!selectedToolsetTools.includes(tool.name)) {
         return false;
       }
     }
@@ -957,7 +957,7 @@ function SidebarComponent(props: any) {
       newConfig.extensions[extensionId] = {};
       for (const toolset of extension.toolsets) {
         newConfig.extensions[extensionId][toolset.id] = structuredClone(
-          toolset.tools
+          toolset.tools.map((tool: any) => tool.name)
         );
       }
       setToolSelections(newConfig);
@@ -1001,7 +1001,7 @@ function SidebarComponent(props: any) {
         newConfig.extensions[extensionId] = {};
       }
       newConfig.extensions[extensionId][toolsetId] = structuredClone(
-        extensionToolset.tools
+        extensionToolset.tools.map((tool: any) => tool.name)
       );
       setToolSelections(newConfig);
     }
@@ -1991,22 +1991,23 @@ function SidebarComponent(props: any) {
                         />
                         {toolset.tools.map((tool: any, index: number) => (
                           <CheckBoxItem
-                            label={tool}
+                            label={tool.name}
+                            title={tool.description}
                             indent={2}
                             checked={getExtensionToolsetToolState(
                               extension.id,
                               toolset.id,
-                              tool
+                              tool.name
                             )}
                             onClick={() =>
                               setExtensionToolsetToolState(
                                 extension.id,
                                 toolset.id,
-                                tool,
+                                tool.name,
                                 !getExtensionToolsetToolState(
                                   extension.id,
                                   toolset.id,
-                                  tool
+                                  tool.name
                                 )
                               )
                             }
