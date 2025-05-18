@@ -324,7 +324,7 @@ class Toolset:
         self.tools.remove(tool)
 
 class SimpleTool(Tool):
-    def __init__(self, tool_function: Callable, name: str, description: str, schema: dict, title: str = None, auto_approve: bool = False):
+    def __init__(self, tool_function: Callable, name: str, description: str, schema: dict, title: str = None, auto_approve: bool = False, has_var_args: bool = False):
         super().__init__()
         self._tool_function = tool_function
         self._name = name
@@ -332,6 +332,7 @@ class SimpleTool(Tool):
         self._schema = schema
         self._title = title
         self._auto_approve = auto_approve
+        self._has_var_args = has_var_args
 
     @property
     def name(self) -> str:
@@ -363,7 +364,8 @@ class SimpleTool(Tool):
 
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         fn_args = tool_args.copy()
-        fn_args.update({"request": request, "response": response})
+        if self._has_var_args:
+            fn_args.update({"request": request, "response": response})
         return await self._tool_function(**fn_args)
 
 class MCPServer:
@@ -395,7 +397,9 @@ def auto_approve(tool: SimpleTool):
 
 def tool(tool_function: Callable) -> SimpleTool:
     mcp_tool = MCPToolClass.from_function(tool_function)
+    has_var_args = False
     if "args" in mcp_tool.parameters["properties"]:
+        has_var_args = True
         del mcp_tool.parameters["properties"]["args"]
     if "args" in mcp_tool.parameters["required"]:
         mcp_tool.parameters["required"].remove("args")
@@ -410,7 +414,7 @@ def tool(tool_function: Callable) -> SimpleTool:
         },
     }
 
-    return SimpleTool(tool_function, mcp_tool.name, mcp_tool.description, schema, mcp_tool.name, auto_approve)
+    return SimpleTool(tool_function, mcp_tool.name, mcp_tool.description, schema, mcp_tool.name, auto_approve, has_var_args)
 
 class ChatMode:
     def __init__(self, id: str, name: str, instructions: str = None):
