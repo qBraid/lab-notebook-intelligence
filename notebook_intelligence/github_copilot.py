@@ -412,8 +412,58 @@ def inline_completions(model_id, prefix, suffix, language, filename, context: Co
     
     return result
 
+def _aggregate_streaming_response(client: sseclient.SSEClient) -> dict:
+    final_tool_calls = []
+    final_content = ''
+
+    def _format_llm_response():
+        for tool_call in final_tool_calls:
+            if 'arguments' in tool_call['function'] and tool_call['function']['arguments'] == '':
+                tool_call['function']['arguments'] = '{}'
+
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "tool_calls": final_tool_calls if len(final_tool_calls) > 0 else None,
+                        "content": final_content,
+                        "role": "assistant"
+                    }
+                }
+            ]
+        }
+
+    for event in client.events():
+        if event.data == '[DONE]':
+            return _format_llm_response()
+
+        chunk = json.loads(event.data)
+        if len(chunk['choices']) == 0:
+            continue
+
+        content_chunk = chunk['choices'][0]['delta'].get('content')
+        if content_chunk:
+            final_content += content_chunk
+
+        for tool_call in chunk['choices'][0]['delta'].get('tool_calls', []):
+            if 'index' not in tool_call:
+                continue
+
+            index = tool_call['index']
+
+            if index >= len(final_tool_calls):
+                tc = tool_call.copy()
+                if 'arguments' not in tc:
+                    tc['function']['arguments'] = ''
+                final_tool_calls.append(tc)
+            else:
+                if 'arguments' in tool_call['function']:
+                    final_tool_calls[index]['function']['arguments'] += tool_call['function']['arguments']
+
+    return _format_llm_response()
+
 def completions(model_id, messages, tools = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
-    stream = response is not None
+    aggregate = response is None
 
     try:
         data = {
@@ -426,7 +476,7 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
             'n': 1,
             'stop': ['<END>'],
             'nwo': 'NotebookIntelligence',
-            'stream': stream
+            'stream': True
         }
 
         if 'tool_choice' in options:
@@ -440,7 +490,7 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
             f"{API_ENDPOINT}/chat/completions",
             headers = generate_copilot_headers(),
             json = data,
-            stream = stream
+            stream = True
         )
 
         if request.status_code != 200:
@@ -450,8 +500,10 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
             response.finish()
             raise Exception(msg)
 
-        if stream:
-            client = sseclient.SSEClient(request)
+        client = sseclient.SSEClient(request)
+        if aggregate:
+            return _aggregate_streaming_response(client)
+        else:
             for event in client.events():
                 if cancel_token is not None and cancel_token.is_cancel_requested:
                     response.finish()
@@ -459,9 +511,7 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
                     response.finish()
                 else:
                     response.stream(json.loads(event.data))
-            return
-        else:
-            return request.json()
+        return
     except requests.exceptions.ConnectionError:
         raise Exception("Connection error")
     except Exception as e:

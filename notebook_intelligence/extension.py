@@ -45,7 +45,7 @@ class GetCapabilitiesHandler(APIHandler):
             for toolset in toolsets:
                 tools = []
                 for tool in toolset.tools:
-                    tools.append(tool.name)
+                    tools.append({"name": tool.name, "description": tool.description})
                 ts.append({
                     "id": toolset.id,
                     "name": toolset.name,
