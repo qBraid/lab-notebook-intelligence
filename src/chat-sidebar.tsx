@@ -1349,6 +1349,7 @@ function SidebarComponent(props: any) {
     telemetryEmitter.emitTelemetryEvent({
       type: TelemetryEventType.ChatRequest,
       data: {
+        chatMode,
         chatModel: {
           provider: NBIAPI.config.chatModel.provider,
           model: NBIAPI.config.chatModel.model
