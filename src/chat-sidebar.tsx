@@ -1981,6 +1981,7 @@ function SidebarComponent(props: any) {
                       <>
                         <CheckBoxItem
                           label={`${toolset.name} (${toolset.id})`}
+                          title={toolset.description}
                           indent={1}
                           checked={getExtensionToolsetState(
                             extension.id,

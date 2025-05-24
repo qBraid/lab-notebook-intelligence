@@ -110,11 +110,11 @@ namespace CommandIDs {
     'notebook-intelligence:add-code-cell-to-active-notebook';
   export const deleteCellAtIndex = 'notebook-intelligence:delete-cell-at-index';
   export const insertCellAtIndex = 'notebook-intelligence:insert-cell-at-index';
+  export const getCellTypeAndSource =
+    'notebook-intelligence:get-cell-type-and-source';
   export const setCellTypeAndSource =
     'notebook-intelligence:set-cell-type-and-source';
   export const getNumberOfCells = 'notebook-intelligence:get-number-of-cells';
-  export const getCellType = 'notebook-intelligence:get-cell-type';
-  export const getCellSource = 'notebook-intelligence:get-cell-source';
   export const getCellOutput = 'notebook-intelligence:get-cell-output';
   export const runCellAtIndex = 'notebook-intelligence:run-cell-at-index';
   export const getCurrentFileContent =
@@ -948,6 +948,22 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
       }
     });
 
+    app.commands.addCommand(CommandIDs.getCellTypeAndSource, {
+      execute: args => {
+        if (!ensureANotebookIsActive()) {
+          return false;
+        }
+
+        const np = app.shell.currentWidget as NotebookPanel;
+        const model = np.model.sharedModel;
+
+        return {
+          type: model.cells[args.cellIndex as number].cell_type,
+          source: model.cells[args.cellIndex as number].source
+        };
+      }
+    });
+
     app.commands.addCommand(CommandIDs.setCellTypeAndSource, {
       execute: args => {
         if (!ensureANotebookIsActive()) {
@@ -982,32 +998,6 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         const model = np.model.sharedModel;
 
         return model.cells.length;
-      }
-    });
-
-    app.commands.addCommand(CommandIDs.getCellType, {
-      execute: args => {
-        if (!ensureANotebookIsActive()) {
-          return false;
-        }
-
-        const np = app.shell.currentWidget as NotebookPanel;
-        const model = np.model.sharedModel;
-
-        return model.cells[args.cellIndex as number].cell_type;
-      }
-    });
-
-    app.commands.addCommand(CommandIDs.getCellSource, {
-      execute: args => {
-        if (!ensureANotebookIsActive()) {
-          return false;
-        }
-
-        const np = app.shell.currentWidget as NotebookPanel;
-        const model = np.model.sharedModel;
-
-        return model.cells[args.cellIndex as number].source;
       }
     });
 
