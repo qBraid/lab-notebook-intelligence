@@ -54,29 +54,17 @@ async def get_number_of_cells(**args) -> str:
 
 @nbapi.auto_approve
 @nbapi.tool
-async def get_cell_type(cell_index: int, **args) -> str:
-    """Get cell type for the cell at index for the active notebook.
+async def get_cell_type_and_source(cell_index: int, **args) -> str:
+    """Get cell type and source for the cell at index for the active notebook.
 
     Args:
         cell_index: Zero based cell index
     """
     response = args["response"]
-    ui_cmd_response = await response.run_ui_command('notebook-intelligence:get-cell-type', {"cellIndex": cell_index})
+    ui_cmd_response = await response.run_ui_command('notebook-intelligence:get-cell-type-and-source', {"cellIndex": cell_index })
 
     return str(ui_cmd_response)
 
-@nbapi.auto_approve
-@nbapi.tool
-async def get_cell_source(cell_index: int, **args) -> str:
-    """Get cell source for the cell at index for the active notebook.
-
-    Args:
-        cell_index: Zero based cell index
-    """
-    response = args["response"]
-    ui_cmd_response = await response.run_ui_command('notebook-intelligence:get-cell-source', {"cellIndex": cell_index})
-
-    return str(ui_cmd_response)
 
 @nbapi.auto_approve
 @nbapi.tool
@@ -199,7 +187,7 @@ You are an assistant that creates and edits Jupyter notebooks. Notebooks are mad
 
 If you need to create a notebook use the create_new_notebook tool. If you need to add a code cell to the notebook use the add_code_cell tool. If you need to add a markdown cell to the notebook use the add_markdown_cell tool.
 
-You can refer to cells in notebooks by their index. The first cell in the notebook has index 0, the second cell has index 1, and so on. You can get the number of cells in the notebook using the get_number_of_cells tool. You can get the type of a cell using the get_cell_type tool. You can get the source of a cell using the get_cell_source tool. You can get the output of a cell using the get_cell_output tool.
+You can refer to cells in notebooks by their index. The first cell in the notebook has index 0, the second cell has index 1, and so on. You can get the number of cells in the notebook using the get_number_of_cells tool. You can get the type and source of a cell using the get_cell_type_and_source tool. You can get the output of a cell using the get_cell_output tool.
 
 If you need to make changes to an existing notebook use the tools to get existing cell type and source. Use the set_cell_type_and_source tool for updating cell type and source. You can set the cell type to either code or markdown. You can set the source of the cell to either source code or markdown text.
 
@@ -232,15 +220,15 @@ built_in_toolsets: dict[BuiltinToolset, Toolset] = {
     BuiltinToolset.NotebookEdit: Toolset(
         id=BuiltinToolset.NotebookEdit,
         name="Notebook edit",
+        description="Notebook edit",
         provider=None,
         tools=[
             create_new_notebook,
             add_markdown_cell,
             add_code_cell,
             get_number_of_cells,
-            get_cell_type,
-            get_cell_source,
             get_cell_output,
+            get_cell_type_and_source,
             set_cell_type_and_source,
             delete_cell,
             insert_cell,
@@ -251,6 +239,7 @@ built_in_toolsets: dict[BuiltinToolset, Toolset] = {
     BuiltinToolset.NotebookExecute: Toolset(
         id=BuiltinToolset.NotebookExecute,
         name="Notebook execute",
+        description="Notebook execute",
         provider=None,
         tools=[
             run_cell
@@ -260,6 +249,7 @@ built_in_toolsets: dict[BuiltinToolset, Toolset] = {
     BuiltinToolset.PythonFileEdit: Toolset(
         id=BuiltinToolset.PythonFileEdit,
         name="Python file edit",
+        description="Python file edit",
         provider=None,
         tools=[
             create_new_python_file,

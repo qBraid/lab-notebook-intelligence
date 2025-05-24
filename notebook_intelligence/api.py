@@ -310,9 +310,10 @@ class Tool:
         raise NotImplemented
 
 class Toolset:
-    def __init__(self, id: str, name: str, provider: Union['NotebookIntelligenceExtension', None], tools: list[Tool] = [], instructions: str = None):
+    def __init__(self, id: str, name: str, description: str, provider: Union['NotebookIntelligenceExtension', None], tools: list[Tool] = [], instructions: str = None):
         self.id = id
         self.name = name
+        self.description = description
         self.provider = provider
         self.tools: list[Tool] = tools
         self.instructions: Union[str, None] = instructions

@@ -46,11 +46,16 @@ class GetCapabilitiesHandler(APIHandler):
                 tools = []
                 for tool in toolset.tools:
                     tools.append({"name": tool.name, "description": tool.description})
+                # sort by tool name
+                tools.sort(key=lambda tool: tool["name"])
                 ts.append({
                     "id": toolset.id,
                     "name": toolset.name,
+                    "description": toolset.description,
                     "tools": tools
                 })
+            # sort by toolset name
+            ts.sort(key=lambda toolset: toolset["name"])
             extension = ai_service_manager.get_extension(extension_id)
             extensions.append({
                 "id": extension_id,
