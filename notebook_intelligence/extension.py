@@ -18,6 +18,7 @@ from jupyter_server.base.handlers import APIHandler
 from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
+from traitlets import Unicode
 from notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, RequestToolSelection, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
@@ -28,11 +29,15 @@ log = logging.getLogger(__name__)
 tiktoken_encoding = tiktoken.encoding_for_model('gpt-4o')
 
 class GetCapabilitiesHandler(APIHandler):
+    notebook_execute_tool = 'enabled'
+
     @tornado.web.authenticated
     def get(self):
         ai_service_manager.update_models_from_config()
         nbi_config = ai_service_manager.nbi_config
         llm_providers = ai_service_manager.llm_providers.values()
+        notebook_execute_tool_enabled = self.notebook_execute_tool == 'enabled' or (self.notebook_execute_tool == 'env_enabled' and os.getenv('NBI_NOTEBOOK_EXECUTE_TOOL', 'disabled') == 'enabled')
+        allowed_builtin_toolsets = [{"id": toolset.id, "name": toolset.name} for toolset in built_in_toolsets.values() if toolset.id != BuiltinToolset.NotebookExecute or notebook_execute_tool_enabled]
         mcp_servers = ai_service_manager.get_mcp_servers()
         mcp_server_tools = [{"id": mcp_server.name, "tools": [{"name": tool.name, "description": tool.description} for tool in mcp_server.get_tools()]} for mcp_server in mcp_servers]
         mcp_server_tools = [tool for tool in mcp_server_tools if len(tool["tools"]) > 0]
@@ -77,7 +82,7 @@ class GetCapabilitiesHandler(APIHandler):
             "chat_participants": [],
             "store_github_access_token": nbi_config.store_github_access_token,
             "tool_config": {
-                "builtinToolsets": [{"id": toolset.id, "name": toolset.name} for toolset in built_in_toolsets.values()],
+                "builtinToolsets": allowed_builtin_toolsets,
                 "mcpServers": mcp_server_tools,
                 "extensions": extensions
             }
@@ -558,6 +563,19 @@ class NotebookIntelligence(ExtensionApp):
     handlers = []
     root_dir = ''
 
+    notebook_execute_tool = Unicode(
+        default_value="enabled",
+        help="""
+        Notebook execute tool options.
+
+        'enabled' - Enable notebook execute tool (default).
+        'disabled' - Disabled notebook execute tool.
+        'env_enabled' - Disabled by default, can be enabled using 'NBI_NOTEBOOK_EXECUTE_TOOL=enabled'.
+        """,
+        allow_none=True,
+        config=True,
+    )
+
     def initialize_settings(self):
         pass
 
@@ -591,6 +609,7 @@ class NotebookIntelligence(ExtensionApp):
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
         route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
         route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
+        GetCapabilitiesHandler.notebook_execute_tool = self.notebook_execute_tool
         NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
             (route_pattern_config, ConfigHandler),
