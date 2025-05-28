@@ -67,6 +67,23 @@ To let Notebook Intelligence remember your GitHub access token, go to Notebook I
 
 If your stored access token fails to login (due to expiration or other reasons), you will be prompted to relogin on the UI.
 
+### Notebook execute tool options
+
+Notebook execute tool is enabled by default in Agent Mode. However, you can disable it or make it controlled by an environment variable.
+
+In order to disable Notebook execute tool:
+
+```bash
+jupyter lab --NotebookIntelligence.notebook_execute_tool=disabled
+```
+
+In order to disable Notebook execute tool by default but allow enabling using an environment variable:
+
+```bash
+NBI_NOTEBOOK_EXECUTE_TOOL=enabled
+jupyter lab --NotebookIntelligence.notebook_execute_tool=env_enabled
+```
+
 ### Configuration files
 
 NBI saves configuration at `~/.jupyter/nbi-config.json`. It also supports environment wide base configuration at `<env-prefix>/share/jupyter/nbi-config.json`. Organizations can ship default configuration at this environment wide config path. User's changes will be stored as overrides at `~/.jupyter/nbi-config.json`.
