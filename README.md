@@ -2,12 +2,13 @@
 
 Notebook Intelligence (NBI) is an AI coding assistant and extensible AI framework for JupyterLab. It can use GitHub Copilot or AI models from any other LLM Provider, including local models from [Ollama](https://ollama.com/). NBI greatly boosts the productivity of JupyterLab users with AI assistance.
 
-See blog posts for features and usage.
+## Feature Highlights
 
-- [Introducing Notebook Intelligence!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/01/08/introducing-notebook-intelligence.html)
-- [Building AI Extensions for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/05/building-ai-extensions-for-jupyterlab.html)
-- [Building AI Agents for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/09/building-ai-agents-for-jupyterlab.html)
-- [Notebook Intelligence now supports any LLM Provider and AI Model!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/03/05/support-for-any-llm-provider.html)
+### Agent Mode
+
+In Agent Mode, built-in AI agent creates, edits and executes notebooks for you interactively. It can detect issues in the cells and fix for you.
+
+![Agent mode](media/agent-mode.gif)
 
 ### Code generation with inline chat
 
@@ -26,6 +27,13 @@ Auto-complete suggestions are shown as you type. Clicking `Tab` key accepts the 
 ### Chat interface
 
 <img src="media/copilot-chat.gif" alt="Chat interface" width=600 />
+
+See blog posts for more features and usage.
+
+- [Introducing Notebook Intelligence!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/01/08/introducing-notebook-intelligence.html)
+- [Building AI Extensions for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/05/building-ai-extensions-for-jupyterlab.html)
+- [Building AI Agents for JupyterLab](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/02/09/building-ai-agents-for-jupyterlab.html)
+- [Notebook Intelligence now supports any LLM Provider and AI Model!](https://notebook-intelligence.github.io/notebook-intelligence/blog/2025/03/05/support-for-any-llm-provider.html)
 
 ## Installation
 
@@ -66,6 +74,23 @@ To let Notebook Intelligence remember your GitHub access token, go to Notebook I
 <img src="media/remember-gh-access-token.png" alt="Remember access token" width=500 />
 
 If your stored access token fails to login (due to expiration or other reasons), you will be prompted to relogin on the UI.
+
+### Notebook execute tool options
+
+Notebook execute tool is enabled by default in Agent Mode. However, you can disable it or make it controlled by an environment variable.
+
+In order to disable Notebook execute tool:
+
+```bash
+jupyter lab --NotebookIntelligence.notebook_execute_tool=disabled
+```
+
+In order to disable Notebook execute tool by default but allow enabling using an environment variable:
+
+```bash
+NBI_NOTEBOOK_EXECUTE_TOOL=enabled
+jupyter lab --NotebookIntelligence.notebook_execute_tool=env_enabled
+```
 
 ### Configuration files
 
