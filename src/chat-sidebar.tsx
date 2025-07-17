@@ -7,7 +7,8 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useState
+  useState,
+  memo
 } from 'react';
 import { ReactWidget } from '@jupyterlab/apputils';
 import { UUID } from '@lumino/coreutils';
@@ -32,7 +33,8 @@ import {
   TelemetryEventType
 } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
-import { MarkdownRenderer } from './markdown-renderer';
+import { MarkdownRenderer as OriginalMarkdownRenderer } from './markdown-renderer';
+const MarkdownRenderer = memo(OriginalMarkdownRenderer);
 
 import copySvgstr from '../style/icons/copy.svg';
 import copilotSvgstr from '../style/icons/copilot.svg';
@@ -314,6 +316,7 @@ function ChatResponseHTMLFrame(props: any) {
   );
 }
 
+// Memoize ChatResponse for performance
 function ChatResponse(props: any) {
   const [renderCount, setRenderCount] = useState(0);
   const msg: IChatMessage = props.message;
@@ -599,6 +602,7 @@ function ChatResponse(props: any) {
     </div>
   );
 }
+const MemoizedChatResponse = memo(ChatResponse);
 
 async function submitCompletionRequest(
   request: IRunChatCompletionRequest,
@@ -1740,8 +1744,8 @@ function SidebarComponent(props: any) {
         ) : (
           <div className="sidebar-messages">
             {chatMessages.map((msg, index) => (
-              <ChatResponse
-                key={`key-${index}`}
+              <MemoizedChatResponse
+                key={msg.id}
                 message={msg}
                 openFile={props.openFile}
                 getApp={props.getApp}
