@@ -730,6 +730,8 @@ function SidebarComponent(props: any) {
   };
   const [toolSelections, setToolSelections] = useState(toolSelectionsInitial);
   const [hasExtensionTools, setHasExtensionTools] = useState(false);
+  const [lastScrollTime, setLastScrollTime] = useState(0);
+  const [scrollPending, setScrollPending] = useState(false);
 
   NBIAPI.configChanged.connect(() => {
     setToolConfig(NBIAPI.config.toolConfig);
@@ -1479,8 +1481,24 @@ function SidebarComponent(props: any) {
     }
   };
 
+  // Throttle scrollMessagesToBottom to only scroll every 500ms
+  const SCROLL_THROTTLE_TIME = 1000;
   const scrollMessagesToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const now = Date.now();
+    if (now - lastScrollTime >= SCROLL_THROTTLE_TIME) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setLastScrollTime(now);
+    } else if (!scrollPending) {
+      setScrollPending(true);
+      setTimeout(
+        () => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          setLastScrollTime(Date.now());
+          setScrollPending(false);
+        },
+        SCROLL_THROTTLE_TIME - (now - lastScrollTime)
+      );
+    }
   };
 
   const handleConfigurationClick = async () => {
