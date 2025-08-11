@@ -281,6 +281,7 @@ interface IChatMessageContent {
   id: string;
   type: ResponseStreamDataType;
   content: any;
+  contentDetail?: any;
   created: Date;
   reasoningContent?: string;
   reasoningFinished?: boolean;
@@ -465,9 +466,9 @@ function ChatResponse(props: any) {
               return (
                 <>
                   {item.reasoningContent && (
-                    <div className="chat-reasoning-content">
+                    <div className="expandable-content">
                       <div
-                        className="chat-reasoning-content-title"
+                        className="expandable-content-title"
                         onClick={(event: any) => onExpandCollapseClick(event)}
                       >
                         <VscTriangleRight className="collapsed-icon"></VscTriangleRight>
@@ -476,7 +477,7 @@ function ChatResponse(props: any) {
                           ? 'Thought'
                           : `Thinking (${Math.floor(item.reasoningTime)} s)`}
                       </div>
-                      <div className="chat-reasoning-content-text">
+                      <div className="expandable-content-text">
                         <MarkdownRenderer
                           key={`key-${index}`}
                           getApp={props.getApp}
@@ -494,6 +495,27 @@ function ChatResponse(props: any) {
                   >
                     {item.content}
                   </MarkdownRenderer>
+                  {item.contentDetail ? (
+                    <div className="expandable-content">
+                      <div
+                        className="expandable-content-title"
+                        onClick={(event: any) => onExpandCollapseClick(event)}
+                      >
+                        <VscTriangleRight className="collapsed-icon"></VscTriangleRight>
+                        <VscTriangleDown className="expanded-icon"></VscTriangleDown>{' '}
+                        {item.contentDetail.title}
+                      </div>
+                      <div className="expandable-content-text">
+                        <MarkdownRenderer
+                          key={`key-${index}`}
+                          getApp={props.getApp}
+                          getActiveDocumentInfo={props.getActiveDocumentInfo}
+                        >
+                          {item.contentDetail.content}
+                        </MarkdownRenderer>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               );
             case ResponseStreamDataType.Image:
@@ -1278,6 +1300,7 @@ function SidebarComponent(props: any) {
                 id: UUID.uuid4(),
                 type: nbiContent.type,
                 content: nbiContent.content,
+                contentDetail: nbiContent.detail,
                 created: new Date(response.created)
               });
             } else {

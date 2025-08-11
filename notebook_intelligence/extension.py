@@ -226,7 +226,8 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
                         "delta": {
                             "nbiContent": {
                                 "type": data_type,
-                                "content": data.content
+                                "content": data.content,
+                                "detail": data.detail
                             },
                             "content": "",
                             "role": "assistant"

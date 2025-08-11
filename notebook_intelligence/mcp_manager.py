@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass
+import json
 import threading
 from typing import Any, Union
 from fastmcp.client import SSETransport, StdioTransport
@@ -63,7 +64,7 @@ class MCPTool(Tool):
         if not self._auto_approve:
             confirmationTitle = "Approve"
             confirmationMessage = "Are you sure you want to call this MCP tool?"
-        return ToolPreInvokeResponse(f"Calling MCP tool '{self.name}'", confirmationTitle, confirmationMessage)
+        return ToolPreInvokeResponse(f"Calling MCP tool '{self.name}'", detail={"title": "Parameters", "content": json.dumps(tool_args)}, confirmationTitle=confirmationTitle, confirmationMessage=confirmationMessage)
 
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         call_args = {}
@@ -74,7 +75,7 @@ class MCPTool(Tool):
 
         try:
             result = await self._server.call_tool(self.name, call_args)
-            if type(result) is CallToolResult:
+            if hasattr(result, "content") and isinstance(result.content, list):
                 if len(result.content) > 0:
                     text_contents = []
                     for content in result.content:

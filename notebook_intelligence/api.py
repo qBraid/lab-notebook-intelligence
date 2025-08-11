@@ -104,6 +104,7 @@ class ResponseStreamData:
 @dataclass
 class MarkdownData(ResponseStreamData):
     content: str = ''
+    detail: dict = None
 
     @property
     def data_type(self) -> ResponseStreamDataType:
@@ -274,6 +275,7 @@ class ChatResponse:
 @dataclass
 class ToolPreInvokeResponse:
     message: str = None
+    detail: dict = None
     confirmationTitle: str = None
     confirmationMessage: str = None
 
@@ -537,7 +539,7 @@ class ChatParticipant:
                     tool_pre_invoke_response = tool_to_call.pre_invoke(request, args)
                     if tool_pre_invoke_response is not None:
                         if tool_pre_invoke_response.message is not None:
-                            response.stream(MarkdownData(f"&#x2713; {tool_pre_invoke_response.message}..."))
+                            response.stream(MarkdownData(f"&#x2713; {tool_pre_invoke_response.message}...", tool_pre_invoke_response.detail))
                         if tool_pre_invoke_response.confirmationMessage is not None:
                             response.stream(ConfirmationData(
                                 title=tool_pre_invoke_response.confirmationTitle,

@@ -711,8 +711,9 @@ body[data-jp-theme-light='false'] .inline-popover {
   line-height: 20px;
 }
 
-.chat-reasoning-content-title {
+.expandable-content-title {
   margin-top: 5px;
+  margin-bottom: 5px;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -720,7 +721,7 @@ body[data-jp-theme-light='false'] .inline-popover {
   color: var(--jp-ui-font-color2);
 }
 
-.chat-reasoning-content-text {
+.expandable-content-text {
   display: none;
   margin: 5px;
   padding: 0 5px;
@@ -728,23 +729,23 @@ body[data-jp-theme-light='false'] .inline-popover {
   border-radius: 5px;
 }
 
-.chat-reasoning-content .collapsed-icon {
+.expandable-content .collapsed-icon {
   display: inline;
 }
 
-.chat-reasoning-content .expanded-icon {
+.expandable-content .expanded-icon {
   display: none;
 }
 
-.chat-reasoning-content.expanded .expanded-icon {
+.expandable-content.expanded .expanded-icon {
   display: inline;
 }
 
-.chat-reasoning-content.expanded .chat-reasoning-content-text {
+.expandable-content.expanded .expandable-content-text {
   display: block;
 }
 
-.chat-reasoning-content.expanded .collapsed-icon {
+.expandable-content.expanded .collapsed-icon {
   display: none;
 }
 
