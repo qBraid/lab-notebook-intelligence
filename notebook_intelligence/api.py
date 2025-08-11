@@ -379,6 +379,9 @@ class MCPServer:
 
     async def disconnect(self):
         return NotImplemented
+
+    async def update_tool_list(self):
+        return NotImplemented
     
     def get_tools(self) -> list[Tool]:
         return NotImplemented

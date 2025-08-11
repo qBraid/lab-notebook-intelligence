@@ -2,18 +2,16 @@
 
 import asyncio
 from dataclasses import dataclass
-from datetime import timedelta
 import threading
 from typing import Any, Union
-import anyio
-from mcp import ClientSession, StdioServerParameters, stdio_client
-from mcp.client.sse import sse_client
+from fastmcp.client import SSETransport, StdioTransport
+from mcp import StdioServerParameters
 from mcp.client.stdio import get_default_environment as mcp_get_default_environment
 from mcp.types import CallToolResult, TextContent, ImageContent
 from notebook_intelligence.api import ChatCommand, ChatRequest, ChatResponse, HTMLFrameData, ImageData, MCPServer, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.base_chat_participant import BaseChatParticipant
 import logging
-from contextlib import AsyncExitStack
+from fastmcp import Client
 
 log = logging.getLogger(__name__)
 
@@ -114,53 +112,33 @@ class MCPServerImpl(MCPServer):
     @property
     def name(self) -> str:
         return self._name
-    
-    async def connect(self):
-        if self._session is not None:
-            return
-        self.exit_stack = AsyncExitStack()
 
-        try:
-            if self._stdio_params is None and self._sse_params is None:
-                raise ValueError("Either stdio_params or sse_params must be provided")
-            if self._stdio_params is not None:
-                self._transport = await self.exit_stack.enter_async_context(stdio_client(self._stdio_params))
-            else:
-                self._transport = await self.exit_stack.enter_async_context(sse_client(url=self._sse_params.url, headers=self._sse_params.headers))
-            self._read_stream, self._write_stream = self._transport
-            self._session = await self.exit_stack.enter_async_context(ClientSession(self._read_stream, self._write_stream, timedelta(seconds=MCP_TOOL_TIMEOUT)))
-            await self._session.initialize()
-            if not self._tried_to_get_tool_list:
-                await self._update_tool_list()
-                self._tried_to_get_tool_list = True
-        except Exception as e:
-            log.error(f"Error connecting to MCP server '{self.name}': {e}")
-            self._session = None
-            self.exit_stack = None
-            raise e
+    def get_client(self) -> Client:
+        if self._stdio_params is None and self._sse_params is None:
+            raise ValueError("Failed to create MCP client. Either stdio_params or sse_params must be provided")
+        if self._stdio_params is not None:
+            return Client(transport=StdioTransport(
+                command=self._stdio_params.command,
+                args=self._stdio_params.args,
+                env=self._stdio_params.env,
+                keep_alive=False
+            ))
+        else:
+            return Client(transport=SSETransport(
+                url=self._sse_params.url,
+                headers=self._sse_params.headers,
+                keep_alive=False
+            ))
 
-    async def disconnect(self):
-        if self._session is None:
-            return
-
-        await self.exit_stack.aclose()
-        self.exit_stack = None
-        self._session = None
-
-    async def _update_tool_list(self):
-        if self._session is None:
-            await self.connect()
-
-        response = await self._session.list_tools()
-        self._mcp_tools = response.tools
+    async def update_tool_list(self):
+        async with self.get_client() as client:
+            self._mcp_tools = await client.list_tools()
 
     async def call_tool(self, tool_name: str, tool_args: dict):
         try:
-            if self._session is None:
-                await self.connect()
-
-            result = await self._session.call_tool(tool_name, tool_args)
-            return result
+            async with self.get_client() as client:
+                result = await client.call_tool(tool_name, tool_args)
+                return result
         except Exception as e:
             log.error(f"Error calling tool '{tool_name}' on server '{self.name}': {e}")
             return None
@@ -222,9 +200,6 @@ class MCPChatParticipant(BaseChatParticipant):
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         response.stream(ProgressData("Thinking..."))
 
-        for server in self._servers:
-            await server.connect()
-
         if request.command == "info":
             for server in self._servers:
                 info_lines = []
@@ -236,9 +211,6 @@ class MCPChatParticipant(BaseChatParticipant):
             response.finish()
         else:
             await self.handle_chat_request_with_tools(request, response, options)
-
-        for server in self._servers:
-            await server.disconnect()
 
 class MCPManager:
     def __init__(self, mcp_config: dict):
@@ -333,8 +305,7 @@ class MCPManager:
     async def init_tool_lists_async(self):
         for server in self._mcp_servers:
             try:
-                await server.connect()
-                await server.disconnect()
+                await server.update_tool_list()
             except Exception as e:
                 log.error(f"Error initializing tool list for server {server.name}: {e}")
     
