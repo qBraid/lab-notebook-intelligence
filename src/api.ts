@@ -30,6 +30,14 @@ export interface IDeviceVerificationInfo {
 }
 
 export class NBIConfig {
+  get userHomeDir(): string {
+    return this.capabilities.user_home_dir;
+  }
+
+  get configFilePath(): string {
+    return this.capabilities.config_file_path;
+  }
+
   get llmProviders(): [any] {
     return this.capabilities.llm_providers;
   }
@@ -223,6 +231,20 @@ export class NBIAPI {
         })
         .catch(reason => {
           console.error(`Failed to update ollama model list.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
+  static async reloadMCPServerList(): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      requestAPI<any>('reload-mcp-servers', { method: 'POST' })
+        .then(async data => {
+          await NBIAPI.fetchCapabilities();
+          resolve(data);
+        })
+        .catch(reason => {
+          console.error(`Failed to reload MCP server list.\n${reason}`);
           reject(reason);
         });
     });

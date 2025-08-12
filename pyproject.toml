@@ -29,7 +29,7 @@ dependencies = [
     "litellm>=1.62.1",
     "openai",
     "ollama",
-    "mcp"
+    "fastmcp"
 ]
 dynamic = ["version", "description", "authors", "urls", "keywords"]
 

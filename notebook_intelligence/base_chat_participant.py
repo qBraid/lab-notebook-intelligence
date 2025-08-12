@@ -414,13 +414,7 @@ class BaseChatParticipant(ChatParticipant):
                 if mcp_server not in mcp_servers_used:
                     mcp_servers_used.append(mcp_server)
 
-            for mcp_server in mcp_servers_used:
-                await mcp_server.connect()
-
             await self.handle_chat_request_with_tools(request, response, options)
-
-            for mcp_server in mcp_servers_used:
-                await mcp_server.disconnect()
 
     async def handle_ask_mode_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         chat_model = request.host.chat_model

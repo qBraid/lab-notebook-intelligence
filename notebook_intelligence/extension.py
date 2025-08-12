@@ -71,6 +71,8 @@ class GetCapabilitiesHandler(APIHandler):
         extensions.sort(key=lambda extension: extension["id"])
 
         response = {
+            "user_home_dir": os.path.expanduser('~'),
+            "config_file_path": nbi_config.user_config_file,
             "using_github_copilot_service": nbi_config.using_github_copilot_service,
             "llm_providers": [{"id": provider.id, "name": provider.name} for provider in llm_providers],
             "chat_models": ai_service_manager.chat_model_ids,
@@ -122,6 +124,15 @@ class UpdateProviderModelsHandler(APIHandler):
         if data.get("provider") == "ollama":
             ai_service_manager.ollama_llm_provider.update_chat_model_list()
         self.finish(json.dumps({}))
+
+class ReloadMCPServersHandler(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        ai_service_manager.nbi_config.load()
+        ai_service_manager.update_mcp_servers()
+        self.finish(json.dumps({
+            "mcpServers": [{"id": server.name} for server in ai_service_manager.get_mcp_servers()]
+        }))
 
 class EmitTelemetryEventHandler(APIHandler):
     @tornado.web.authenticated
@@ -226,7 +237,8 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
                         "delta": {
                             "nbiContent": {
                                 "type": data_type,
-                                "content": data.content
+                                "content": data.content,
+                                "detail": data.detail
                             },
                             "content": "",
                             "role": "assistant"
@@ -604,6 +616,7 @@ class NotebookIntelligence(ExtensionApp):
         route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
         route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
         route_pattern_update_provider_models = url_path_join(base_url, "notebook-intelligence", "update-provider-models")
+        route_pattern_reload_mcp_servers = url_path_join(base_url, "notebook-intelligence", "reload-mcp-servers")
         route_pattern_emit_telemetry_event = url_path_join(base_url, "notebook-intelligence", "emit-telemetry-event")
         route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
@@ -614,6 +627,7 @@ class NotebookIntelligence(ExtensionApp):
             (route_pattern_capabilities, GetCapabilitiesHandler),
             (route_pattern_config, ConfigHandler),
             (route_pattern_update_provider_models, UpdateProviderModelsHandler),
+            (route_pattern_reload_mcp_servers, ReloadMCPServersHandler),
             (route_pattern_emit_telemetry_event, EmitTelemetryEventHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),

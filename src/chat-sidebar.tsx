@@ -281,6 +281,7 @@ interface IChatMessageContent {
   id: string;
   type: ResponseStreamDataType;
   content: any;
+  contentDetail?: any;
   created: Date;
   reasoningContent?: string;
   reasoningFinished?: boolean;
@@ -465,9 +466,9 @@ function ChatResponse(props: any) {
               return (
                 <>
                   {item.reasoningContent && (
-                    <div className="chat-reasoning-content">
+                    <div className="expandable-content">
                       <div
-                        className="chat-reasoning-content-title"
+                        className="expandable-content-title"
                         onClick={(event: any) => onExpandCollapseClick(event)}
                       >
                         <VscTriangleRight className="collapsed-icon"></VscTriangleRight>
@@ -476,7 +477,7 @@ function ChatResponse(props: any) {
                           ? 'Thought'
                           : `Thinking (${Math.floor(item.reasoningTime)} s)`}
                       </div>
-                      <div className="chat-reasoning-content-text">
+                      <div className="expandable-content-text">
                         <MarkdownRenderer
                           key={`key-${index}`}
                           getApp={props.getApp}
@@ -494,6 +495,27 @@ function ChatResponse(props: any) {
                   >
                     {item.content}
                   </MarkdownRenderer>
+                  {item.contentDetail ? (
+                    <div className="expandable-content">
+                      <div
+                        className="expandable-content-title"
+                        onClick={(event: any) => onExpandCollapseClick(event)}
+                      >
+                        <VscTriangleRight className="collapsed-icon"></VscTriangleRight>
+                        <VscTriangleDown className="expanded-icon"></VscTriangleDown>{' '}
+                        {item.contentDetail.title}
+                      </div>
+                      <div className="expandable-content-text">
+                        <MarkdownRenderer
+                          key={`key-${index}`}
+                          getApp={props.getApp}
+                          getActiveDocumentInfo={props.getActiveDocumentInfo}
+                        >
+                          {item.contentDetail.content}
+                        </MarkdownRenderer>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               );
             case ResponseStreamDataType.Image:
@@ -1278,6 +1300,7 @@ function SidebarComponent(props: any) {
                 id: UUID.uuid4(),
                 type: nbiContent.type,
                 content: nbiContent.content,
+                contentDetail: nbiContent.detail,
                 created: new Date(response.created)
               });
             } else {
@@ -2468,6 +2491,9 @@ function ConfigurationDialogBodyComponent(props: any) {
   const llmProviders = nbiConfig.llmProviders;
   const [chatModels, setChatModels] = useState([]);
   const [inlineCompletionModels, setInlineCompletionModels] = useState([]);
+  const [mcpServerNames, setMcpServerNames] = useState(
+    nbiConfig.toolConfig.mcpServers?.map((server: any) => server.id) || []
+  );
 
   const handleSaveClick = async () => {
     const config: any = {
@@ -2585,6 +2611,11 @@ function ConfigurationDialogBodyComponent(props: any) {
     } else {
       setInlineCompletionModelProperties(updatedProperties);
     }
+  };
+
+  const handleReloadMCPServersClick = async () => {
+    const data = await NBIAPI.reloadMCPServerList();
+    setMcpServerNames(data.mcpServers?.map((server: any) => server.id) || []);
   };
 
   useEffect(() => {
@@ -2855,6 +2886,61 @@ function ConfigurationDialogBodyComponent(props: any) {
             </div>
           </div>
         )}
+
+        <div className="model-config-section">
+          <div className="model-config-section-header">
+            MCPServers [{mcpServerNames.length}]
+          </div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {mcpServerNames.length === 0 && (
+                  <div>
+                    No MCP servers found. Add MCP servers in the configuration
+                    file.
+                  </div>
+                )}
+                {mcpServerNames.length > 0 && (
+                  <div>{mcpServerNames.sort().join(', ')}</div>
+                )}
+              </div>
+              <div
+                className="model-config-section-column"
+                style={{ flexGrow: 'initial' }}
+              >
+                <button
+                  className="jp-Dialog-button jp-mod-reject jp-mod-styled"
+                  onClick={handleReloadMCPServersClick}
+                >
+                  <div className="jp-Dialog-buttonLabel">Reload</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="model-config-section">
+          <div className="model-config-section-header">Config file path</div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <span
+                  className="user-code-span"
+                  onClick={() => {
+                    navigator.clipboard.writeText(NBIAPI.config.configFilePath);
+                    return true;
+                  }}
+                >
+                  {NBIAPI.config.configFilePath}{' '}
+                  <span
+                    className="copy-icon"
+                    dangerouslySetInnerHTML={{ __html: copySvgstr }}
+                  ></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="config-dialog-footer">
