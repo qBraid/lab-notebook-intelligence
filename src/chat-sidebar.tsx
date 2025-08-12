@@ -2491,6 +2491,9 @@ function ConfigurationDialogBodyComponent(props: any) {
   const llmProviders = nbiConfig.llmProviders;
   const [chatModels, setChatModels] = useState([]);
   const [inlineCompletionModels, setInlineCompletionModels] = useState([]);
+  const [mcpServerNames, setMcpServerNames] = useState(
+    nbiConfig.toolConfig.mcpServers?.map((server: any) => server.id) || []
+  );
 
   const handleSaveClick = async () => {
     const config: any = {
@@ -2608,6 +2611,11 @@ function ConfigurationDialogBodyComponent(props: any) {
     } else {
       setInlineCompletionModelProperties(updatedProperties);
     }
+  };
+
+  const handleReloadMCPServersClick = async () => {
+    const data = await NBIAPI.reloadMCPServerList();
+    setMcpServerNames(data.mcpServers?.map((server: any) => server.id) || []);
   };
 
   useEffect(() => {
@@ -2878,6 +2886,61 @@ function ConfigurationDialogBodyComponent(props: any) {
             </div>
           </div>
         )}
+
+        <div className="model-config-section">
+          <div className="model-config-section-header">
+            MCPServers [{mcpServerNames.length}]
+          </div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                {mcpServerNames.length === 0 && (
+                  <div>
+                    No MCP servers found. Add MCP servers in the configuration
+                    file.
+                  </div>
+                )}
+                {mcpServerNames.length > 0 && (
+                  <div>{mcpServerNames.sort().join(', ')}</div>
+                )}
+              </div>
+              <div
+                className="model-config-section-column"
+                style={{ flexGrow: 'initial' }}
+              >
+                <button
+                  className="jp-Dialog-button jp-mod-reject jp-mod-styled"
+                  onClick={handleReloadMCPServersClick}
+                >
+                  <div className="jp-Dialog-buttonLabel">Reload</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="model-config-section">
+          <div className="model-config-section-header">Config file path</div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <span
+                  className="user-code-span"
+                  onClick={() => {
+                    navigator.clipboard.writeText(NBIAPI.config.configFilePath);
+                    return true;
+                  }}
+                >
+                  {NBIAPI.config.configFilePath}{' '}
+                  <span
+                    className="copy-icon"
+                    dangerouslySetInnerHTML={{ __html: copySvgstr }}
+                  ></span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="config-dialog-footer">

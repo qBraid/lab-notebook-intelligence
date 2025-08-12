@@ -585,6 +585,10 @@ body[data-jp-theme-light='false'] .inline-popover {
   height: 100%;
 }
 
+.config-dialog-container .jp-Dialog-content {
+  max-height: 600px;
+}
+
 .config-dialog-container .jp-Dialog-footer {
   display: none;
 }

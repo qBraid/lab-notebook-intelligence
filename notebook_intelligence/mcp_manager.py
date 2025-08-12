@@ -215,6 +215,9 @@ class MCPChatParticipant(BaseChatParticipant):
 
 class MCPManager:
     def __init__(self, mcp_config: dict):
+        self.update_mcp_servers(mcp_config)
+
+    def update_mcp_servers(self, mcp_config):
         # TODO: dont reuse servers, recreate with same config
         servers_config = mcp_config.get("mcpServers", {})
         participants_config = mcp_config.get("participants", {})

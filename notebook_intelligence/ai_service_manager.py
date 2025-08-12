@@ -96,6 +96,8 @@ class AIServiceManager(Host):
 
         self.chat_participants[DEFAULT_CHAT_PARTICIPANT_ID] = self._default_chat_participant
 
+    def update_mcp_servers(self):
+        self._mcp_manager.update_mcp_servers(self.nbi_config.mcp)
 
     def initialize_extensions(self):
         extensions_dir = path.join(sys.prefix, "share", "jupyter", "nbi_extensions")
