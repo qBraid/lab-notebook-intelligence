@@ -61,9 +61,11 @@ class GitHubCopilotInlineCompletionModel(InlineCompletionModel):
 class GitHubCopilotLLMProvider(LLMProvider):
     def __init__(self):
         self._chat_models = [
+            GitHubCopilotChatModel(self, "gpt-5-mini", "GPT-5 mini", 128000, True),
             GitHubCopilotChatModel(self, "gpt-4.1", "GPT-4.1", 128000, True),
             GitHubCopilotChatModel(self, "gpt-4o", "GPT-4o", 128000, True),
             GitHubCopilotChatModel(self, "o3-mini", "o3-mini", 200000, True),
+            GitHubCopilotChatModel(self, "gpt-5", "GPT-5", 128000, True),
             GitHubCopilotChatModel(self, "claude-sonnet-4", "Claude Sonnet 4", 80000, True),
             GitHubCopilotChatModel(self, "claude-3.7-sonnet", "Claude 3.7 Sonnet", 200000, True),
             GitHubCopilotChatModel(self, "claude-3.5-sonnet", "Claude 3.5 Sonnet", 90000, True),

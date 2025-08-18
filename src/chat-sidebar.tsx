@@ -2889,7 +2889,7 @@ function ConfigurationDialogBodyComponent(props: any) {
 
         <div className="model-config-section">
           <div className="model-config-section-header">
-            MCPServers [{mcpServerNames.length}]
+            MCP Servers [{mcpServerNames.length}]
           </div>
           <div className="model-config-section-body">
             <div className="model-config-section-row">
