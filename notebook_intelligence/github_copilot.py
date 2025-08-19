@@ -473,16 +473,19 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
             'temperature': 0,
             'top_p': 1,
             'n': 1,
-            'stop': ['<END>'],
             'nwo': 'NotebookIntelligence',
             'stream': True
         }
+
+        if not (model_id == 'gpt-5' or model_id == 'gpt-5-mini'):
+            data['stop'] = ['<END>']
 
         if 'tool_choice' in options:
             data['tool_choice'] = options['tool_choice']
 
         if cancel_token is not None and cancel_token.is_cancel_requested:
-            response.finish()
+            if response is not None:
+                response.finish()
             return
 
         request = requests.post(
@@ -495,8 +498,9 @@ def completions(model_id, messages, tools = None, response: ChatResponse = None,
         if request.status_code != 200:
             msg = f"Failed to get completions from GitHub Copilot: [{request.status_code}]: {request.text}"
             log.error(msg)
-            response.stream(MarkdownData(msg))
-            response.finish()
+            if response is not None:
+                response.stream(MarkdownData(msg))
+                response.finish()
             raise Exception(msg)
 
         client = sseclient.SSEClient(request)
