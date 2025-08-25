@@ -109,35 +109,45 @@ class MCPServerImpl(MCPServer):
         self._tried_to_get_tool_list = False
         self._mcp_tools = []
         self._session = None
+        self._client = None
 
     @property
     def name(self) -> str:
         return self._name
 
-    def get_client(self) -> Client:
-        if self._stdio_params is None and self._sse_params is None:
-            raise ValueError("Failed to create MCP client. Either stdio_params or sse_params must be provided")
+    def _create_client(self) -> Client:
         if self._stdio_params is not None:
             return Client(transport=StdioTransport(
                 command=self._stdio_params.command,
                 args=self._stdio_params.args,
-                env=self._stdio_params.env,
-                keep_alive=False
+                env=self._stdio_params.env
             ))
-        else:
+        elif self._sse_params is not None:
             return Client(transport=SSETransport(
                 url=self._sse_params.url,
-                headers=self._sse_params.headers,
-                keep_alive=False
+                headers=self._sse_params.headers
             ))
 
+    async def get_client(self) -> Client:
+        if self._stdio_params is None and self._sse_params is None:
+            raise ValueError("Failed to create MCP client. Either stdio_params or sse_params must be provided")
+        if self._client is None:
+            self._client = self._create_client()
+        else:
+            try:
+                async with self._client:
+                    await self._client.ping()
+            except Exception as e:
+                self._client = self._create_client()
+        return self._client
+
     async def update_tool_list(self):
-        async with self.get_client() as client:
+        async with await self.get_client() as client:
             self._mcp_tools = await client.list_tools()
 
     async def call_tool(self, tool_name: str, tool_args: dict):
         try:
-            async with self.get_client() as client:
+            async with await self.get_client() as client:
                 result = await client.call_tool(tool_name, tool_args)
                 return result
         except Exception as e:
