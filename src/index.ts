@@ -80,6 +80,11 @@ import {
 } from './utils';
 import { UUID } from '@lumino/coreutils';
 
+import {
+  dirname,
+  extname
+} from 'path';
+
 namespace CommandIDs {
   export const chatuserInput = 'notebook-intelligence:chat-user-input';
   export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
@@ -87,6 +92,8 @@ namespace CommandIDs {
   export const createNewFile = 'notebook-intelligence:create-new-file';
   export const createNewNotebookFromPython =
     'notebook-intelligence:create-new-notebook-from-py';
+  export const renameNotebook=
+    'notebook-intelligence:rename-notebook';
   export const addCodeCellToNotebook =
     'notebook-intelligence:add-code-cell-to-notebook';
   export const addMarkdownCellToNotebook =
@@ -785,6 +792,29 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         return newNBFile;
       }
     });
+
+    app.commands.addCommand(CommandIDs.renameNotebook, {
+      execute: async args => {
+        const activeWidget = app.shell.currentWidget;
+        if (activeWidget instanceof NotebookPanel) {
+          const oldPath = activeWidget.context.path;
+          var newPath = dirname(oldPath) + '/' + args.newName as string;
+          if (extname(newPath) != '.ipynb') {
+            newPath += '.ipynb';
+          }
+
+          try {
+            await app.serviceManager.contents.rename(oldPath, newPath);
+            return "Successfully renamed notebook"
+          } catch (error) {
+            return `Failed to rename notebook: ${error}`
+          }
+        } else {
+          return 'Cannot rename non notebook files';
+        }
+      }
+    });
+
 
     const isNewEmptyNotebook = (model: ISharedNotebook) => {
       return (
