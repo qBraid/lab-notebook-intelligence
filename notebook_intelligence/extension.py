@@ -11,7 +11,6 @@ import uuid
 import threading
 import logging
 import tiktoken
-from mcp.client.sse import sse_client
 
 from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
