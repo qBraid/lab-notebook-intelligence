@@ -86,13 +86,17 @@ def get_login_status():
 
     return response
 
-user_data_file = os.path.join(os.path.expanduser('~'), ".jupyter", "nbi-data.json")
+deprecated_user_data_file = os.path.join(os.path.expanduser('~'), ".jupyter", "nbi-data.json")
+user_data_file = os.path.join(os.path.expanduser('~'), ".jupyter", "nbi", "user-data.json")
 access_token_password = os.getenv("NBI_GH_ACCESS_TOKEN_PASSWORD", "nbi-access-token-password")
 
 def read_stored_github_access_token() -> str:
     try:
         if os.path.exists(user_data_file):
             with open(user_data_file, 'r') as file:
+                user_data = json.load(file)
+        elif os.path.exists(deprecated_user_data_file):
+            with open(deprecated_user_data_file, 'r') as file:
                 user_data = json.load(file)
         else:
             user_data = {}
@@ -118,6 +122,7 @@ def write_github_access_token(access_token: str) -> bool:
                 user_data = json.load(file)
         else:
             user_data = {}
+
         user_data.update({
             'github_access_token': base64_access_token
         })
@@ -164,6 +169,11 @@ def login_with_existing_credentials(store_access_token: bool):
 
     if github_access_token_provided is not None:
         login()
+        if os.path.exists(deprecated_user_data_file):
+            # TODO: remove after 12/2025
+            log.warning(f"Deprecated user data file found: {deprecated_user_data_file}. Removing it now. Use {user_data_file} instead.")
+            store_github_access_token()
+            os.remove(deprecated_user_data_file)
 
 def store_github_access_token():
     access_token = github_auth["access_token"]

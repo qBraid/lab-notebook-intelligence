@@ -62,7 +62,7 @@ for the frontend extension.
 Notebook Intelligence can remember your GitHub Copilot login so that you don't need to re-login after a JupyterLab or system restart. Please be aware of the security implications of using this feature.
 
 > [!CAUTION]
-> If you configure NBI to remember your GitHub Copilot login, it will encrypt the token and store into a data file at `~/.jupyter/nbi-data.json`. You should never share this file with others as they can access your tokens.
+> If you configure NBI to remember your GitHub Copilot login, it will encrypt the token and store into a data file at `~/.jupyter/nbi/user-data.json`. You should never share this file with others as they can access your tokens.
 > Even though the token is encrypted, it is done so by using a default password and that's why it can be decrypted by others. In order to prevent that you can specify a custom password using the environment variable `NBI_GH_ACCESS_TOKEN_PASSWORD`.
 
 ```bash
