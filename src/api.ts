@@ -12,10 +12,9 @@ import {
   IContextItem,
   ITelemetryEvent,
   IToolSelections,
-  RequestDataType
+  RequestDataType,
+  BackendMessageType
 } from './tokens';
-
-const LOGIN_STATUS_UPDATE_INTERVAL = 2000;
 
 export enum GitHubCopilotLoginStatus {
   NotLoggedIn = 'NOT_LOGGED_IN',
@@ -93,16 +92,22 @@ export class NBIAPI {
   static _messageReceived = new Signal<unknown, any>(this);
   static config = new NBIConfig();
   static configChanged = this.config.changed;
+  static githubLoginStatusChanged = new Signal<unknown, void>(this);
 
   static async initialize() {
     await this.fetchCapabilities();
     this.updateGitHubLoginStatus();
 
-    setInterval(() => {
-      this.updateGitHubLoginStatus();
-    }, LOGIN_STATUS_UPDATE_INTERVAL);
-
     NBIAPI.initializeWebsocket();
+
+    this._messageReceived.connect((_, msg) => {
+      msg = JSON.parse(msg);
+      if (msg.type === BackendMessageType.GitHubCopilotLoginStatusChange) {
+        this.updateGitHubLoginStatus().then(() => {
+          this.githubLoginStatusChanged.emit();
+        });
+      }
+    });
   }
 
   static async initializeWebsocket() {

@@ -64,8 +64,10 @@ class AIServiceManager(Host):
         self.initialize_extensions()
 
     def update_models_from_config(self):
-        if self.nbi_config.using_github_copilot_service:
+        using_github_copilot_service = self.nbi_config.using_github_copilot_service
+        if using_github_copilot_service:
             github_copilot.login_with_existing_credentials(self._nbi_config.store_github_access_token)
+        github_copilot.enable_github_login_status_change_updater(using_github_copilot_service)
 
         chat_model_cfg = self.nbi_config.chat_model
         chat_model_provider_id = chat_model_cfg.get('provider', 'none')

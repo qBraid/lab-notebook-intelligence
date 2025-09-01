@@ -12,8 +12,8 @@ import secrets
 import sseclient
 import datetime as dt
 import logging
-from notebook_intelligence.api import CancelToken, ChatResponse, CompletionContext, MarkdownData
-from notebook_intelligence.util import decrypt_with_password, encrypt_with_password
+from notebook_intelligence.api import BackendMessageType, CancelToken, ChatResponse, CompletionContext, MarkdownData
+from notebook_intelligence.util import decrypt_with_password, encrypt_with_password, ThreadSafeWebSocketConnector
 
 from ._version import __version__ as NBI_VERSION
 
@@ -55,6 +55,22 @@ get_token_thread = None
 last_token_fetch_time = dt.datetime.now() + dt.timedelta(seconds=-TOKEN_FETCH_INTERVAL)
 remember_github_access_token = False
 github_access_token_provided = None
+
+websocket_connector: ThreadSafeWebSocketConnector = None
+github_login_status_change_updater_enabled = False
+
+def enable_github_login_status_change_updater(enabled: bool):
+    global github_login_status_change_updater_enabled
+    github_login_status_change_updater_enabled = enabled
+
+def emit_github_login_status_change():
+    if github_login_status_change_updater_enabled and websocket_connector is not None:
+        websocket_connector.write_message({
+            "type": BackendMessageType.GitHubCopilotLoginStatusChange,
+            "data": {
+                "status": github_auth["status"].name
+            }
+        })
 
 def get_login_status():
     global github_auth
@@ -162,7 +178,8 @@ def login():
     return login_info
 
 def logout():
-    global github_auth
+    global github_auth, github_access_token_provided
+    github_access_token_provided = None
     github_auth.update({
         "verification_uri": None,
         "user_code": None,
@@ -171,6 +188,7 @@ def logout():
         "status" : LoginStatus.NOT_LOGGED_IN,
         "token": None
     })
+    emit_github_login_status_change()
 
     return {
         "status": github_auth["status"].name
@@ -205,6 +223,7 @@ def get_device_verification_info():
         github_auth["device_code"] = resp_json.get('device_code')
 
         github_auth["status"] = LoginStatus.ACTIVATING_DEVICE
+        emit_github_login_status_change()
     except Exception as e:
         log.error(f"Failed to get device verification info: {e}")
         return None
@@ -270,6 +289,7 @@ def get_token():
         return
 
     github_auth["status"] = LoginStatus.LOGGING_IN
+    emit_github_login_status_change()
 
     try:
         resp = requests.get(f'{GH_REST_API_BASE_URL}/copilot_internal/v2/token', headers={
@@ -301,6 +321,7 @@ def get_token():
         github_auth["verification_uri"] = None
         github_auth["user_code"] = None
         github_auth["status"] = LoginStatus.LOGGED_IN
+        emit_github_login_status_change()
 
         endpoints = resp_json.get('endpoints', {})
         API_ENDPOINT = endpoints.get('api', API_ENDPOINT)

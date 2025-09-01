@@ -22,6 +22,7 @@ from notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, Cha
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
 from notebook_intelligence.built_in_toolsets import built_in_toolsets
+from notebook_intelligence.util import ThreadSafeWebSocketConnector
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
@@ -431,6 +432,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
         # TODO: cleanup
         self._messageCallbackHandlers: dict[str, MessageCallbackHandlers] = {}
         self.chat_history = ChatHistory()
+        github_copilot.websocket_connector = ThreadSafeWebSocketConnector(self)
 
     def open(self):
         pass
