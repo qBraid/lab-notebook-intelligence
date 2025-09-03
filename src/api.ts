@@ -33,8 +33,8 @@ export class NBIConfig {
     return this.capabilities.user_home_dir;
   }
 
-  get configFilePath(): string {
-    return this.capabilities.config_file_path;
+  get userConfigDir(): string {
+    return this.capabilities.nbi_user_config_dir;
   }
 
   get llmProviders(): [any] {
@@ -254,6 +254,35 @@ export class NBIAPI {
         })
         .catch(reason => {
           console.error(`Failed to reload MCP server list.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
+  static async getMCPConfigFile(): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      requestAPI<any>('mcp-config-file', { method: 'GET' })
+        .then(async data => {
+          resolve(data);
+        })
+        .catch(reason => {
+          console.error(`Failed to get MCP config file.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
+  static async setMCPConfigFile(config: any): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      requestAPI<any>('mcp-config-file', {
+        method: 'POST',
+        body: JSON.stringify(config)
+      })
+        .then(async data => {
+          resolve(data);
+        })
+        .catch(reason => {
+          console.error(`Failed to set MCP config file.\n${reason}`);
           reject(reason);
         });
     });

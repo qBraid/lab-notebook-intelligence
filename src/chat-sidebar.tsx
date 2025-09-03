@@ -56,6 +56,7 @@ import {
 import { MdOutlineCheckBoxOutlineBlank, MdCheckBox } from 'react-icons/md';
 
 import { extractLLMGeneratedCode, isDarkTheme } from './utils';
+import * as path from 'path';
 
 const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
 const LITELLM_COMPATIBLE_CHAT_MODEL_ID = 'litellm-compatible-chat-model';
@@ -264,16 +265,26 @@ export class GitHubCopilotLoginDialogBody extends ReactWidget {
 }
 
 export class ConfigurationDialogBody extends ReactWidget {
-  constructor(options: { onSave: () => void }) {
+  constructor(options: {
+    onSave: () => void;
+    onEditMCPConfigClicked: () => void;
+  }) {
     super();
 
+    this._onEditMCPConfigClicked = options.onEditMCPConfigClicked;
     this._onSave = options.onSave;
   }
 
   render(): JSX.Element {
-    return <ConfigurationDialogBodyComponent onSave={this._onSave} />;
+    return (
+      <ConfigurationDialogBodyComponent
+        onEditMCPConfigClicked={this._onEditMCPConfigClicked}
+        onSave={this._onSave}
+      />
+    );
   }
 
+  private _onEditMCPConfigClicked: () => void;
   private _onSave: () => void;
 }
 
@@ -2915,7 +2926,11 @@ function ConfigurationDialogBodyComponent(props: any) {
 
         <div className="model-config-section">
           <div className="model-config-section-header">
-            MCP Servers [{mcpServerNames.length}]
+            MCP Servers ({mcpServerNames.length}) [
+            <a href="javascript:void(0)" onClick={props.onEditMCPConfigClicked}>
+              edit
+            </a>
+            ]
           </div>
           <div className="model-config-section-body">
             <div className="model-config-section-row">
@@ -2953,11 +2968,37 @@ function ConfigurationDialogBodyComponent(props: any) {
                 <span
                   className="user-code-span"
                   onClick={() => {
-                    navigator.clipboard.writeText(NBIAPI.config.configFilePath);
+                    navigator.clipboard.writeText(
+                      path.join(NBIAPI.config.userConfigDir, 'config.json')
+                    );
                     return true;
                   }}
                 >
-                  {NBIAPI.config.configFilePath}{' '}
+                  {path.join(NBIAPI.config.userConfigDir, 'config.json')}{' '}
+                  <span
+                    className="copy-icon"
+                    dangerouslySetInnerHTML={{ __html: copySvgstr }}
+                  ></span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="model-config-section-header">
+            MCP config file path
+          </div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <span
+                  className="user-code-span"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      path.join(NBIAPI.config.userConfigDir, 'mcp.json')
+                    );
+                    return true;
+                  }}
+                >
+                  {path.join(NBIAPI.config.userConfigDir, 'mcp.json')}{' '}
                   <span
                     className="copy-icon"
                     dangerouslySetInnerHTML={{ __html: copySvgstr }}
