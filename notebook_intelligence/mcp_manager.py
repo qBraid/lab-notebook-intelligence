@@ -129,7 +129,7 @@ class MCPServerImpl(MCPServer):
             ))
 
     async def get_client(self) -> Client:
-        if self._stdio_params is None and self._sse_params is None:
+        if self._stdio_params is None and self._streamable_http_params is None:
             raise ValueError("Failed to create MCP client. Either stdio_params or sse_params must be provided")
         if self._client is None:
             self._client = self._create_client()
