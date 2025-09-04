@@ -30,7 +30,7 @@
 }
 
 .sidebar-user-input {
-  height: 80px;
+  height: auto;
   padding: 5px;
   display: flex;
   flex-direction: column;
@@ -67,6 +67,11 @@
   border: none;
   resize: none;
   background: none;
+  /* stylelint-disable */
+  field-sizing: content;
+  /* stylelint-enable */
+  min-height: 36px;
+  max-height: 200px;
 }
 
 .sidebar-user-input .user-input-context-row {

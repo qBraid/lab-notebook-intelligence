@@ -11,7 +11,6 @@ import uuid
 import threading
 import logging
 import tiktoken
-from mcp.client.sse import sse_client
 
 from jupyter_server.extension.application import ExtensionApp
 from jupyter_server.base.handlers import APIHandler
@@ -23,6 +22,7 @@ from notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, Cha
 from notebook_intelligence.ai_service_manager import AIServiceManager
 import notebook_intelligence.github_copilot as github_copilot
 from notebook_intelligence.built_in_toolsets import built_in_toolsets
+from notebook_intelligence.util import ThreadSafeWebSocketConnector
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class GetCapabilitiesHandler(APIHandler):
 
         response = {
             "user_home_dir": os.path.expanduser('~'),
-            "config_file_path": nbi_config.user_config_file,
+            "nbi_user_config_dir": nbi_config.nbi_user_dir,
             "using_github_copilot_service": nbi_config.using_github_copilot_service,
             "llm_providers": [{"id": provider.id, "name": provider.name} for provider in llm_providers],
             "chat_models": ai_service_manager.chat_model_ids,
@@ -87,7 +87,8 @@ class GetCapabilitiesHandler(APIHandler):
                 "builtinToolsets": allowed_builtin_toolsets,
                 "mcpServers": mcp_server_tools,
                 "extensions": extensions
-            }
+            },
+            "default_chat_mode": nbi_config.default_chat_mode
         }
         for participant_id in ai_service_manager.chat_participants:
             participant = ai_service_manager.chat_participants[participant_id]
@@ -104,7 +105,7 @@ class ConfigHandler(APIHandler):
     @tornado.web.authenticated
     def post(self):
         data = json.loads(self.request.body)
-        valid_keys = set(["chat_model", "inline_completion_model", "store_github_access_token"])
+        valid_keys = set(["default_chat_mode", "chat_model", "inline_completion_model", "store_github_access_token"])
         for key in data:
             if key in valid_keys:
                 ai_service_manager.nbi_config.set(key, data[key])
@@ -133,6 +134,24 @@ class ReloadMCPServersHandler(APIHandler):
         self.finish(json.dumps({
             "mcpServers": [{"id": server.name} for server in ai_service_manager.get_mcp_servers()]
         }))
+
+class MCPConfigFileHandler(APIHandler):
+    @tornado.web.authenticated
+    def get(self):
+        self.finish(json.dumps(ai_service_manager.nbi_config.user_mcp))
+
+    @tornado.web.authenticated
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+            ai_service_manager.nbi_config.user_mcp = data
+            ai_service_manager.nbi_config.save()
+            ai_service_manager.nbi_config.load()
+            ai_service_manager.update_mcp_servers()
+            self.finish(json.dumps({"status": "ok"}))
+        except Exception as e:
+            self.finish(json.dumps({"status": "error", "message": str(e)}))
+            return
 
 class EmitTelemetryEventHandler(APIHandler):
     @tornado.web.authenticated
@@ -431,6 +450,7 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
         # TODO: cleanup
         self._messageCallbackHandlers: dict[str, MessageCallbackHandlers] = {}
         self.chat_history = ChatHistory()
+        github_copilot.websocket_connector = ThreadSafeWebSocketConnector(self)
 
     def open(self):
         pass
@@ -617,6 +637,7 @@ class NotebookIntelligence(ExtensionApp):
         route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
         route_pattern_update_provider_models = url_path_join(base_url, "notebook-intelligence", "update-provider-models")
         route_pattern_reload_mcp_servers = url_path_join(base_url, "notebook-intelligence", "reload-mcp-servers")
+        route_pattern_mcp_config_file = url_path_join(base_url, "notebook-intelligence", "mcp-config-file")
         route_pattern_emit_telemetry_event = url_path_join(base_url, "notebook-intelligence", "emit-telemetry-event")
         route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
         route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
@@ -628,6 +649,7 @@ class NotebookIntelligence(ExtensionApp):
             (route_pattern_config, ConfigHandler),
             (route_pattern_update_provider_models, UpdateProviderModelsHandler),
             (route_pattern_reload_mcp_servers, ReloadMCPServersHandler),
+            (route_pattern_mcp_config_file, MCPConfigFileHandler),
             (route_pattern_emit_telemetry_event, EmitTelemetryEventHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),

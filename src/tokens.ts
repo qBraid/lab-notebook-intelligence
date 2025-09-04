@@ -31,7 +31,8 @@ export enum RequestDataType {
 export enum BackendMessageType {
   StreamMessage = 'stream-message',
   StreamEnd = 'stream-end',
-  RunUICommand = 'run-ui-command'
+  RunUICommand = 'run-ui-command',
+  GitHubCopilotLoginStatusChange = 'github-copilot-login-status-change'
 }
 
 export enum ResponseStreamDataType {

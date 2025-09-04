@@ -56,6 +56,7 @@ import {
 import { MdOutlineCheckBoxOutlineBlank, MdCheckBox } from 'react-icons/md';
 
 import { extractLLMGeneratedCode, isDarkTheme } from './utils';
+import * as path from 'path';
 
 const OPENAI_COMPATIBLE_CHAT_MODEL_ID = 'openai-compatible-chat-model';
 const LITELLM_COMPATIBLE_CHAT_MODEL_ID = 'litellm-compatible-chat-model';
@@ -264,16 +265,26 @@ export class GitHubCopilotLoginDialogBody extends ReactWidget {
 }
 
 export class ConfigurationDialogBody extends ReactWidget {
-  constructor(options: { onSave: () => void }) {
+  constructor(options: {
+    onSave: () => void;
+    onEditMCPConfigClicked: () => void;
+  }) {
     super();
 
+    this._onEditMCPConfigClicked = options.onEditMCPConfigClicked;
     this._onSave = options.onSave;
   }
 
   render(): JSX.Element {
-    return <ConfigurationDialogBodyComponent onSave={this._onSave} />;
+    return (
+      <ConfigurationDialogBodyComponent
+        onEditMCPConfigClicked={this._onEditMCPConfigClicked}
+        onSave={this._onSave}
+      />
+    );
   }
 
+  private _onEditMCPConfigClicked: () => void;
   private _onSave: () => void;
 }
 
@@ -725,7 +736,8 @@ function SidebarComponent(props: any) {
     useState<IActiveDocumentInfo | null>(null);
   const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
   const telemetryEmitter: ITelemetryEmitter = props.getTelemetryEmitter();
-  const [chatMode, setChatMode] = useState('ask');
+  const [chatMode, setChatMode] = useState(NBIAPI.config.defaultChatMode);
+
   const [toolSelectionTitle, setToolSelectionTitle] =
     useState('Tool selection');
   const [selectedToolCount, setSelectedToolCount] = useState(0);
@@ -2497,6 +2509,7 @@ function ConfigurationDialogBodyComponent(props: any) {
 
   const handleSaveClick = async () => {
     const config: any = {
+      default_chat_mode: defaultChatMode,
       chat_model: {
         provider: chatModelProvider,
         model: chatModel,
@@ -2531,6 +2544,9 @@ function ConfigurationDialogBodyComponent(props: any) {
   );
   const [inlineCompletionModelProvider, setInlineCompletionModelProvider] =
     useState(nbiConfig.inlineCompletionModel.provider || 'none');
+  const [defaultChatMode, setDefaultChatMode] = useState<string>(
+    nbiConfig.defaultChatMode
+  );
   const [chatModel, setChatModel] = useState<string>(nbiConfig.chatModel.model);
   const [chatModelProperties, setChatModelProperties] = useState<any[]>([]);
   const [inlineCompletionModelProperties, setInlineCompletionModelProperties] =
@@ -2629,6 +2645,27 @@ function ConfigurationDialogBodyComponent(props: any) {
   return (
     <div className="config-dialog">
       <div className="config-dialog-body">
+        <div className="model-config-section">
+          <div className="model-config-section-header">Default chat mode</div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <div>
+                  <select
+                    className="jp-mod-styled"
+                    value={defaultChatMode}
+                    onChange={event => setDefaultChatMode(event.target.value)}
+                  >
+                    <option value="ask">Ask</option>
+                    <option value="agent">Agent</option>
+                  </select>
+                </div>
+              </div>
+              <div className="model-config-section-column"> </div>
+            </div>
+          </div>
+        </div>
+
         <div className="model-config-section">
           <div className="model-config-section-header">Chat model</div>
           <div className="model-config-section-body">
@@ -2889,7 +2926,11 @@ function ConfigurationDialogBodyComponent(props: any) {
 
         <div className="model-config-section">
           <div className="model-config-section-header">
-            MCP Servers [{mcpServerNames.length}]
+            MCP Servers ({mcpServerNames.length}) [
+            <a href="javascript:void(0)" onClick={props.onEditMCPConfigClicked}>
+              edit
+            </a>
+            ]
           </div>
           <div className="model-config-section-body">
             <div className="model-config-section-row">
@@ -2927,11 +2968,37 @@ function ConfigurationDialogBodyComponent(props: any) {
                 <span
                   className="user-code-span"
                   onClick={() => {
-                    navigator.clipboard.writeText(NBIAPI.config.configFilePath);
+                    navigator.clipboard.writeText(
+                      path.join(NBIAPI.config.userConfigDir, 'config.json')
+                    );
                     return true;
                   }}
                 >
-                  {NBIAPI.config.configFilePath}{' '}
+                  {path.join(NBIAPI.config.userConfigDir, 'config.json')}{' '}
+                  <span
+                    className="copy-icon"
+                    dangerouslySetInnerHTML={{ __html: copySvgstr }}
+                  ></span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="model-config-section-header">
+            MCP config file path
+          </div>
+          <div className="model-config-section-body">
+            <div className="model-config-section-row">
+              <div className="model-config-section-column">
+                <span
+                  className="user-code-span"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      path.join(NBIAPI.config.userConfigDir, 'mcp.json')
+                    );
+                    return true;
+                  }}
+                >
+                  {path.join(NBIAPI.config.userConfigDir, 'mcp.json')}{' '}
                   <span
                     className="copy-icon"
                     dangerouslySetInnerHTML={{ __html: copySvgstr }}

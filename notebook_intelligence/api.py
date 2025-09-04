@@ -28,6 +28,7 @@ class BackendMessageType(str, Enum):
     StreamMessage = 'stream-message'
     StreamEnd = 'stream-end'
     RunUICommand = 'run-ui-command'
+    GitHubCopilotLoginStatusChange = 'github-copilot-login-status-change'
 
 class ResponseStreamDataType(str, Enum):
     LLMRaw = 'llm-raw'

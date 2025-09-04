@@ -12,10 +12,9 @@ import {
   IContextItem,
   ITelemetryEvent,
   IToolSelections,
-  RequestDataType
+  RequestDataType,
+  BackendMessageType
 } from './tokens';
-
-const LOGIN_STATUS_UPDATE_INTERVAL = 2000;
 
 export enum GitHubCopilotLoginStatus {
   NotLoggedIn = 'NOT_LOGGED_IN',
@@ -34,8 +33,8 @@ export class NBIConfig {
     return this.capabilities.user_home_dir;
   }
 
-  get configFilePath(): string {
-    return this.capabilities.config_file_path;
+  get userConfigDir(): string {
+    return this.capabilities.nbi_user_config_dir;
   }
 
   get llmProviders(): [any] {
@@ -48,6 +47,10 @@ export class NBIConfig {
 
   get inlineCompletionModels(): [any] {
     return this.capabilities.inline_completion_models;
+  }
+
+  get defaultChatMode(): string {
+    return this.capabilities.default_chat_mode;
   }
 
   get chatModel(): any {
@@ -89,16 +92,22 @@ export class NBIAPI {
   static _messageReceived = new Signal<unknown, any>(this);
   static config = new NBIConfig();
   static configChanged = this.config.changed;
+  static githubLoginStatusChanged = new Signal<unknown, void>(this);
 
   static async initialize() {
     await this.fetchCapabilities();
     this.updateGitHubLoginStatus();
 
-    setInterval(() => {
-      this.updateGitHubLoginStatus();
-    }, LOGIN_STATUS_UPDATE_INTERVAL);
-
     NBIAPI.initializeWebsocket();
+
+    this._messageReceived.connect((_, msg) => {
+      msg = JSON.parse(msg);
+      if (msg.type === BackendMessageType.GitHubCopilotLoginStatusChange) {
+        this.updateGitHubLoginStatus().then(() => {
+          this.githubLoginStatusChanged.emit();
+        });
+      }
+    });
   }
 
   static async initializeWebsocket() {
@@ -245,6 +254,35 @@ export class NBIAPI {
         })
         .catch(reason => {
           console.error(`Failed to reload MCP server list.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
+  static async getMCPConfigFile(): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      requestAPI<any>('mcp-config-file', { method: 'GET' })
+        .then(async data => {
+          resolve(data);
+        })
+        .catch(reason => {
+          console.error(`Failed to get MCP config file.\n${reason}`);
+          reject(reason);
+        });
+    });
+  }
+
+  static async setMCPConfigFile(config: any): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      requestAPI<any>('mcp-config-file', {
+        method: 'POST',
+        body: JSON.stringify(config)
+      })
+        .then(async data => {
+          resolve(data);
+        })
+        .catch(reason => {
+          console.error(`Failed to set MCP config file.\n${reason}`);
           reject(reason);
         });
     });

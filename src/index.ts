@@ -7,7 +7,7 @@ import {
 } from '@jupyterlab/application';
 
 import { IDocumentManager } from '@jupyterlab/docmanager';
-import { DocumentWidget } from '@jupyterlab/docregistry';
+import { DocumentWidget, IDocumentWidget } from '@jupyterlab/docregistry';
 
 import { Dialog, ICommandPalette } from '@jupyterlab/apputils';
 import { IMainMenu } from '@jupyterlab/mainmenu';
@@ -124,6 +124,8 @@ namespace CommandIDs {
     'notebook-intelligence:get-current-file-content';
   export const setCurrentFileContent =
     'notebook-intelligence:set-current-file-content';
+  export const openMCPConfigEditor =
+    'notebook-intelligence:open-mcp-config-editor';
 }
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
@@ -514,6 +516,87 @@ class TelemetryEmitter implements ITelemetryEmitter {
   private _listeners: Set<ITelemetryListener> = new Set<ITelemetryListener>();
 }
 
+class MCPConfigEditor {
+  constructor(docManager: IDocumentManager) {
+    this._docManager = docManager;
+  }
+
+  async open() {
+    const contents = new ContentsManager();
+    const newJSONFile = await contents.newUntitled({
+      ext: '.json'
+    });
+    const mcpConfig = await NBIAPI.getMCPConfigFile();
+
+    try {
+      await contents.delete(this._tmpMCPConfigFilename);
+    } catch (error) {
+      // ignore
+    }
+
+    await contents.save(newJSONFile.path, {
+      content: JSON.stringify(mcpConfig, null, 2),
+      format: 'text',
+      type: 'file'
+    });
+    await contents.rename(newJSONFile.path, this._tmpMCPConfigFilename);
+    this._docWidget = this._docManager.openOrReveal(
+      this._tmpMCPConfigFilename,
+      'Editor'
+    );
+    this._addListeners();
+    // tab closed
+    this._docWidget.disposed.connect((_, args) => {
+      this._removeListeners();
+      contents.delete(this._tmpMCPConfigFilename);
+    });
+    this._isOpen = true;
+  }
+
+  close() {
+    if (!this._isOpen) {
+      return;
+    }
+    this._isOpen = false;
+    this._docWidget.dispose();
+    this._docWidget = null;
+  }
+
+  get isOpen(): boolean {
+    return this._isOpen;
+  }
+
+  private _addListeners() {
+    this._docWidget.context.model.stateChanged.connect(
+      this._onStateChanged,
+      this
+    );
+  }
+
+  private _removeListeners() {
+    this._docWidget.context.model.stateChanged.disconnect(
+      this._onStateChanged,
+      this
+    );
+  }
+
+  private _onStateChanged(model: any, args: any) {
+    if (args.name === 'dirty' && args.newValue === false) {
+      this._onSave();
+    }
+  }
+
+  private async _onSave() {
+    const mcpConfig = this._docWidget.context.model.toJSON();
+    await NBIAPI.setMCPConfigFile(mcpConfig);
+  }
+
+  private _docManager: IDocumentManager;
+  private _docWidget: IDocumentWidget = null;
+  private _tmpMCPConfigFilename = 'nbi.mcp.temp.json';
+  private _isOpen = false;
+}
+
 /**
  * Initialization data for the @notebook-intelligence/notebook-intelligence extension.
  */
@@ -567,6 +650,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     await NBIAPI.initialize();
 
     let openPopover: InlinePromptWidget | null = null;
+    let mcpConfigEditor: MCPConfigEditor | null = null;
 
     completionManager.registerInlineProvider(
       new NBIInlineCompletionProvider(telemetryEmitter)
@@ -1152,6 +1236,12 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
           onSave: () => {
             dialog?.dispose();
             NBIAPI.fetchCapabilities();
+          },
+          onEditMCPConfigClicked: () => {
+            dialog?.dispose();
+            app.commands.execute(
+              'notebook-intelligence:open-mcp-config-editor'
+            );
           }
         });
         dialog = new Dialog({
@@ -1163,6 +1253,17 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         dialog.node.classList.add('config-dialog-container');
 
         dialog.launch();
+      }
+    });
+
+    app.commands.addCommand(CommandIDs.openMCPConfigEditor, {
+      label: 'Open MCP Config Editor',
+      execute: args => {
+        if (mcpConfigEditor && mcpConfigEditor.isOpen) {
+          mcpConfigEditor.close();
+        }
+        mcpConfigEditor = new MCPConfigEditor(docManager);
+        mcpConfigEditor.open();
       }
     });
 
