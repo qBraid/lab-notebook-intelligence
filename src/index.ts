@@ -527,6 +527,13 @@ class MCPConfigEditor {
       ext: '.json'
     });
     const mcpConfig = await NBIAPI.getMCPConfigFile();
+
+    try {
+      await contents.delete(this._tmpMCPConfigFilename);
+    } catch (error) {
+      // ignore
+    }
+
     await contents.save(newJSONFile.path, {
       content: JSON.stringify(mcpConfig, null, 2),
       format: 'text',
@@ -543,6 +550,20 @@ class MCPConfigEditor {
       this._removeListeners();
       contents.delete(this._tmpMCPConfigFilename);
     });
+    this._isOpen = true;
+  }
+
+  close() {
+    if (!this._isOpen) {
+      return;
+    }
+    this._isOpen = false;
+    this._docWidget.dispose();
+    this._docWidget = null;
+  }
+
+  get isOpen(): boolean {
+    return this._isOpen;
   }
 
   private _addListeners() {
@@ -573,6 +594,7 @@ class MCPConfigEditor {
   private _docManager: IDocumentManager;
   private _docWidget: IDocumentWidget = null;
   private _tmpMCPConfigFilename = 'nbi.mcp.temp.json';
+  private _isOpen = false;
 }
 
 /**
@@ -628,6 +650,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     await NBIAPI.initialize();
 
     let openPopover: InlinePromptWidget | null = null;
+    let mcpConfigEditor: MCPConfigEditor | null = null;
 
     completionManager.registerInlineProvider(
       new NBIInlineCompletionProvider(telemetryEmitter)
@@ -1236,7 +1259,10 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     app.commands.addCommand(CommandIDs.openMCPConfigEditor, {
       label: 'Open MCP Config Editor',
       execute: args => {
-        const mcpConfigEditor = new MCPConfigEditor(docManager);
+        if (mcpConfigEditor && mcpConfigEditor.isOpen) {
+          mcpConfigEditor.close();
+        }
+        mcpConfigEditor = new MCPConfigEditor(docManager);
         mcpConfigEditor.open();
       }
     });
