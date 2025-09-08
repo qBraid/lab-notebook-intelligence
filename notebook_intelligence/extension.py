@@ -138,7 +138,10 @@ class ReloadMCPServersHandler(APIHandler):
 class MCPConfigFileHandler(APIHandler):
     @tornado.web.authenticated
     def get(self):
-        self.finish(json.dumps(ai_service_manager.nbi_config.user_mcp))
+        mcp_config = ai_service_manager.nbi_config.mcp.copy()
+        if "mcpServers" not in mcp_config:
+            mcp_config["mcpServers"] = {}
+        self.finish(json.dumps(mcp_config))
 
     @tornado.web.authenticated
     def post(self):
