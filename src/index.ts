@@ -589,6 +589,7 @@ class MCPConfigEditor {
   private async _onSave() {
     const mcpConfig = this._docWidget.context.model.toJSON();
     await NBIAPI.setMCPConfigFile(mcpConfig);
+    await NBIAPI.fetchCapabilities();
   }
 
   private _docManager: IDocumentManager;
