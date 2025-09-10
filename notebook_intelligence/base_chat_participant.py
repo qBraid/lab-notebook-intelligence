@@ -2,6 +2,7 @@
 
 import os
 from typing import Union
+import json
 from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
 from notebook_intelligence.prompts import Prompts
 import base64
@@ -43,7 +44,12 @@ class SecuredExtensionTool(Tool):
     def pre_invoke(self, request: ChatRequest, tool_args: dict) -> Union[ToolPreInvokeResponse, None]:
         confirmationTitle = "Approve"
         confirmationMessage = "Are you sure you want to call this extension tool?"
-        return ToolPreInvokeResponse(f"Calling extension tool '{self.name}'", confirmationTitle, confirmationMessage)
+        return ToolPreInvokeResponse(
+            message = f"Calling extension tool '{self.name}'",
+            detail = {"title": "Parameters", "content": json.dumps(tool_args)},
+            confirmationTitle = confirmationTitle,
+            confirmationMessage = confirmationMessage
+        )
 
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         return await self._ext_tool.handle_tool_call(request, response, tool_context, tool_args)
