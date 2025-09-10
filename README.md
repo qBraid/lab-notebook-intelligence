@@ -146,12 +146,12 @@ For servers with stdio transport, you can also set additional environment variab
 }
 ```
 
-Below is an example of a server configuration with SSE transport. For SSE transport servers, you can also specify headers to be sent as part of the requests.
+Below is an example of a server configuration with Streamable HTTP transport. For Streamable HTTP transport servers, you can also specify headers to be sent as part of the requests.
 
 ```json
 "mcpServers": {
     "remoterservername": {
-        "url": "http://127.0.0.1:8080/sse",
+        "url": "http://127.0.0.1:8080/mcp",
         "headers": {
             "Authorization": "Bearer mysecrettoken"
         }
