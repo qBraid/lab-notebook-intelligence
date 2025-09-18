@@ -1,0 +1,16 @@
+name: lab-notebook-intelligence
+id: ari:cloud:compass:8526d2ba-687c-46b3-8b65-acaf550a9b39:component/141c5c30-d6a4-4eb9-b8dd-1a0c55663014/c6891b14-f83f-48a5-93d4-a518fd512310
+description: AI coding assistant for JupyterLab
+configVersion: 1
+typeId: SERVICE
+fields:
+  tier: 4
+links:
+  - name: null
+    type: REPOSITORY
+    url: https://github.com/qBraid/lab-notebook-intelligence
+relationships:
+  DEPENDS_ON: []
+labels:
+  - source:github
+customFields: null
