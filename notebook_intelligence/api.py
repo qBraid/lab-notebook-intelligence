@@ -515,12 +515,15 @@ class ChatParticipant:
                     tool_call_rounds = tool_call_rounds[1:]
 
                     tool_name = tool_call['function']['name']
+                    print("Tool name is : ", tool_name)
                     tool_to_call = self._get_tool_by_name(tool_name)
                     if tool_to_call is None:
                         log.error(f"Tool not found: {tool_name}, args: {tool_call['function']['arguments']}")
                         response.stream(MarkdownData("Oops! Failed to find requested tool. Please try again with a different prompt."))
                         response.finish()
                         return
+                    
+                    print("Tool to call is : ", tool_to_call)
 
                     if type(tool_call['function']['arguments']) is dict:
                         args = tool_call['function']['arguments']

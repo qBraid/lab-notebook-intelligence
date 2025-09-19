@@ -456,16 +456,18 @@ function ChatResponse(props: any) {
             </div>
           )}
           <div className="chat-message-from-title">
-            {msg.from === 'user'
-              ? 'User'
-              : msg.participant?.name || 'AI Assistant'}
+            {msg.from === 'user' ? '' : msg.participant?.name || 'AI Assistant'}
           </div>
-          <div
-            className="chat-message-from-progress"
-            style={{ display: `${props.showGenerating ? 'visible' : 'none'}` }}
-          >
-            <div className="loading-ellipsis">Generating</div>
-          </div>
+          {msg.from !== 'user' && (
+            <div
+              className="chat-message-from-progress"
+              style={{
+                display: `${props.showGenerating ? 'visible' : 'none'}`
+              }}
+            >
+              <div className="loading-ellipsis">Generating</div>
+            </div>
+          )}
         </div>
         <div className="chat-message-timestamp">{timestamp}</div>
       </div>
@@ -737,6 +739,48 @@ function SidebarComponent(props: any) {
   const [currentFileContextTitle, setCurrentFileContextTitle] = useState('');
   const telemetryEmitter: ITelemetryEmitter = props.getTelemetryEmitter();
   const [chatMode, setChatMode] = useState(NBIAPI.config.defaultChatMode);
+  // Model selection state
+  const [availableChatModels, setAvailableChatModels] = useState<any[]>([]);
+  const [currentChatModel, setCurrentChatModel] = useState<string>(
+    NBIAPI.config.chatModel.model
+  );
+
+  // Load available models when config changes
+  useEffect(() => {
+    const currentProvider = NBIAPI.config.chatModel.provider;
+    const allChatModels = NBIAPI.config.chatModels || [];
+    const providerModels = allChatModels.filter(
+      (model: any) => model.provider === currentProvider
+    );
+    setAvailableChatModels(providerModels);
+    setCurrentChatModel(NBIAPI.config.chatModel.model);
+  }, []);
+
+  NBIAPI.configChanged.connect(() => {
+    const currentProvider = NBIAPI.config.chatModel.provider;
+    const allChatModels = NBIAPI.config.chatModels || [];
+    const providerModels = allChatModels.filter(
+      (model: any) => model.provider === currentProvider
+    );
+    setAvailableChatModels(providerModels);
+    setCurrentChatModel(NBIAPI.config.chatModel.model);
+  });
+
+  // Function to handle model change
+  const handleModelChange = async (modelId: string) => {
+    setCurrentChatModel(modelId);
+
+    // Update the configuration
+    const config = {
+      chat_model: {
+        provider: NBIAPI.config.chatModel.provider,
+        model: modelId,
+        properties: NBIAPI.config.chatModel.properties || {}
+      }
+    };
+
+    await NBIAPI.setConfig(config);
+  };
 
   const [toolSelectionTitle, setToolSelectionTitle] =
     useState('Tool selection');
@@ -1885,6 +1929,32 @@ function SidebarComponent(props: any) {
                   <option value="ask">Ask</option>
                   <option value="agent">Agent</option>
                 </select>
+                {availableChatModels.length > 1 && (
+                  <select
+                    className="chat-model-select"
+                    title={`Chat model - ${NBIAPI.config.chatModel.provider} provider`}
+                    value={currentChatModel}
+                    onChange={event => {
+                      handleModelChange(event.target.value);
+                    }}
+                  >
+                    {availableChatModels.map((model: any, index: number) => (
+                      <option key={index} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {availableChatModels.length <= 1 && (
+                  <span
+                    className="chat-model-display"
+                    title={`Current model: ${currentChatModel || 'No model selected'} (${NBIAPI.config.chatModel.provider} provider)`}
+                  >
+                    {availableChatModels.length === 1
+                      ? availableChatModels[0].name
+                      : currentChatModel || 'No model'}
+                  </span>
+                )}
               </div>
               {chatMode !== 'ask' && (
                 <div
