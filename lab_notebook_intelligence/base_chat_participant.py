@@ -3,13 +3,13 @@
 import os
 from typing import Union
 import json
-from notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
-from notebook_intelligence.prompts import Prompts
+from lab_notebook_intelligence.api import ChatCommand, ChatParticipant, ChatRequest, ChatResponse, MarkdownData, ProgressData, Tool, ToolPreInvokeResponse
+from lab_notebook_intelligence.prompts import Prompts
 import base64
 import logging
-from notebook_intelligence.built_in_toolsets import built_in_toolsets
+from lab_notebook_intelligence.built_in_toolsets import built_in_toolsets
 
-from notebook_intelligence.util import extract_llm_generated_code
+from lab_notebook_intelligence.util import extract_llm_generated_code
 
 log = logging.getLogger(__name__)
 
@@ -120,17 +120,17 @@ class CreateNewNotebookTool(Tool):
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         cell_sources = tool_args.get('cell_sources', [])
     
-        ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
+        ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:create-new-notebook-from-py', {'code': ''})
         file_path = ui_cmd_response['path']
 
         for cell_source in cell_sources:
             cell_type = cell_source.get('cell_type')
             if cell_type == 'markdown':
                 source = cell_source.get('source', '')
-                ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': source, 'path': file_path})
+                ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': source, 'path': file_path})
             elif cell_type == 'code':
                 source = cell_source.get('source', '')
-                ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': source, 'path': file_path})
+                ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:add-code-cell-to-notebook', {'code': source, 'path': file_path})
 
         return "Notebook created successfully at {file_path}"
 
@@ -195,7 +195,7 @@ class AddMarkdownCellToNotebookTool(Tool):
         if notebook_file_path.startswith(server_root_dir):
             notebook_file_path = os.path.relpath(notebook_file_path, server_root_dir)
         source = tool_args.get('markdown_cell_source')
-        ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': source, 'path': notebook_file_path})
+        ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': source, 'path': notebook_file_path})
         return f"Added markdown cell to notebook"
 
 class AddCodeCellTool(Tool):
@@ -259,7 +259,7 @@ class AddCodeCellTool(Tool):
         if notebook_file_path.startswith(server_root_dir):
             notebook_file_path = os.path.relpath(notebook_file_path, server_root_dir)
         source = tool_args.get('code_cell_source')
-        ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': source, 'path': notebook_file_path})
+        ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:add-code-cell-to-notebook', {'code': source, 'path': notebook_file_path})
         return "Added code cell added to notebook"
 
 # Fallback tool to handle tool errors
@@ -304,7 +304,7 @@ class PythonTool(AddCodeCellTool):
 
     async def handle_tool_call(self, request: ChatRequest, response: ChatResponse, tool_context: dict, tool_args: dict) -> str:
         code = tool_args.get('code_cell_source')
-        ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
+        ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': tool_context.get('file_path')})
         return {"result": "Code cell added to notebook"}
 
 class BaseChatParticipant(ChatParticipant):
@@ -426,14 +426,14 @@ class BaseChatParticipant(ChatParticipant):
         chat_model = request.host.chat_model
         if request.command == 'newNotebook':
             # create a new notebook
-            ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-notebook-from-py', {'code': ''})
+            ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:create-new-notebook-from-py', {'code': ''})
             file_path = ui_cmd_response['path']
 
             code = await self.generate_code_cell(request)
             markdown = await self.generate_markdown_for_code(request, code)
 
-            ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': markdown, 'path': file_path})
-            ui_cmd_response = await response.run_ui_command('notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': file_path})
+            ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:add-markdown-cell-to-notebook', {'markdown': markdown, 'path': file_path})
+            ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:add-code-cell-to-notebook', {'code': code, 'path': file_path})
 
             response.stream(MarkdownData(f"Notebook '{file_path}' created and opened successfully"))
             response.finish()
@@ -447,13 +447,13 @@ class BaseChatParticipant(ChatParticipant):
             generated = chat_model.completions(messages)
             code = generated['choices'][0]['message']['content']
             code = extract_llm_generated_code(code)
-            ui_cmd_response = await response.run_ui_command('notebook-intelligence:create-new-file', {'code': code })
+            ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:create-new-file', {'code': code })
             file_path = ui_cmd_response['path']
             response.stream(MarkdownData(f"File '{file_path}' created successfully"))
             response.finish()
             return
         elif request.command == 'settings':
-            ui_cmd_response = await response.run_ui_command('notebook-intelligence:open-configuration-dialog')
+            ui_cmd_response = await response.run_ui_command('lab-notebook-intelligence:open-configuration-dialog')
             response.stream(MarkdownData(f"Opened the settings dialog"))
             response.finish()
             return

@@ -1,7 +1,6 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import asyncio
-import json
 from typing import Any, Callable, Dict, Union
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -10,7 +9,7 @@ from fuzzy_json import loads as fuzzy_json_loads
 import logging
 from mcp.server.fastmcp.tools import Tool as MCPToolClass
 
-from notebook_intelligence.config import NBIConfig
+from lab_notebook_intelligence.config import NBIConfig
 
 log = logging.getLogger(__name__)
 
@@ -515,12 +514,15 @@ class ChatParticipant:
                     tool_call_rounds = tool_call_rounds[1:]
 
                     tool_name = tool_call['function']['name']
+                    print("Tool name is : ", tool_name)
                     tool_to_call = self._get_tool_by_name(tool_name)
                     if tool_to_call is None:
                         log.error(f"Tool not found: {tool_name}, args: {tool_call['function']['arguments']}")
                         response.stream(MarkdownData("Oops! Failed to find requested tool. Please try again with a different prompt."))
                         response.finish()
                         return
+                    
+                    print("Tool to call is : ", tool_to_call)
 
                     if type(tool_call['function']['arguments']) is dict:
                         args = tool_call['function']['arguments']

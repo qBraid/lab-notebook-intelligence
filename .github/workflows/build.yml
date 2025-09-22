@@ -36,10 +36,10 @@ jobs:
         python -m pip install .[test]
 
         jupyter server extension list
-        jupyter server extension list 2>&1 | grep -ie "notebook_intelligence.*OK"
+        jupyter server extension list 2>&1 | grep -ie "lab_notebook_intelligence.*OK"
 
         jupyter labextension list
-        jupyter labextension list 2>&1 | grep -ie "@notebook-intelligence/notebook-intelligence.*OK"
+        jupyter labextension list 2>&1 | grep -ie "@qbraid/lab-notebook-intelligence.*OK"
         python -m jupyterlab.browser_check
 
     - name: Package the extension
@@ -48,13 +48,13 @@ jobs:
 
         pip install build
         python -m build
-        pip uninstall -y "notebook_intelligence" jupyterlab
+        pip uninstall -y "lab_notebook_intelligence" jupyterlab
 
     - name: Upload extension packages
       uses: actions/upload-artifact@v4
       with:
         name: extension-artifacts
-        path: dist/notebook_intelligence*
+        path: dist/lab_notebook_intelligence*
         if-no-files-found: error
 
   test_isolated:
@@ -77,14 +77,14 @@ jobs:
         sudo rm -rf $(which node)
         sudo rm -rf $(which node)
 
-        pip install "jupyterlab>=4.0.0,<5" notebook_intelligence*.whl
+        pip install "jupyterlab>=4.0.0,<5" lab_notebook_intelligence*.whl
 
 
         jupyter server extension list
-        jupyter server extension list 2>&1 | grep -ie "notebook_intelligence.*OK"
+        jupyter server extension list 2>&1 | grep -ie "lab_notebook_intelligence.*OK"
 
         jupyter labextension list
-        jupyter labextension list 2>&1 | grep -ie "@notebook-intelligence/notebook-intelligence.*OK"
+        jupyter labextension list 2>&1 | grep -ie "@qbraid/lab-notebook-intelligence.*OK"
         python -m jupyterlab.browser_check --no-browser-test
 
 

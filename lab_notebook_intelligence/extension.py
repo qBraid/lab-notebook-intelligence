@@ -18,11 +18,11 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
 from traitlets import Unicode
-from notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, RequestToolSelection, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
-from notebook_intelligence.ai_service_manager import AIServiceManager
-import notebook_intelligence.github_copilot as github_copilot
-from notebook_intelligence.built_in_toolsets import built_in_toolsets
-from notebook_intelligence.util import ThreadSafeWebSocketConnector
+from lab_notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, RequestToolSelection, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
+from lab_notebook_intelligence.ai_service_manager import AIServiceManager
+import lab_notebook_intelligence.github_copilot as github_copilot
+from lab_notebook_intelligence.built_in_toolsets import built_in_toolsets
+from lab_notebook_intelligence.util import ThreadSafeWebSocketConnector
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
@@ -152,6 +152,94 @@ class MCPConfigFileHandler(APIHandler):
             ai_service_manager.nbi_config.load()
             ai_service_manager.update_mcp_servers()
             self.finish(json.dumps({"status": "ok"}))
+        except Exception as e:
+            self.finish(json.dumps({"status": "error", "message": str(e)}))
+            return
+
+class CreateDynamicMCPConfigHandler(APIHandler):
+    @tornado.web.authenticated
+    def post(self):
+        try:
+            # Get the directory where JupyterLab was started (user's working directory)
+            user_root_dir = NotebookIntelligence.root_dir
+            
+            print(f"Creating dynamic MCP config for directory: {user_root_dir}")
+            
+            # Create dynamic MCP config with filesystem servers
+            dynamic_mcp_config = {
+                "mcpServers": {
+                    "filesystem-pwd": {
+                        "command": "npx",
+                        "args": [
+                            "-y",
+                            "@modelcontextprotocol/server-filesystem",
+                            user_root_dir
+                        ]
+                    }
+                }
+            }
+            
+            # Add qBraid environments MCP server 
+            qbraid_envs_dir = os.path.expanduser("~/.qbraid/environments/")
+            print(f"qBraid environments directory: {qbraid_envs_dir}")
+            if os.path.exists(qbraid_envs_dir):
+                # Add filesystem access to environments directory
+                dynamic_mcp_config["mcpServers"]["qbraid-envs"] = {
+                    "command": "npx",
+                    "args": [
+                        "-y",
+                        "@modelcontextprotocol/server-filesystem",
+                        qbraid_envs_dir
+                    ]
+                }
+                print(f"Added qBraid environments MCP server")
+                
+                # TODO: Uncomment and fix the code below to add individual Python execution servers for each qBraid environment
+
+                # # Discover individual environments and add Python execution servers
+                # try:
+                #     env_count = 0
+                #     for env_name in os.listdir(qbraid_envs_dir):
+                #         env_path = os.path.join(qbraid_envs_dir, env_name)
+                #         python_executable = os.path.join(env_path, "bin", "python")
+                        
+                #         # Check if this is a valid environment with Python
+                #         if (os.path.isdir(env_path) and 
+                #             os.path.exists(python_executable) and 
+                #             not env_name.startswith('.')):
+                            
+                #             # Add Python execution server for this environment
+                #             server_name = f"python-{env_name}"
+                #             dynamic_mcp_config["mcpServers"][server_name] = {
+                #                 "command": "npx",
+                #                 "args": [
+                #                     "-y",
+                #                     "@modelcontextprotocol/python-mcp"
+                #                 ],
+                #                 "env": {
+                #                     "PYTHON_EXECUTABLE": python_executable
+                #                 }
+                #             }
+                #             env_count += 1
+                #             print(f"Added Python execution server for environment: {env_name}")
+                    
+                #     print(f"Discovered and added {env_count} qBraid environment Python servers")
+                # except Exception as e:
+                #     print(f"Error discovering qBraid environments: {e}")
+                    
+            else:
+                print(f"qBraid environments directory not found: {qbraid_envs_dir}")
+            
+            # Save to user's MCP config (this will merge with existing config)
+            ai_service_manager.nbi_config.user_mcp = dynamic_mcp_config
+            ai_service_manager.nbi_config.save()
+            ai_service_manager.nbi_config.load()
+            ai_service_manager.update_mcp_servers()
+            
+            self.finish(json.dumps({
+                "status": "ok", 
+                "message": f"Dynamic MCP config created for directory: {user_root_dir}"
+            }))
         except Exception as e:
             self.finish(json.dumps({"status": "error", "message": str(e)}))
             return
@@ -587,8 +675,8 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
         response_emitter.finish()
 
 class NotebookIntelligence(ExtensionApp):
-    name = "notebook_intelligence"
-    default_url = "/notebook-intelligence"
+    name = "lab_notebook_intelligence"
+    default_url = "/lab-notebook-intelligence"
     load_other_extensions = True
     file_url_prefix = "/render"
 
@@ -636,16 +724,17 @@ class NotebookIntelligence(ExtensionApp):
         host_pattern = ".*$"
 
         base_url = web_app.settings["base_url"]
-        route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
-        route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
-        route_pattern_update_provider_models = url_path_join(base_url, "notebook-intelligence", "update-provider-models")
-        route_pattern_reload_mcp_servers = url_path_join(base_url, "notebook-intelligence", "reload-mcp-servers")
-        route_pattern_mcp_config_file = url_path_join(base_url, "notebook-intelligence", "mcp-config-file")
-        route_pattern_emit_telemetry_event = url_path_join(base_url, "notebook-intelligence", "emit-telemetry-event")
-        route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
-        route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
-        route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
-        route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
+        route_pattern_capabilities = url_path_join(base_url, "lab-notebook-intelligence", "capabilities")
+        route_pattern_config = url_path_join(base_url, "lab-notebook-intelligence", "config")
+        route_pattern_update_provider_models = url_path_join(base_url, "lab-notebook-intelligence", "update-provider-models")
+        route_pattern_reload_mcp_servers = url_path_join(base_url, "lab-notebook-intelligence", "reload-mcp-servers")
+        route_pattern_mcp_config_file = url_path_join(base_url, "lab-notebook-intelligence", "mcp-config-file")
+        route_pattern_create_dynamic_mcp_config = url_path_join(base_url, "lab-notebook-intelligence", "create-dynamic-mcp-config")
+        route_pattern_emit_telemetry_event = url_path_join(base_url, "lab-notebook-intelligence", "emit-telemetry-event")
+        route_pattern_github_login_status = url_path_join(base_url, "lab-notebook-intelligence", "gh-login-status")
+        route_pattern_github_login = url_path_join(base_url, "lab-notebook-intelligence", "gh-login")
+        route_pattern_github_logout = url_path_join(base_url, "lab-notebook-intelligence", "gh-logout")
+        route_pattern_copilot = url_path_join(base_url, "lab-notebook-intelligence", "copilot")
         GetCapabilitiesHandler.notebook_execute_tool = self.notebook_execute_tool
         NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),
@@ -653,6 +742,7 @@ class NotebookIntelligence(ExtensionApp):
             (route_pattern_update_provider_models, UpdateProviderModelsHandler),
             (route_pattern_reload_mcp_servers, ReloadMCPServersHandler),
             (route_pattern_mcp_config_file, MCPConfigFileHandler),
+            (route_pattern_create_dynamic_mcp_config, CreateDynamicMCPConfigHandler),
             (route_pattern_emit_telemetry_event, EmitTelemetryEventHandler),
             (route_pattern_github_login_status, GetGitHubLoginStatusHandler),
             (route_pattern_github_login, PostGitHubLoginHandler),

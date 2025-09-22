@@ -1,24 +1,31 @@
 {
-    "name": "@notebook-intelligence/notebook-intelligence",
-    "version": "2.4.2",
-    "description": "AI coding assistant for JupyterLab",
+    "name": "@qbraid/lab-notebook-intelligence",
+    "version": "0.0.1",
+    "description": "AI coding assistant for qbraid Lab",
     "keywords": [
         "AI",
         "notebook",
         "intelligence",
         "jupyter",
         "jupyterlab",
-        "jupyterlab-extension"
+        "jupyterlab-extension",
+        "quantum"
     ],
-    "homepage": "https://github.com/notebook-intelligence/notebook-intelligence",
+    "homepage": "https://github.com/qBraid/lab-notebook-intelligence",
     "bugs": {
-        "url": "https://github.com/notebook-intelligence/notebook-intelligence/issues"
+        "url": "https://github.com/qBraid/lab-notebook-intelligence/issues"
     },
     "license": "GPL-3.0",
-    "author": {
-        "name": "Mehmet Bektas",
-        "email": "mbektasgh@outlook.com"
-    },
+    "authors": [
+        {
+            "name": "Mehmet Bektas",
+            "email": "mbektasgh@outlook.com"
+        },
+        {
+            "name": "qBraid Development Team",
+            "email": "contact@qbraid.com"
+        }
+    ],
     "files": [
         "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
         "style/**/*.{css,js,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
@@ -30,7 +37,7 @@
     "style": "style/index.css",
     "repository": {
         "type": "git",
-        "url": "https://github.com/notebook-intelligence/notebook-intelligence.git"
+        "url": "https://github.com/qBraid/lab-notebook-intelligence.git"
     },
     "scripts": {
         "build": "jlpm build:lib && jlpm build:labextension:dev",
@@ -42,7 +49,7 @@
         "clean": "jlpm clean:lib",
         "clean:lib": "rimraf lib tsconfig.tsbuildinfo",
         "clean:lintcache": "rimraf .eslintcache .stylelintcache",
-        "clean:labextension": "rimraf notebook_intelligence/labextension notebook_intelligence/_version.py",
+        "clean:labextension": "rimraf lab_notebook_intelligence/labextension lab_notebook_intelligence/_version.py",
         "clean:all": "jlpm clean:lib && jlpm clean:labextension && jlpm clean:lintcache",
         "eslint": "jlpm eslint:check --fix",
         "eslint:check": "eslint . --cache --ext .ts,.tsx",
@@ -116,16 +123,16 @@
                     "pip"
                 ],
                 "base": {
-                    "name": "notebook_intelligence"
+                    "name": "lab_notebook_intelligence"
                 }
             }
         },
         "extension": true,
-        "outputDir": "notebook_intelligence/labextension",
+        "outputDir": "lab_notebook_intelligence/labextension",
         "schemaDir": "schema",
         "webpackConfig": "./webpack.config.js",
         "sharedPackages": {
-            "@notebook-intelligence/notebook-intelligence": {
+            "@qbraid/lab-notebook-intelligence": {
                 "singleton": true
             }
         }

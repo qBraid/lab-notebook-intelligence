@@ -2,7 +2,7 @@
 
 import json
 from typing import Any
-from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext, LLMProviderProperty
+from lab_notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext, LLMProviderProperty
 from openai import OpenAI
 
 DEFAULT_CONTEXT_WINDOW = 4096

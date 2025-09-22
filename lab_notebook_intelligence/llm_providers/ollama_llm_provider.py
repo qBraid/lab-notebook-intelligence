@@ -2,11 +2,11 @@
 
 import json
 from typing import Any
-from notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext
+from lab_notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext
 import ollama
 import logging
 
-from notebook_intelligence.util import extract_llm_generated_code
+from lab_notebook_intelligence.util import extract_llm_generated_code
 
 log = logging.getLogger(__name__)
 

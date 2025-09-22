@@ -1,5 +1,5 @@
 {
   "packageManager": "python",
-  "packageName": "notebook_intelligence",
-  "uninstallInstructions": "Use your Python package manager (pip, conda, etc.) to uninstall the package notebook_intelligence"
+  "packageName": "lab_notebook_intelligence",
+  "uninstallInstructions": "Use your Python package manager (pip, conda, etc.) to uninstall the package lab_notebook_intelligence"
 }
