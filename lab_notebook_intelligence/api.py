@@ -1,7 +1,6 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import asyncio
-import json
 from typing import Any, Callable, Dict, Union
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -10,7 +9,7 @@ from fuzzy_json import loads as fuzzy_json_loads
 import logging
 from mcp.server.fastmcp.tools import Tool as MCPToolClass
 
-from notebook_intelligence.config import NBIConfig
+from lab_notebook_intelligence.config import NBIConfig
 
 log = logging.getLogger(__name__)
 

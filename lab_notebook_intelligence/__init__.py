@@ -7,7 +7,7 @@ except ImportError:
     # in editable mode with pip. It is highly recommended to install
     # the package from a stable release or in editable mode: https://pip.pypa.io/en/stable/topics/local-project-installs/#editable-installs
     import warnings
-    warnings.warn("Importing 'notebook_intelligence' outside a proper installation.")
+    warnings.warn("Importing 'lab_notebook_intelligence' outside a proper installation.")
     __version__ = "dev"
 
 import logging
@@ -19,12 +19,12 @@ from .api import *
 def _jupyter_labextension_paths():
     return [{
         "src": "labextension",
-        "dest": "@notebook-intelligence/notebook-intelligence"
+        "dest": "@qbraid/lab-notebook-intelligence"
     }]
 
 
 def _jupyter_server_extension_points():
     return [{
-        "module": "notebook_intelligence",
+        "module": "lab_notebook_intelligence",
         "app": NotebookIntelligence
     }]

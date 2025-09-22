@@ -18,11 +18,11 @@ from jupyter_server.utils import url_path_join
 import tornado
 from tornado import websocket
 from traitlets import Unicode
-from notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, RequestToolSelection, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
-from notebook_intelligence.ai_service_manager import AIServiceManager
-import notebook_intelligence.github_copilot as github_copilot
-from notebook_intelligence.built_in_toolsets import built_in_toolsets
-from notebook_intelligence.util import ThreadSafeWebSocketConnector
+from lab_notebook_intelligence.api import BuiltinToolset, CancelToken, ChatMode, ChatResponse, ChatRequest, ContextRequest, ContextRequestType, RequestDataType, RequestToolSelection, ResponseStreamData, ResponseStreamDataType, BackendMessageType, SignalImpl
+from lab_notebook_intelligence.ai_service_manager import AIServiceManager
+import lab_notebook_intelligence.github_copilot as github_copilot
+from lab_notebook_intelligence.built_in_toolsets import built_in_toolsets
+from lab_notebook_intelligence.util import ThreadSafeWebSocketConnector
 
 ai_service_manager: AIServiceManager = None
 log = logging.getLogger(__name__)
@@ -675,8 +675,8 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
         response_emitter.finish()
 
 class NotebookIntelligence(ExtensionApp):
-    name = "notebook_intelligence"
-    default_url = "/notebook-intelligence"
+    name = "lab_notebook_intelligence"
+    default_url = "/lab-notebook-intelligence"
     load_other_extensions = True
     file_url_prefix = "/render"
 
@@ -724,17 +724,17 @@ class NotebookIntelligence(ExtensionApp):
         host_pattern = ".*$"
 
         base_url = web_app.settings["base_url"]
-        route_pattern_capabilities = url_path_join(base_url, "notebook-intelligence", "capabilities")
-        route_pattern_config = url_path_join(base_url, "notebook-intelligence", "config")
-        route_pattern_update_provider_models = url_path_join(base_url, "notebook-intelligence", "update-provider-models")
-        route_pattern_reload_mcp_servers = url_path_join(base_url, "notebook-intelligence", "reload-mcp-servers")
-        route_pattern_mcp_config_file = url_path_join(base_url, "notebook-intelligence", "mcp-config-file")
-        route_pattern_create_dynamic_mcp_config = url_path_join(base_url, "notebook-intelligence", "create-dynamic-mcp-config")
-        route_pattern_emit_telemetry_event = url_path_join(base_url, "notebook-intelligence", "emit-telemetry-event")
-        route_pattern_github_login_status = url_path_join(base_url, "notebook-intelligence", "gh-login-status")
-        route_pattern_github_login = url_path_join(base_url, "notebook-intelligence", "gh-login")
-        route_pattern_github_logout = url_path_join(base_url, "notebook-intelligence", "gh-logout")
-        route_pattern_copilot = url_path_join(base_url, "notebook-intelligence", "copilot")
+        route_pattern_capabilities = url_path_join(base_url, "lab-notebook-intelligence", "capabilities")
+        route_pattern_config = url_path_join(base_url, "lab-notebook-intelligence", "config")
+        route_pattern_update_provider_models = url_path_join(base_url, "lab-notebook-intelligence", "update-provider-models")
+        route_pattern_reload_mcp_servers = url_path_join(base_url, "lab-notebook-intelligence", "reload-mcp-servers")
+        route_pattern_mcp_config_file = url_path_join(base_url, "lab-notebook-intelligence", "mcp-config-file")
+        route_pattern_create_dynamic_mcp_config = url_path_join(base_url, "lab-notebook-intelligence", "create-dynamic-mcp-config")
+        route_pattern_emit_telemetry_event = url_path_join(base_url, "lab-notebook-intelligence", "emit-telemetry-event")
+        route_pattern_github_login_status = url_path_join(base_url, "lab-notebook-intelligence", "gh-login-status")
+        route_pattern_github_login = url_path_join(base_url, "lab-notebook-intelligence", "gh-login")
+        route_pattern_github_logout = url_path_join(base_url, "lab-notebook-intelligence", "gh-logout")
+        route_pattern_copilot = url_path_join(base_url, "lab-notebook-intelligence", "copilot")
         GetCapabilitiesHandler.notebook_execute_tool = self.notebook_execute_tool
         NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),

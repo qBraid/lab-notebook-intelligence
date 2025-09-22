@@ -1,7 +1,7 @@
 {
   "ServerApp": {
     "jpserver_extensions": {
-      "notebook_intelligence": true
+      "lab_notebook_intelligence": true
     }
   }
 }

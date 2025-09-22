@@ -3,7 +3,6 @@
 # GitHub auth and inline completion sections are derivative of https://github.com/B00TK1D/copilot-api
 
 import base64
-from dataclasses import dataclass
 from enum import Enum
 import os, json, time, requests, threading
 from typing import Any
@@ -12,8 +11,8 @@ import secrets
 import sseclient
 import datetime as dt
 import logging
-from notebook_intelligence.api import BackendMessageType, CancelToken, ChatResponse, CompletionContext, MarkdownData
-from notebook_intelligence.util import decrypt_with_password, encrypt_with_password, ThreadSafeWebSocketConnector
+from lab_notebook_intelligence.api import BackendMessageType, CancelToken, ChatResponse, CompletionContext, MarkdownData
+from lab_notebook_intelligence.util import decrypt_with_password, encrypt_with_password, ThreadSafeWebSocketConnector
 
 from ._version import __version__ as NBI_VERSION
 

@@ -1,7 +1,7 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-from notebook_intelligence.base_chat_participant import BaseChatParticipant
-from notebook_intelligence.prompts import Prompts
+from lab_notebook_intelligence.base_chat_participant import BaseChatParticipant
+from lab_notebook_intelligence.prompts import Prompts
 import base64
 
 

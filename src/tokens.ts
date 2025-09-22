@@ -121,7 +121,7 @@ export interface ITelemetryEmitter {
 }
 
 export const INotebookIntelligence = new Token<INotebookIntelligence>(
-  '@notebook-intelligence/notebook-intelligence:INotebookIntelligence',
+  '@qbraid/lab-notebook-intelligence:INotebookIntelligence',
   'AI coding assistant for JupyterLab.'
 );
 

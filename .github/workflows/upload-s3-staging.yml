@@ -64,7 +64,7 @@ jobs:
         if: matrix.python-version == '3.11'
         with:
           name: extension
-          path: dist/notebook_intelligence*.whl
+          path: dist/lab_notebook_intelligence*.whl
           if-no-files-found: error
 
   deploy:
@@ -88,5 +88,5 @@ jobs:
 
       - name: Copy wheel file to S3 lab-extensions bucket
         run: |
-          aws s3 rm s3://qbraid-lab-extensions/staging/ --recursive --exclude "*" --include "notebook_intelligence*.whl"
-          aws s3 cp ./ s3://qbraid-lab-extensions/staging/ --recursive --exclude "*" --include "notebook_intelligence*.whl"
+          aws s3 rm s3://qbraid-lab-extensions/staging/ --recursive --exclude "*" --include "lab_notebook_intelligence*.whl"
+          aws s3 cp ./ s3://qbraid-lab-extensions/staging/ --recursive --exclude "*" --include "lab_notebook_intelligence*.whl"

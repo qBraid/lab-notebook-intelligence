@@ -114,7 +114,7 @@ export class NBIAPI {
     const serverSettings = ServerConnection.makeSettings();
     const wsUrl = URLExt.join(
       serverSettings.wsUrl,
-      'notebook-intelligence',
+      'lab-notebook-intelligence',
       'copilot'
     );
 

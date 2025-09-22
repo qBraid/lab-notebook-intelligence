@@ -83,60 +83,65 @@ import { UUID } from '@lumino/coreutils';
 import * as path from 'path';
 
 namespace CommandIDs {
-  export const chatuserInput = 'notebook-intelligence:chat-user-input';
-  export const insertAtCursor = 'notebook-intelligence:insert-at-cursor';
-  export const addCodeAsNewCell = 'notebook-intelligence:add-code-as-new-cell';
-  export const createNewFile = 'notebook-intelligence:create-new-file';
+  export const chatuserInput = 'lab-notebook-intelligence:chat-user-input';
+  export const insertAtCursor = 'lab-notebook-intelligence:insert-at-cursor';
+  export const addCodeAsNewCell =
+    'lab-notebook-intelligence:add-code-as-new-cell';
+  export const createNewFile = 'lab-notebook-intelligence:create-new-file';
   export const createNewNotebookFromPython =
-    'notebook-intelligence:create-new-notebook-from-py';
-  export const renameNotebook = 'notebook-intelligence:rename-notebook';
+    'lab-notebook-intelligence:create-new-notebook-from-py';
+  export const renameNotebook = 'lab-notebook-intelligence:rename-notebook';
   export const addCodeCellToNotebook =
-    'notebook-intelligence:add-code-cell-to-notebook';
+    'lab-notebook-intelligence:add-code-cell-to-notebook';
   export const addMarkdownCellToNotebook =
-    'notebook-intelligence:add-markdown-cell-to-notebook';
+    'lab-notebook-intelligence:add-markdown-cell-to-notebook';
   export const editorGenerateCode =
-    'notebook-intelligence:editor-generate-code';
+    'lab-notebook-intelligence:editor-generate-code';
   export const editorExplainThisCode =
-    'notebook-intelligence:editor-explain-this-code';
-  export const editorFixThisCode = 'notebook-intelligence:editor-fix-this-code';
+    'lab-notebook-intelligence:editor-explain-this-code';
+  export const editorFixThisCode =
+    'lab-notebook-intelligence:editor-fix-this-code';
   export const editorExplainThisOutput =
-    'notebook-intelligence:editor-explain-this-output';
+    'lab-notebook-intelligence:editor-explain-this-output';
   export const editorTroubleshootThisOutput =
-    'notebook-intelligence:editor-troubleshoot-this-output';
+    'lab-notebook-intelligence:editor-troubleshoot-this-output';
   export const openGitHubCopilotLoginDialog =
-    'notebook-intelligence:open-github-copilot-login-dialog';
+    'lab-notebook-intelligence:open-github-copilot-login-dialog';
   export const openConfigurationDialog =
-    'notebook-intelligence:open-configuration-dialog';
+    'lab-notebook-intelligence:open-configuration-dialog';
   export const addMarkdownCellToActiveNotebook =
-    'notebook-intelligence:add-markdown-cell-to-active-notebook';
+    'lab-notebook-intelligence:add-markdown-cell-to-active-notebook';
   export const addCodeCellToActiveNotebook =
-    'notebook-intelligence:add-code-cell-to-active-notebook';
-  export const deleteCellAtIndex = 'notebook-intelligence:delete-cell-at-index';
-  export const insertCellAtIndex = 'notebook-intelligence:insert-cell-at-index';
+    'lab-notebook-intelligence:add-code-cell-to-active-notebook';
+  export const deleteCellAtIndex =
+    'lab-notebook-intelligence:delete-cell-at-index';
+  export const insertCellAtIndex =
+    'lab-notebook-intelligence:insert-cell-at-index';
   export const getCellTypeAndSource =
-    'notebook-intelligence:get-cell-type-and-source';
+    'lab-notebook-intelligence:get-cell-type-and-source';
   export const setCellTypeAndSource =
-    'notebook-intelligence:set-cell-type-and-source';
-  export const getNumberOfCells = 'notebook-intelligence:get-number-of-cells';
-  export const getCellOutput = 'notebook-intelligence:get-cell-output';
-  export const runCellAtIndex = 'notebook-intelligence:run-cell-at-index';
+    'lab-notebook-intelligence:set-cell-type-and-source';
+  export const getNumberOfCells =
+    'lab-notebook-intelligence:get-number-of-cells';
+  export const getCellOutput = 'lab-notebook-intelligence:get-cell-output';
+  export const runCellAtIndex = 'lab-notebook-intelligence:run-cell-at-index';
   export const getCurrentFileContent =
-    'notebook-intelligence:get-current-file-content';
+    'lab-notebook-intelligence:get-current-file-content';
   export const setCurrentFileContent =
-    'notebook-intelligence:set-current-file-content';
+    'lab-notebook-intelligence:set-current-file-content';
   export const openMCPConfigEditor =
-    'notebook-intelligence:open-mcp-config-editor';
+    'lab-notebook-intelligence:open-mcp-config-editor';
 }
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
 const MAX_TOKENS = 4096;
 const githubCopilotIcon = new LabIcon({
-  name: 'notebook-intelligence:github-copilot-icon',
+  name: 'lab-notebook-intelligence:github-copilot-icon',
   svgstr: copilotSvgstr
 });
 
 const sparkleIcon = new LabIcon({
-  name: 'notebook-intelligence:sparkles-icon',
+  name: 'lab-notebook-intelligence:sparkles-icon',
   svgstr: sparklesSvgstr
 });
 
@@ -459,7 +464,7 @@ class NBIInlineCompletionProvider
   }
 
   get identifier(): string {
-    return '@notebook-intelligence/notebook-intelligence';
+    return '@notebook-intelligence/lab-notebook-intelligence';
   }
 
   get icon(): LabIcon.ILabIcon {
@@ -599,10 +604,10 @@ class MCPConfigEditor {
 }
 
 /**
- * Initialization data for the @notebook-intelligence/notebook-intelligence extension.
+ * Initialization data for the @qbraid/lab-notebook-intelligence extension.
  */
 const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
-  id: '@notebook-intelligence/notebook-intelligence:plugin',
+  id: '@qbraid/lab-notebook-intelligence:plugin',
   description: 'Notebook Intelligence',
   autoStart: true,
   requires: [
@@ -627,7 +632,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     statusBar: IStatusBar | null
   ) => {
     console.log(
-      'JupyterLab extension @notebook-intelligence/notebook-intelligence is activated!'
+      'JupyterLab extension @qbraid/lab-notebook-intelligence is activated!'
     );
 
     const telemetryEmitter = new TelemetryEmitter();
@@ -674,7 +679,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         })
         .catch(reason => {
           console.error(
-            'Failed to load settings for @notebook-intelligence/notebook-intelligence.',
+            'Failed to load settings for @notebook-intelligence/lab-notebook-intelligence.',
             reason
           );
         });
@@ -717,7 +722,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     };
 
     const panel = new Panel();
-    panel.id = 'notebook-intelligence-tab';
+    panel.id = 'lab-notebook-intelligence-tab';
     panel.title.caption = 'Notebook Intelligence';
     const sidebarIcon = new LabIcon({
       name: 'ui-components:palette',
@@ -1250,7 +1255,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
           onEditMCPConfigClicked: () => {
             dialog?.dispose();
             app.commands.execute(
-              'notebook-intelligence:open-mcp-config-editor'
+              'lab-notebook-intelligence:open-mcp-config-editor'
             );
           }
         });
@@ -1739,7 +1744,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
     });
 
     const copilotContextMenu = new Menu({ commands: copilotMenuCommands });
-    copilotContextMenu.id = 'notebook-intelligence:editor-context-menu';
+    copilotContextMenu.id = 'lab-notebook-intelligence:editor-context-menu';
     copilotContextMenu.title.label = 'Notebook Intelligence';
     copilotContextMenu.title.icon = sidebarIcon;
     copilotContextMenu.addItem({ command: CommandIDs.editorGenerateCode });
@@ -1770,7 +1775,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
       });
 
       statusBar.registerStatusItem(
-        'notebook-intelligence:github-copilot-status',
+        'lab-notebook-intelligence:github-copilot-status',
         {
           item: githubCopilotStatusBarItem,
           align: 'right',

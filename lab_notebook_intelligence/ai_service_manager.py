@@ -6,16 +6,16 @@ import os
 import sys
 from typing import Dict
 import logging
-from notebook_intelligence import github_copilot
-from notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MCPServer, MarkdownData, NotebookIntelligenceExtension, TelemetryEvent, TelemetryListener, Tool, Toolset
-from notebook_intelligence.base_chat_participant import BaseChatParticipant
-from notebook_intelligence.config import NBIConfig
-from notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
-from notebook_intelligence.llm_providers.github_copilot_llm_provider import GitHubCopilotLLMProvider
-from notebook_intelligence.llm_providers.litellm_compatible_llm_provider import LiteLLMCompatibleLLMProvider
-from notebook_intelligence.llm_providers.ollama_llm_provider import OllamaLLMProvider
-from notebook_intelligence.llm_providers.openai_compatible_llm_provider import OpenAICompatibleLLMProvider
-from notebook_intelligence.mcp_manager import MCPManager
+from lab_notebook_intelligence import github_copilot
+from lab_notebook_intelligence.api import ButtonData, ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, ChatParticipant, ChatRequest, ChatResponse, CompletionContext, ContextRequest, Host, CompletionContextProvider, MCPServer, MarkdownData, NotebookIntelligenceExtension, TelemetryEvent, TelemetryListener, Tool, Toolset
+from lab_notebook_intelligence.base_chat_participant import BaseChatParticipant
+from lab_notebook_intelligence.config import NBIConfig
+from lab_notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
+from lab_notebook_intelligence.llm_providers.github_copilot_llm_provider import GitHubCopilotLLMProvider
+from lab_notebook_intelligence.llm_providers.litellm_compatible_llm_provider import LiteLLMCompatibleLLMProvider
+from lab_notebook_intelligence.llm_providers.ollama_llm_provider import OllamaLLMProvider
+from lab_notebook_intelligence.llm_providers.openai_compatible_llm_provider import OpenAICompatibleLLMProvider
+from lab_notebook_intelligence.mcp_manager import MCPManager
 
 log = logging.getLogger(__name__)
 
@@ -288,7 +288,7 @@ class AIServiceManager(Host):
     async def handle_chat_request(self, request: ChatRequest, response: ChatResponse, options: dict = {}) -> None:
         if self.chat_model is None:
             response.stream(MarkdownData("Chat model is not set!"))
-            response.stream(ButtonData("Configure", "notebook-intelligence:open-configuration-dialog"))
+            response.stream(ButtonData("Configure", "lab-notebook-intelligence:open-configuration-dialog"))
             response.finish()
             return
         request.host = self
