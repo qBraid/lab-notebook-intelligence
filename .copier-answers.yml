@@ -8,7 +8,7 @@ has_settings: true
 kind: server
 labextension_name: '@notebook-intelligence/notebook-intelligence'
 project_short_description: Notebook Intelligence extension for JupyterLab
-python_name: notebook_intelligence
+python_name: lab_notebook_intelligence
 repository: https://github.com/notebook-intelligence/notebook-intelligence
 test: false
 

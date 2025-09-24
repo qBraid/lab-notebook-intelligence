@@ -1,39 +1,42 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import os
+import asyncio
 import base64
+import os
+
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.fernet import Fernet
-import asyncio
 from tornado import ioloop
 
+
 def extract_llm_generated_code(code: str) -> str:
-        if code.endswith("```"):
-            code = code[:-3]
+    if code.endswith("```"):
+        code = code[:-3]
 
-        lines = code.split("\n")
-        if len(lines) < 2:
-            return code
+    lines = code.split("\n")
+    if len(lines) < 2:
+        return code
 
-        num_lines = len(lines)
-        start_line = -1
-        end_line = num_lines
+    num_lines = len(lines)
+    start_line = -1
+    end_line = num_lines
 
-        for i in range(num_lines):
-            if start_line == -1:
-                if lines[i].lstrip().startswith("```"):
-                    start_line = i
-                    continue
-            else:
-                if lines[i].lstrip().startswith("```"):
-                    end_line = i
-                    break
+    for i in range(num_lines):
+        if start_line == -1:
+            if lines[i].lstrip().startswith("```"):
+                start_line = i
+                continue
+        else:
+            if lines[i].lstrip().startswith("```"):
+                end_line = i
+                break
 
-        if start_line != -1:
-            lines = lines[start_line+1:end_line]
+    if start_line != -1:
+        lines = lines[start_line + 1 : end_line]
 
-        return "\n".join(lines)
+    return "\n".join(lines)
+
 
 def encrypt_with_password(password: str, data: bytes) -> bytes:
     salt = os.urandom(16)
@@ -48,6 +51,7 @@ def encrypt_with_password(password: str, data: bytes) -> bytes:
     encrypted_data = f.encrypt(data)
 
     return salt + encrypted_data
+
 
 def decrypt_with_password(password: str, encrypted_data_with_salt: bytes) -> bytes:
     salt = encrypted_data_with_salt[:16]
@@ -64,13 +68,15 @@ def decrypt_with_password(password: str, encrypted_data_with_salt: bytes) -> byt
 
     return decrypted_data
 
-class ThreadSafeWebSocketConnector():
-  def __init__(self, websocket_handler):
-    self.io_loop = ioloop.IOLoop.current()
-    self.websocket_handler = websocket_handler
 
-  def write_message(self, message: dict):
-    def _write_message():
-        self.websocket_handler.write_message(message)
-    asyncio.set_event_loop(self.io_loop.asyncio_loop)
-    self.io_loop.asyncio_loop.call_soon_threadsafe(_write_message)
+class ThreadSafeWebSocketConnector:
+    def __init__(self, websocket_handler):
+        self.io_loop = ioloop.IOLoop.current()
+        self.websocket_handler = websocket_handler
+
+    def write_message(self, message: dict):
+        def _write_message():
+            self.websocket_handler.write_message(message)
+
+        asyncio.set_event_loop(self.io_loop.asyncio_loop)
+        self.io_loop.asyncio_loop.call_soon_threadsafe(_write_message)

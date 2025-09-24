@@ -39,11 +39,24 @@ The active document is the source code the user is looking at right now.
 You can only give one reply for each conversation turn.
 """
 
+
 class Prompts:
     @staticmethod
     def generic_chat_prompt(model_provider: str, model_name: str) -> str:
-        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="Notebook Intelligence", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE, MODEL_NAME=model_name, MODEL_PROVIDER=model_provider)
+        return CHAT_SYSTEM_PROMPT.format(
+            AI_ASSISTANT_NAME="Lab Notebook Intelligence",
+            IDE_NAME=IDE_NAME,
+            OS_TYPE=OS_TYPE,
+            MODEL_NAME=model_name,
+            MODEL_PROVIDER=model_provider,
+        )
 
     @staticmethod
     def github_copilot_chat_prompt(model_provider: str, model_name: str) -> str:
-        return CHAT_SYSTEM_PROMPT.format(AI_ASSISTANT_NAME="GitHub Copilot", IDE_NAME=IDE_NAME, OS_TYPE=OS_TYPE, MODEL_NAME=model_name, MODEL_PROVIDER=model_provider)
+        return CHAT_SYSTEM_PROMPT.format(
+            AI_ASSISTANT_NAME="GitHub Copilot",
+            IDE_NAME=IDE_NAME,
+            OS_TYPE=OS_TYPE,
+            MODEL_NAME=model_name,
+            MODEL_PROVIDER=model_provider,
+        )
