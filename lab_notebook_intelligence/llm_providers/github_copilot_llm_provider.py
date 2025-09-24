@@ -3,13 +3,20 @@
 import logging
 from typing import Any
 
-from lab_notebook_intelligence.api import (CancelToken, ChatModel,
-                                           ChatResponse, CompletionContext,
-                                           EmbeddingModel,
-                                           InlineCompletionModel, LLMProvider)
-from lab_notebook_intelligence.github_copilot import (completions,
-                                                      generate_copilot_headers,
-                                                      inline_completions)
+from lab_notebook_intelligence.api import (
+    CancelToken,
+    ChatModel,
+    ChatResponse,
+    CompletionContext,
+    EmbeddingModel,
+    InlineCompletionModel,
+    LLMProvider,
+)
+from lab_notebook_intelligence.github_copilot import (
+    completions,
+    generate_copilot_headers,
+    inline_completions,
+)
 
 log = logging.getLogger(__name__)
 

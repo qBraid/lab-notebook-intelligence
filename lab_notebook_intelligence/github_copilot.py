@@ -17,12 +17,18 @@ from typing import Any
 import requests
 import sseclient
 
-from lab_notebook_intelligence.api import (BackendMessageType, CancelToken,
-                                           ChatResponse, CompletionContext,
-                                           MarkdownData)
-from lab_notebook_intelligence.util import (ThreadSafeWebSocketConnector,
-                                            decrypt_with_password,
-                                            encrypt_with_password)
+from lab_notebook_intelligence.api import (
+    BackendMessageType,
+    CancelToken,
+    ChatResponse,
+    CompletionContext,
+    MarkdownData,
+)
+from lab_notebook_intelligence.util import (
+    ThreadSafeWebSocketConnector,
+    decrypt_with_password,
+    encrypt_with_password,
+)
 
 from ._version import __version__ as NBI_VERSION
 

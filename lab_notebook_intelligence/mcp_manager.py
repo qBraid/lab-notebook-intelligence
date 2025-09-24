@@ -10,15 +10,21 @@ from typing import Any, Union
 from fastmcp import Client
 from fastmcp.client import StdioTransport, StreamableHttpTransport
 from mcp import StdioServerParameters
-from mcp.client.stdio import \
-    get_default_environment as mcp_get_default_environment
+from mcp.client.stdio import get_default_environment as mcp_get_default_environment
 from mcp.types import ImageContent, TextContent
 
-from lab_notebook_intelligence.api import (ChatCommand, ChatRequest,
-                                           ChatResponse, HTMLFrameData,
-                                           ImageData, MarkdownData, MCPServer,
-                                           ProgressData, Tool,
-                                           ToolPreInvokeResponse)
+from lab_notebook_intelligence.api import (
+    ChatCommand,
+    ChatRequest,
+    ChatResponse,
+    HTMLFrameData,
+    ImageData,
+    MarkdownData,
+    MCPServer,
+    ProgressData,
+    Tool,
+    ToolPreInvokeResponse,
+)
 from lab_notebook_intelligence.base_chat_participant import BaseChatParticipant
 
 log = logging.getLogger(__name__)

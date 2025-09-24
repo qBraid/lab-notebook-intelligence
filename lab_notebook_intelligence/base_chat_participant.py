@@ -6,10 +6,16 @@ import logging
 import os
 from typing import Union
 
-from lab_notebook_intelligence.api import (ChatCommand, ChatParticipant,
-                                           ChatRequest, ChatResponse,
-                                           MarkdownData, ProgressData, Tool,
-                                           ToolPreInvokeResponse)
+from lab_notebook_intelligence.api import (
+    ChatCommand,
+    ChatParticipant,
+    ChatRequest,
+    ChatResponse,
+    MarkdownData,
+    ProgressData,
+    Tool,
+    ToolPreInvokeResponse,
+)
 from lab_notebook_intelligence.built_in_toolsets import built_in_toolsets
 from lab_notebook_intelligence.prompts import Prompts
 from lab_notebook_intelligence.util import extract_llm_generated_code

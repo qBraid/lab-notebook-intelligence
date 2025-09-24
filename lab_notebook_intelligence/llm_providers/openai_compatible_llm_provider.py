@@ -5,11 +5,16 @@ from typing import Any
 
 from openai import OpenAI
 
-from lab_notebook_intelligence.api import (CancelToken, ChatModel,
-                                           ChatResponse, CompletionContext,
-                                           EmbeddingModel,
-                                           InlineCompletionModel, LLMProvider,
-                                           LLMProviderProperty)
+from lab_notebook_intelligence.api import (
+    CancelToken,
+    ChatModel,
+    ChatResponse,
+    CompletionContext,
+    EmbeddingModel,
+    InlineCompletionModel,
+    LLMProvider,
+    LLMProviderProperty,
+)
 
 DEFAULT_CONTEXT_WINDOW = 4096
 

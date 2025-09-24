@@ -21,13 +21,21 @@ from traitlets import Unicode
 
 import lab_notebook_intelligence.github_copilot as github_copilot
 from lab_notebook_intelligence.ai_service_manager import AIServiceManager
-from lab_notebook_intelligence.api import (BackendMessageType, BuiltinToolset,
-                                           CancelToken, ChatMode, ChatRequest,
-                                           ChatResponse, ContextRequest,
-                                           ContextRequestType, RequestDataType,
-                                           RequestToolSelection,
-                                           ResponseStreamData,
-                                           ResponseStreamDataType, SignalImpl)
+from lab_notebook_intelligence.api import (
+    BackendMessageType,
+    BuiltinToolset,
+    CancelToken,
+    ChatMode,
+    ChatRequest,
+    ChatResponse,
+    ContextRequest,
+    ContextRequestType,
+    RequestDataType,
+    RequestToolSelection,
+    ResponseStreamData,
+    ResponseStreamDataType,
+    SignalImpl,
+)
 from lab_notebook_intelligence.built_in_toolsets import built_in_toolsets
 from lab_notebook_intelligence.util import ThreadSafeWebSocketConnector
 

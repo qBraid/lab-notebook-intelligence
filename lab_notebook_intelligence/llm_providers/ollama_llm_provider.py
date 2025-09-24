@@ -6,10 +6,15 @@ from typing import Any
 
 import ollama
 
-from lab_notebook_intelligence.api import (CancelToken, ChatModel,
-                                           ChatResponse, CompletionContext,
-                                           EmbeddingModel,
-                                           InlineCompletionModel, LLMProvider)
+from lab_notebook_intelligence.api import (
+    CancelToken,
+    ChatModel,
+    ChatResponse,
+    CompletionContext,
+    EmbeddingModel,
+    InlineCompletionModel,
+    LLMProvider,
+)
 from lab_notebook_intelligence.util import extract_llm_generated_code
 
 log = logging.getLogger(__name__)
