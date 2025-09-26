@@ -789,6 +789,16 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
       },
       getTelemetryEmitter(): ITelemetryEmitter {
         return telemetryEmitter;
+      },
+      getFileContent: async (filepath: string): Promise<string> => {
+        try {
+          const contentManager = new ContentsManager();
+          const file = await contentManager.get(filepath); // Fetch file content
+          return JSON.stringify(file.content); // Return the file content
+        } catch (error) {
+          console.error('Failed to get file content:', error);
+          return null; // Return null if an error occurs
+        }
       }
     });
     panel.addWidget(sidebar);

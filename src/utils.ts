@@ -1,5 +1,3 @@
-// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
-
 import { CodeCell } from '@jupyterlab/cells';
 import { PartialJSONObject } from '@lumino/coreutils';
 import { CodeEditor } from '@jupyterlab/codeeditor';

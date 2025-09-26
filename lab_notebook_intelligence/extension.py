@@ -694,42 +694,41 @@ class WebsocketCopilotHandler(websocket.WebSocketHandler):
 
             for context in additionalContext:
                 file_path = context["filePath"]
+
                 file_path = path.join(NotebookIntelligence.root_dir, file_path)
                 filename = path.basename(file_path)
-                start_line = context["startLine"]
-                end_line = context["endLine"]
-                current_cell_contents = context["currentCellContents"]
-                current_cell_input = (
-                    current_cell_contents["input"]
-                    if current_cell_contents is not None
-                    else ""
-                )
-                current_cell_output = (
-                    current_cell_contents["output"]
-                    if current_cell_contents is not None
-                    else ""
-                )
+                start_line = context.get("startLine", 0)
+                end_line = context.get("endLine", 0)
+                current_cell_contents = context.get("currentCellContents", {})
+                current_cell_input = current_cell_contents.get("input", "")
+                current_cell_output = current_cell_contents.get("output", "")
+
                 current_cell_context = (
                     f"This is a Jupyter notebook and currently selected cell input is: ```{current_cell_input}``` and currently selected cell output is: ```{current_cell_output}```. If user asks a question about 'this' cell then assume that user is referring to currently selected cell."
                     if current_cell_contents is not None
                     else ""
                 )
-                context_content = context["content"]
+                context_content = context.get("content", "")
                 token_count = len(tiktoken_encoding.encode(context_content))
                 if token_count > token_budget:
                     context_content = context_content[: int(token_budget)] + "..."
+                msg_content = f"Use this as additional context: ```{context_content}```. It is from current file: '{filename}' at path '{file_path}'"
+                if start_line >= 0 and end_line > 0:
+                    msg_content += f", lines: {start_line} - {end_line}."
+                if current_cell_context != "":
+                    msg_content += f" {current_cell_context}"
 
                 request_chat_history.append(
                     {
                         "role": "user",
-                        "content": f"Use this as additional context: ```{context_content}```. It is from current file: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}",
+                        "content": msg_content,
                     }
                 )
                 self.chat_history.add_message(
                     chatId,
                     {
                         "role": "user",
-                        "content": f"This file was provided as additional context: '{filename}' at path '{file_path}', lines: {start_line} - {end_line}. {current_cell_context}",
+                        "content": f"This file was provided as additional context: '{filename}' at path '{file_path}'. {current_cell_context}",
                     },
                 )
 

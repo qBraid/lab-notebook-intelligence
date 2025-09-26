@@ -33,6 +33,7 @@ import {
   TelemetryEventType
 } from './tokens';
 import { JupyterFrontEnd } from '@jupyterlab/application';
+import { FileBrowserDropdown } from './context';
 import { MarkdownRenderer as OriginalMarkdownRenderer } from './markdown-renderer';
 const MarkdownRenderer = memo(OriginalMarkdownRenderer);
 
@@ -50,7 +51,8 @@ import {
   VscSettingsGear,
   VscPassFilled,
   VscTools,
-  VscTrash
+  VscTrash,
+  VscAttach
 } from 'react-icons/vsc';
 
 import { MdOutlineCheckBoxOutlineBlank, MdCheckBox } from 'react-icons/md';
@@ -96,6 +98,7 @@ export interface IChatSidebarOptions {
   openFile: (path: string) => void;
   getApp: () => JupyterFrontEnd;
   getTelemetryEmitter: () => ITelemetryEmitter;
+  getFileContent: (filePath: string) => Promise<string>;
 }
 
 export class ChatSidebar extends ReactWidget {
@@ -115,6 +118,7 @@ export class ChatSidebar extends ReactWidget {
         openFile={this._options.openFile}
         getApp={this._options.getApp}
         getTelemetryEmitter={this._options.getTelemetryEmitter}
+        getFileContent={this._options.getFileContent}
       />
     );
   }
@@ -744,6 +748,26 @@ function SidebarComponent(props: any) {
   const [currentChatModel, setCurrentChatModel] = useState<string>(
     NBIAPI.config.chatModel.model
   );
+  const [showFileBrowser, setShowFileBrowser] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+
+  const selectContextFiles = () => {
+    setShowFileBrowser(true);
+  };
+
+  const handleFilesSelected = (filePaths: string[]) => {
+    // append the new files to the existing selected files
+    const finalFiles = [...selectedFiles, ...filePaths];
+    const uniqueFiles = Array.from(new Set(finalFiles));
+    setSelectedFiles(uniqueFiles);
+    setShowFileBrowser(false);
+    console.log(`Selected files: ${filePaths}`);
+  };
+
+  const handleContextCancel = () => {
+    setSelectedFiles([]);
+    setShowFileBrowser(false);
+  };
 
   // Load available models when config changes
   useEffect(() => {
@@ -1306,6 +1330,7 @@ function SidebarComponent(props: any) {
     const app = props.getApp();
     const additionalContext: IContextItem[] = [];
     if (contextOn && activeDocumentInfo?.filename) {
+      // TODO: update for selected files
       const selection = activeDocumentInfo.selection;
       const textSelected =
         selection &&
@@ -1325,6 +1350,20 @@ function SidebarComponent(props: any) {
         endLine: selection ? selection.end.line + 1 : 1
       });
     }
+
+    if (selectedFiles.length > 0) {
+      // parse through each selected file and add to context
+      for (const filePath of selectedFiles) {
+        additionalContext.push({
+          type: ContextType.File,
+          content: await props.getFileContent(filePath),
+          filePath: filePath,
+          currentCellContents: undefined
+        });
+      }
+    }
+
+    console.log('Complete context : ', additionalContext);
 
     submitCompletionRequest(
       {
@@ -1870,30 +1909,71 @@ function SidebarComponent(props: any) {
             spellCheck={false}
             value={prompt}
           />
-          {activeDocumentInfo?.filename && (
-            <div className="user-input-context-row">
-              <div
-                className={`user-input-context user-input-context-active-file ${contextOn ? 'on' : 'off'}`}
-              >
-                <div>{currentFileContextTitle}</div>
-                {contextOn ? (
-                  <div
-                    className="user-input-context-toggle"
-                    onClick={() => setContextOn(!contextOn)}
-                  >
-                    <VscEye title="Use as context" />
-                  </div>
-                ) : (
-                  <div
-                    className="user-input-context-toggle"
-                    onClick={() => setContextOn(!contextOn)}
-                  >
-                    <VscEyeClosed title="Don't use as context" />
-                  </div>
-                )}
+          <div className="user-input-context-and-add-context">
+            {activeDocumentInfo?.filename && (
+              <div className="user-input-context-row">
+                <div
+                  className={`user-input-context user-input-context-active-file ${contextOn ? 'on' : 'off'}`}
+                >
+                  <div>{currentFileContextTitle}</div>
+                  {contextOn ? (
+                    <div
+                      className="user-input-context-toggle"
+                      onClick={() => setContextOn(!contextOn)}
+                    >
+                      <VscEye title="Use as context" />
+                    </div>
+                  ) : (
+                    <div
+                      className="user-input-context-toggle"
+                      onClick={() => setContextOn(!contextOn)}
+                    >
+                      <VscEyeClosed title="Don't use as context" />
+                    </div>
+                  )}
+                </div>
               </div>
+            )}
+            <div className="sidebar-add-context">
+              <button
+                className="add-context-button"
+                onClick={selectContextFiles}
+              >
+                <VscAttach /> Add Context
+              </button>
             </div>
-          )}
+            {showFileBrowser && (
+              <div className="file-browser-dropdown-container">
+                <FileBrowserDropdown
+                  onFilesSelected={handleFilesSelected}
+                  onCancelSelection={handleContextCancel}
+                />
+              </div>
+            )}
+            <div>
+              {selectedFiles.length > 0 && (
+                <div className="selected-files-container">
+                  <ul className="selected-files-list">
+                    {selectedFiles.map(file => (
+                      <li key={file} className="selected-file-item">
+                        <span className="selected-file-name">{file}</span>
+                        <button
+                          className="remove-file-button"
+                          onClick={() => {
+                            setSelectedFiles(
+                              selectedFiles.filter(f => f !== file)
+                            );
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
           <div className="user-input-footer">
             {chatMode === 'ask' && (
               <div>

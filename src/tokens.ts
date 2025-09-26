@@ -49,7 +49,8 @@ export enum ResponseStreamDataType {
 
 export enum ContextType {
   Custom = 'custom',
-  CurrentFile = 'current-file'
+  CurrentFile = 'current-file',
+  File = 'file'
 }
 
 export interface IContextItem {
