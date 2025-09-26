@@ -1,0 +1,44 @@
+name: Check Code Formatting
+
+on:
+  pull_request:
+      branches: ['main']
+      types: [opened, reopened, ready_for_review, synchronize]
+  workflow_dispatch:
+
+jobs:
+  check-format:
+    name: Check Code Formatting
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Base Setup
+        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+        
+      - name: Install dependencies
+        run: python -m pip install -U "jupyterlab>=4.0.0,<5"
+
+      - name: Lint the extension
+        run: |
+          set -eux
+          jlpm
+          jlpm run lint:check
+        
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort>=6.0.0
+
+      - name: Check Python code formatting
+        run: |
+          black --check lab_notebook_intelligence
+          isort --check lab_notebook_intelligence

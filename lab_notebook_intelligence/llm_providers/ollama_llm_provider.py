@@ -1,11 +1,20 @@
 # Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import json
-from typing import Any
-from lab_notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext
-import ollama
 import logging
+from typing import Any
 
+import ollama
+
+from lab_notebook_intelligence.api import (
+    CancelToken,
+    ChatModel,
+    ChatResponse,
+    CompletionContext,
+    EmbeddingModel,
+    InlineCompletionModel,
+    LLMProvider,
+)
 from lab_notebook_intelligence.util import extract_llm_generated_code
 
 log = logging.getLogger(__name__)
@@ -17,6 +26,7 @@ CODELLAMA_INLINE_COMPL_PROMPT = """<PRE> {prefix} <SUF>{suffix} <MID>"""
 STARCODER_INLINE_COMPL_PROMPT = """<fim_prefix>{prefix}<fim_suffix>{suffix}<fim_middle>"""
 CODESTRAL_INLINE_COMPL_PROMPT = """[SUFFIX]{suffix}[PREFIX]{prefix}"""
 
+
 class OllamaChatModel(ChatModel):
     def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int):
         super().__init__(provider)
@@ -27,19 +37,26 @@ class OllamaChatModel(ChatModel):
     @property
     def id(self) -> str:
         return self._model_id
-    
+
     @property
     def name(self) -> str:
         return self._model_name
-    
+
     @property
     def context_window(self) -> int:
         return self._context_window
 
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
+    def completions(
+        self,
+        messages: list[dict],
+        tools: list[dict] = None,
+        response: ChatResponse = None,
+        cancel_token: CancelToken = None,
+        options: dict = {},
+    ) -> Any:
         stream = response is not None
         completion_args = {
-            "model": self._model_id, 
+            "model": self._model_id,
             "messages": messages.copy(),
             "stream": stream,
         }
@@ -50,30 +67,35 @@ class OllamaChatModel(ChatModel):
 
         if stream:
             for chunk in ollama_response:
-                response.stream({
-                        "choices": [{
-                            "delta": {
-                                "role": chunk['message']['role'],
-                                "content": chunk['message']['content']
+                response.stream(
+                    {
+                        "choices": [
+                            {
+                                "delta": {
+                                    "role": chunk["message"]["role"],
+                                    "content": chunk["message"]["content"],
+                                }
                             }
-                        }]
-                    })
+                        ]
+                    }
+                )
             response.finish()
             return
         else:
             json_resp = json.loads(ollama_response.model_dump_json())
 
-            return {
-                'choices': [
-                    {
-                        'message': json_resp['message']
-                    }
-                ]
-            }
+            return {"choices": [{"message": json_resp["message"]}]}
 
 
 class OllamaInlineCompletionModel(InlineCompletionModel):
-    def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int, prompt_template: str):
+    def __init__(
+        self,
+        provider: LLMProvider,
+        model_id: str,
+        model_name: str,
+        context_window: int,
+        prompt_template: str,
+    ):
         super().__init__(provider)
         self._model_id = model_id
         self._model_name = model_name
@@ -83,16 +105,24 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
     @property
     def id(self) -> str:
         return self._model_id
-    
+
     @property
     def name(self) -> str:
         return self._model_name
-    
+
     @property
     def context_window(self) -> int:
         return self._context_window
 
-    def inline_completions(self, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
+    def inline_completions(
+        self,
+        prefix,
+        suffix,
+        language,
+        filename,
+        context: CompletionContext,
+        cancel_token: CancelToken,
+    ) -> str:
         has_suffix = suffix.strip() != ""
         if has_suffix:
             prompt = self._prompt_template.format(prefix=prefix, suffix=suffix.strip())
@@ -101,13 +131,13 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
 
         try:
             generate_args = {
-                "model": self._model_id, 
+                "model": self._model_id,
                 "prompt": prompt,
                 "raw": True,
                 "options": {
-                    'num_predict': 128,
+                    "num_predict": 128,
                     "temperature": 0,
-                    "stop" : [
+                    "stop": [
                         "<|end▁of▁sentence|>",
                         "<｜end▁of▁sentence｜>",
                         "<|EOT|>",
@@ -128,6 +158,7 @@ class OllamaInlineCompletionModel(InlineCompletionModel):
             log.error(f"Error occurred while generating using completions ollama: {e}")
             return ""
 
+
 class OllamaLLMProvider(LLMProvider):
     def __init__(self):
         super().__init__()
@@ -137,7 +168,7 @@ class OllamaLLMProvider(LLMProvider):
     @property
     def id(self) -> str:
         return "ollama"
-    
+
     @property
     def name(self) -> str:
         return "Ollama"
@@ -149,17 +180,35 @@ class OllamaLLMProvider(LLMProvider):
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
         return [
-            OllamaInlineCompletionModel(self, "deepseek-coder-v2", "deepseek-coder-v2", 163840, DEEPSEEK_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "qwen2.5-coder", "qwen2.5-coder", 32768, QWEN_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "codestral", "codestral", 32768, CODESTRAL_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "starcoder2", "starcoder2", 16384, STARCODER_INLINE_COMPL_PROMPT),
-            OllamaInlineCompletionModel(self, "codellama:7b-code", "codellama:7b-code", 16384, CODELLAMA_INLINE_COMPL_PROMPT),
+            OllamaInlineCompletionModel(
+                self,
+                "deepseek-coder-v2",
+                "deepseek-coder-v2",
+                163840,
+                DEEPSEEK_INLINE_COMPL_PROMPT,
+            ),
+            OllamaInlineCompletionModel(
+                self, "qwen2.5-coder", "qwen2.5-coder", 32768, QWEN_INLINE_COMPL_PROMPT
+            ),
+            OllamaInlineCompletionModel(
+                self, "codestral", "codestral", 32768, CODESTRAL_INLINE_COMPL_PROMPT
+            ),
+            OllamaInlineCompletionModel(
+                self, "starcoder2", "starcoder2", 16384, STARCODER_INLINE_COMPL_PROMPT
+            ),
+            OllamaInlineCompletionModel(
+                self,
+                "codellama:7b-code",
+                "codellama:7b-code",
+                16384,
+                CODELLAMA_INLINE_COMPL_PROMPT,
+            ),
         ]
-    
+
     @property
     def embedding_models(self) -> list[EmbeddingModel]:
         return []
-    
+
     def update_chat_model_list(self):
         try:
             response = ollama.list()
@@ -178,5 +227,5 @@ class OllamaLLMProvider(LLMProvider):
                     )
                 except Exception as e:
                     log.error(f"Error getting Ollama model info {model}: {e}")
-        except Exception as e:          
+        except Exception as e:
             log.error(f"Error updating supported Ollama models: {e}")

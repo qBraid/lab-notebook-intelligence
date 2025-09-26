@@ -8,7 +8,7 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  min-width: 25%;
+  min-width: 40%;
   height: 100%;
 }
 
@@ -77,6 +77,12 @@
   max-height: 200px;
 }
 
+.user-input-context-and-add-context {
+  display: flex; /* Align children horizontally */
+  align-items: center; /* Vertically align items */
+  gap: 10px; /* Add spacing between the two elements */
+}
+
 .sidebar-user-input .user-input-context-row {
   display: flex;
   flex-direction: row;
@@ -87,6 +93,7 @@
   display: flex;
   align-items: center;
   border: 1px solid var(--jp-border-color1);
+  margin: 5px;
   border-radius: 4px;
   padding: 2px;
   gap: 5px;
@@ -117,6 +124,35 @@
   flex-direction: row;
   align-items: center;
   gap: 10px;
+}
+
+.sidebar-add-context {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.add-context-button {
+  display: flex;
+  align-items: center;
+  background-color: var(--jp-layout-color1);
+  border: 1px solid var(--jp-border-color2);
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--jp-ui-font-color2);
+  transition: background-color 0.2s;
+}
+
+.add-context-button:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.add-context-button svg {
+  margin-right: 5px;
 }
 
 .chat-mode-widgets-container {
@@ -870,4 +906,170 @@ svg.access-token-warning {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.file-browser-path {
+  display: flex; /* Use flexbox for alignment */
+  align-items: center; /* Vertically center the arrow and text */
+  gap: 8px; /* Add spacing between the arrow and the text */
+  padding: 4px 8px;
+  background-color: var(--jp-layout-color2); /* Subtle background color */
+  border: 1px solid var(--jp-border-color1); /* Border for better visibility */
+  border-radius: 4px; /* Rounded corners */
+  font-size: 12px; /* Adjust font size */
+  color: var(--jp-ui-font-color1); /* Dynamic text color */
+  font-weight: bold; /* Make the text stand out */
+}
+
+.file-browser-path .current-path {
+  overflow: hidden; /* Prevent overflow */
+  text-overflow: ellipsis; /* Add ellipsis for long paths */
+  white-space: nowrap; /* Prevent wrapping */
+}
+
+.file-browser-dropdown button {
+  background-color: var(--jp-brand-color1);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.file-browser-dropdown button:hover {
+  background-color: var(--jp-brand-color2);
+}
+
+.file-browser-dropdown button:active {
+  background-color: var(--jp-brand-color3);
+}
+
+.file-browser-dropdown button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.file-browser-dropdown-container {
+  position: fixed; /* Fixed positioning to align relative to the viewport */
+  top: 50px; /* Adjust this value to place it below the JupyterLab header */
+  left: 30%; /* Center horizontally */
+  transform: translateX(-50%); /* Offset by 50% of its width to center */
+  padding: 5%;
+  width: 60%;
+  margin-left: 20%;
+  margin-bottom: 20%;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: var(--jp-layout-color1);
+  border: 1px solid var(--jp-border-color1);
+  border-radius: 4px;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgb(0 0 0 / 10%);
+}
+
+.file-browser-dropdown-container ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-browser-dropdown-container li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--jp-border-color2);
+  transition: background-color 0.2s ease;
+}
+
+.file-browser-dropdown-container li:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.file-browser-dropdown-container li:last-child {
+  border-bottom: none;
+}
+
+.file-browser-dropdown-container li.directory::before {
+  font-size: 16px;
+  color: var(--jp-ui-font-color2);
+}
+
+.file-browser-dropdown-container .file-browser-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--jp-border-color2);
+  transition: background-color 0.2s ease;
+}
+
+.file-browser-dropdown-container .file-browser-item:hover {
+  background-color: var(--jp-layout-color2);
+}
+
+.file-browser-dropdown-container .file-browser-item.selected {
+  background-color: var(--jp-brand-color1);
+  color: white;
+}
+
+.file-browser-dropdown-container .file-browser-item:last-child {
+  border-bottom: none;
+}
+
+.selected-files-container {
+  margin: 5px;
+  padding: 5px;
+  border: 1px solid var(--jp-border-color1); /* Dynamic border color */
+  background-color: var(--jp-layout-color1); /* Dynamic background color */
+  border-radius: 5px;
+  display: flex;
+  flex-wrap: wrap; /* Allow wrapping if files exceed container width */
+  gap: 10px; /* Add spacing between items */
+}
+
+.selected-files-list {
+  display: flex; /* Use flexbox for horizontal alignment */
+  flex-wrap: wrap; /* Allow wrapping to the next line */
+  list-style: none; /* Remove bullets */
+  padding: 0;
+  margin: 0;
+  gap: 10px; /* Add spacing between items */
+}
+
+.selected-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px;
+  border: 1px solid var(--jp-border-color2); /* Dynamic border color */
+  border-radius: 3px;
+  background-color: var(--jp-layout-color2); /* Dynamic background color */
+  white-space: nowrap; /* Prevent text from wrapping */
+}
+
+.selected-file-name {
+  font-size: 12px;
+  color: var(--jp-ui-font-color1); /* Dynamic text color */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 5px;
+}
+
+.remove-file-button {
+  background: none;
+  border: none;
+  color: var(--jp-warn-color0); /* Dynamic warning color */
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 5px;
+  transition: color 0.2s;
+}
+
+.remove-file-button:hover {
+  color: var(--jp-warn-color1); /* Dynamic hover warning color */
+  background-color: var(--jp-layout-color1);
 }

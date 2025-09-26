@@ -129,7 +129,7 @@ export class NBIAPI {
     };
 
     this._webSocket.onclose = msg => {
-      console.log(`Websocket is closed: ${msg.reason}. Reconnecting...`);
+      console.log(`Websocket is closed: ${msg}. Reconnecting...`);
       setTimeout(() => {
         NBIAPI.initializeWebsocket();
       }, 1000);

@@ -327,8 +327,19 @@ class ActiveDocumentWatcher {
 class NBIInlineCompletionProvider
   implements IInlineCompletionProvider<IInlineCompletionItem>
 {
+  private _NBCellContextState: {
+    activeCellIndex: number;
+    preContent: string;
+    postContent: string;
+  };
+
   constructor(telemetryEmitter: TelemetryEmitter) {
     this._telemetryEmitter = telemetryEmitter;
+    this._NBCellContextState = {
+      activeCellIndex: -1,
+      preContent: '',
+      postContent: ''
+    };
   }
 
   get schema(): ISettingRegistry.IProperty {
@@ -340,6 +351,60 @@ class NBIInlineCompletionProvider
     };
   }
 
+  private calculateCellContext(context: IInlineCompletionContext): {
+    preContent: string;
+    postContent: string;
+  } {
+    if (!(context.widget instanceof NotebookPanel)) {
+      return { preContent: '', postContent: '' };
+    }
+
+    const notebook = context.widget.content;
+    const activeCellIndex = notebook.activeCellIndex;
+    // Check if the active cell has changed
+    if (this._NBCellContextState.activeCellIndex === activeCellIndex) {
+      // Return cached content if the active cell hasn't changed
+      return {
+        preContent: this._NBCellContextState.preContent,
+        postContent: this._NBCellContextState.postContent
+      };
+    }
+
+    // Recalculate pre and post content
+    let preContent = '';
+    let postContent = '';
+    // const activeCell = notebook.activeCell;
+    let activeCellReached = false;
+
+    for (let i = 0; i < notebook.widgets.length; i++) {
+      const cell = notebook.widgets[i];
+      const cellModel = cell.model.sharedModel;
+
+      if (i === activeCellIndex) {
+        activeCellReached = true;
+      } else if (!activeCellReached) {
+        if (cellModel.cell_type === 'code') {
+          preContent += cellModel.source + '\n';
+        } else if (cellModel.cell_type === 'markdown') {
+          preContent += markdownToComment(cellModel.source) + '\n';
+        }
+      } else {
+        if (cellModel.cell_type === 'code') {
+          postContent += cellModel.source + '\n';
+        } else if (cellModel.cell_type === 'markdown') {
+          postContent += markdownToComment(cellModel.source) + '\n';
+        }
+      }
+    }
+
+    // Update the state
+    this._NBCellContextState.activeCellIndex = activeCellIndex;
+    this._NBCellContextState.preContent = preContent;
+    this._NBCellContextState.postContent = postContent;
+
+    return { preContent, postContent };
+  }
+
   fetch(
     request: CompletionHandler.IRequest,
     context: IInlineCompletionContext
@@ -348,36 +413,13 @@ class NBIInlineCompletionProvider
     let postContent = '';
     const preCursor = request.text.substring(0, request.offset);
     const postCursor = request.text.substring(request.offset);
-    let language = ActiveDocumentWatcher.activeDocumentInfo.language;
+    const language = ActiveDocumentWatcher.activeDocumentInfo.language;
 
     let editorType = 'file-editor';
 
     if (context.widget instanceof NotebookPanel) {
       editorType = 'notebook';
-      const activeCell = context.widget.content.activeCell;
-      if (activeCell.model.sharedModel.cell_type === 'markdown') {
-        language = 'markdown';
-      }
-      let activeCellReached = false;
-
-      for (const cell of context.widget.content.widgets) {
-        const cellModel = cell.model.sharedModel;
-        if (cell === activeCell) {
-          activeCellReached = true;
-        } else if (!activeCellReached) {
-          if (cellModel.cell_type === 'code') {
-            preContent += cellModel.source + '\n';
-          } else if (cellModel.cell_type === 'markdown') {
-            preContent += markdownToComment(cellModel.source) + '\n';
-          }
-        } else {
-          if (cellModel.cell_type === 'code') {
-            postContent += cellModel.source + '\n';
-          } else if (cellModel.cell_type === 'markdown') {
-            postContent += markdownToComment(cellModel.source) + '\n';
-          }
-        }
-      }
+      ({ preContent, postContent } = this.calculateCellContext(context));
     }
 
     const nbiConfig = NBIAPI.config;
@@ -747,6 +789,16 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
       },
       getTelemetryEmitter(): ITelemetryEmitter {
         return telemetryEmitter;
+      },
+      getFileContent: async (filepath: string): Promise<string> => {
+        try {
+          const contentManager = new ContentsManager();
+          const file = await contentManager.get(filepath); // Fetch file content
+          return JSON.stringify(file.content); // Return the file content
+        } catch (error) {
+          console.error('Failed to get file content:', error);
+          return null; // Return null if an error occurs
+        }
       }
     });
     panel.addWidget(sidebar);

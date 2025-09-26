@@ -2,10 +2,22 @@
 
 import json
 from typing import Any
-from lab_notebook_intelligence.api import ChatModel, EmbeddingModel, InlineCompletionModel, LLMProvider, CancelToken, ChatResponse, CompletionContext, LLMProviderProperty
+
 from openai import OpenAI
 
+from lab_notebook_intelligence.api import (
+    CancelToken,
+    ChatModel,
+    ChatResponse,
+    CompletionContext,
+    EmbeddingModel,
+    InlineCompletionModel,
+    LLMProvider,
+    LLMProviderProperty,
+)
+
 DEFAULT_CONTEXT_WINDOW = 4096
+
 
 class OpenAICompatibleChatModel(ChatModel):
     def __init__(self, provider: "OpenAICompatibleLLMProvider"):
@@ -15,17 +27,19 @@ class OpenAICompatibleChatModel(ChatModel):
             LLMProviderProperty("api_key", "API key", "API key", "", False),
             LLMProviderProperty("model_id", "Model", "Model (must support streaming)", "", False),
             LLMProviderProperty("base_url", "Base URL", "Base URL", "", True),
-            LLMProviderProperty("context_window", "Context window", "Context window length", "", True),
+            LLMProviderProperty(
+                "context_window", "Context window", "Context window length", "", True
+            ),
         ]
 
     @property
     def id(self) -> str:
         return "openai-compatible-chat-model"
-    
+
     @property
     def name(self) -> str:
         return self.get_property("model_id").value
-    
+
     @property
     def context_window(self) -> int:
         try:
@@ -36,7 +50,14 @@ class OpenAICompatibleChatModel(ChatModel):
         except:
             return DEFAULT_CONTEXT_WINDOW
 
-    def completions(self, messages: list[dict], tools: list[dict] = None, response: ChatResponse = None, cancel_token: CancelToken = None, options: dict = {}) -> Any:
+    def completions(
+        self,
+        messages: list[dict],
+        tools: list[dict] = None,
+        response: ChatResponse = None,
+        cancel_token: CancelToken = None,
+        options: dict = {},
+    ) -> Any:
         stream = response is not None
         model_id = self.get_property("model_id").value
         base_url_prop = self.get_property("base_url")
@@ -55,20 +76,25 @@ class OpenAICompatibleChatModel(ChatModel):
 
         if stream:
             for chunk in resp:
-                response.stream({
-                        "choices": [{
-                            "delta": {
-                                "role": chunk.choices[0].delta.role,
-                                "content": chunk.choices[0].delta.content
+                response.stream(
+                    {
+                        "choices": [
+                            {
+                                "delta": {
+                                    "role": chunk.choices[0].delta.role,
+                                    "content": chunk.choices[0].delta.content,
+                                }
                             }
-                        }]
-                    })
+                        ]
+                    }
+                )
             response.finish()
             return
         else:
             json_resp = json.loads(resp.model_dump_json())
             return json_resp
-    
+
+
 class OpenAICompatibleInlineCompletionModel(InlineCompletionModel):
     def __init__(self, provider: "OpenAICompatibleLLMProvider"):
         super().__init__(provider)
@@ -77,17 +103,19 @@ class OpenAICompatibleInlineCompletionModel(InlineCompletionModel):
             LLMProviderProperty("api_key", "API key", "API key", "", False),
             LLMProviderProperty("model_id", "Model", "Model", "", False),
             LLMProviderProperty("base_url", "Base URL", "Base URL", "", True),
-            LLMProviderProperty("context_window", "Context window", "Context window length", "", True),
+            LLMProviderProperty(
+                "context_window", "Context window", "Context window length", "", True
+            ),
         ]
 
     @property
     def id(self) -> str:
         return "openai-compatible-inline-completion-model"
-    
+
     @property
     def name(self) -> str:
         return "Inline Completion Model"
-    
+
     @property
     def context_window(self) -> int:
         try:
@@ -98,7 +126,15 @@ class OpenAICompatibleInlineCompletionModel(InlineCompletionModel):
         except:
             return DEFAULT_CONTEXT_WINDOW
 
-    def inline_completions(self, prefix, suffix, language, filename, context: CompletionContext, cancel_token: CancelToken) -> str:
+    def inline_completions(
+        self,
+        prefix,
+        suffix,
+        language,
+        filename,
+        context: CompletionContext,
+        cancel_token: CancelToken,
+    ) -> str:
         model_id = self.get_property("model_id").value
         base_url_prop = self.get_property("base_url")
         base_url = base_url_prop.value if base_url_prop is not None else None
@@ -115,6 +151,7 @@ class OpenAICompatibleInlineCompletionModel(InlineCompletionModel):
 
         return resp.choices[0].text
 
+
 class OpenAICompatibleLLMProvider(LLMProvider):
     def __init__(self):
         super().__init__()
@@ -124,7 +161,7 @@ class OpenAICompatibleLLMProvider(LLMProvider):
     @property
     def id(self) -> str:
         return "openai-compatible"
-    
+
     @property
     def name(self) -> str:
         return "OpenAI Compatible"
@@ -132,11 +169,11 @@ class OpenAICompatibleLLMProvider(LLMProvider):
     @property
     def chat_models(self) -> list[ChatModel]:
         return [self._chat_model]
-    
+
     @property
     def inline_completion_models(self) -> list[InlineCompletionModel]:
         return [self._inline_completion_model]
-    
+
     @property
     def embedding_models(self) -> list[EmbeddingModel]:
         return []
