@@ -36,9 +36,7 @@ WHITELISTED_MCP_TOOLS = {"SearchQBraid"}
 
 
 class MCPTool(Tool):
-    def __init__(
-        self, server: "MCPServer", name, description, schema, auto_approve=False
-    ):
+    def __init__(self, server: "MCPServer", name, description, schema, auto_approve=False):
         super().__init__()
         self._server = server
         self._name = name
@@ -110,9 +108,7 @@ class MCPTool(Tool):
                     for content in result.content:
                         if type(content) is ImageContent:
                             response.stream(
-                                ImageData(
-                                    f"data:{content.mimeType};base64,{content.data}"
-                                )
+                                ImageData(f"data:{content.mimeType};base64,{content.data}")
                             )
                         elif type(content) is TextContent:
                             text_contents.append(content.text)
@@ -145,9 +141,7 @@ class MCPServerImpl(MCPServer):
     ):
         self._name: str = name
         self._stdio_params: StdioServerParameters = stdio_params
-        self._streamable_http_params: StreamableHttpServerParameters = (
-            streamable_http_params
-        )
+        self._streamable_http_params: StreamableHttpServerParameters = streamable_http_params
         self._auto_approve_tools: set[str] = set(auto_approve_tools)
         self._tried_to_get_tool_list = False
         self._mcp_tools = []
@@ -224,9 +218,7 @@ class MCPServerImpl(MCPServer):
 
 
 class MCPChatParticipant(BaseChatParticipant):
-    def __init__(
-        self, id: str, name: str, servers: list[MCPServer], nbi_tools: list[str] = []
-    ):
+    def __init__(self, id: str, name: str, servers: list[MCPServer], nbi_tools: list[str] = []):
         super().__init__()
         self._id = id
         self._name = name
@@ -348,9 +340,7 @@ class MCPManager:
         for server_name in server_names:
             server_config = servers_config.get(server_name, None)
             if server_config is None:
-                log.error(
-                    f"Server '{server_name}' not found in MCP servers configuration"
-                )
+                log.error(f"Server '{server_name}' not found in MCP servers configuration")
                 continue
 
             if server_config.get("disabled", False) == True:
@@ -382,9 +372,7 @@ class MCPManager:
 
             return MCPServerImpl(
                 server_name,
-                stdio_params=StdioServerParameters(
-                    command=command, args=args, env=server_env
-                ),
+                stdio_params=StdioServerParameters(command=command, args=args, env=server_env),
                 auto_approve_tools=auto_approve_tools,
             )
         elif "url" in server_config:

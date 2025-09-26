@@ -112,9 +112,7 @@ async def get_cell_output(cell_index: int, **args) -> str:
 
 @nbapi.auto_approve
 @nbapi.tool
-async def set_cell_type_and_source(
-    cell_index: int, cell_type: str, source: str, **args
-) -> str:
+async def set_cell_type_and_source(cell_index: int, cell_type: str, source: str, **args) -> str:
     """Set cell type and source for the cell at index for the active notebook.
 
     Args:

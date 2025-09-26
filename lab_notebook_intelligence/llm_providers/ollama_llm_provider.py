@@ -20,23 +20,15 @@ from lab_notebook_intelligence.util import extract_llm_generated_code
 log = logging.getLogger(__name__)
 
 OLLAMA_EMBEDDING_FAMILIES = set(["nomic-bert", "bert"])
-QWEN_INLINE_COMPL_PROMPT = (
-    """<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>"""
-)
-DEEPSEEK_INLINE_COMPL_PROMPT = (
-    """<｜fim▁begin｜>{prefix}<｜fim▁hole｜>{suffix}<｜fim▁end｜>"""
-)
+QWEN_INLINE_COMPL_PROMPT = """<|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>"""
+DEEPSEEK_INLINE_COMPL_PROMPT = """<｜fim▁begin｜>{prefix}<｜fim▁hole｜>{suffix}<｜fim▁end｜>"""
 CODELLAMA_INLINE_COMPL_PROMPT = """<PRE> {prefix} <SUF>{suffix} <MID>"""
-STARCODER_INLINE_COMPL_PROMPT = (
-    """<fim_prefix>{prefix}<fim_suffix>{suffix}<fim_middle>"""
-)
+STARCODER_INLINE_COMPL_PROMPT = """<fim_prefix>{prefix}<fim_suffix>{suffix}<fim_middle>"""
 CODESTRAL_INLINE_COMPL_PROMPT = """[SUFFIX]{suffix}[PREFIX]{prefix}"""
 
 
 class OllamaChatModel(ChatModel):
-    def __init__(
-        self, provider: LLMProvider, model_id: str, model_name: str, context_window: int
-    ):
+    def __init__(self, provider: LLMProvider, model_id: str, model_name: str, context_window: int):
         super().__init__(provider)
         self._model_id = model_id
         self._model_name = model_name

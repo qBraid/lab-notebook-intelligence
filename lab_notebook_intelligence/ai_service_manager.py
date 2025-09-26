@@ -113,9 +113,7 @@ class AIServiceManager(Host):
         self.telemetry_listeners: Dict[str, TelemetryListener] = {}
         self._extension_toolsets: Dict[str, list[Toolset]] = {}
         self._options = options.copy()
-        self._nbi_config = NBIConfig(
-            {"server_root_dir": self._options.get("server_root_dir", "")}
-        )
+        self._nbi_config = NBIConfig({"server_root_dir": self._options.get("server_root_dir", "")})
         self._openai_compatible_llm_provider = OpenAICompatibleLLMProvider()
         self._litellm_compatible_llm_provider = LiteLLMCompatibleLLMProvider()
         self._ollama_llm_provider = OllamaLLMProvider()
@@ -149,9 +147,7 @@ class AIServiceManager(Host):
             github_copilot.login_with_existing_credentials(
                 self._nbi_config.store_github_access_token
             )
-        github_copilot.enable_github_login_status_change_updater(
-            using_github_copilot_service
-        )
+        github_copilot.enable_github_login_status_change_updater(using_github_copilot_service)
 
         chat_model_cfg = self.nbi_config.chat_model
         chat_model_provider_id = chat_model_cfg.get("provider", "none")
@@ -164,17 +160,13 @@ class AIServiceManager(Host):
         )
 
         inline_completion_model_cfg = self.nbi_config.inline_completion_model
-        inline_completion_model_provider_id = inline_completion_model_cfg.get(
-            "provider", "none"
-        )
+        inline_completion_model_provider_id = inline_completion_model_cfg.get("provider", "none")
         inline_completion_model_id = inline_completion_model_cfg.get("model", "none")
         inline_completion_model_provider = self.get_llm_provider(
             inline_completion_model_provider_id
         )
         self._inline_completion_model = (
-            inline_completion_model_provider.get_inline_completion_model(
-                inline_completion_model_id
-            )
+            inline_completion_model_provider.get_inline_completion_model(inline_completion_model_id)
             if inline_completion_model_provider is not None
             else None
         )
@@ -188,13 +180,9 @@ class AIServiceManager(Host):
         if self._inline_completion_model is not None:
             properties = inline_completion_model_cfg.get("properties", [])
             for property in properties:
-                self._inline_completion_model.set_property_value(
-                    property["id"], property["value"]
-                )
+                self._inline_completion_model.set_property_value(property["id"], property["value"])
 
-        is_github_copilot_chat_model = isinstance(
-            chat_model_provider, GitHubCopilotLLMProvider
-        )
+        is_github_copilot_chat_model = isinstance(chat_model_provider, GitHubCopilotLLMProvider)
         default_chat_participant = (
             GithubCopilotChatParticipant()
             if is_github_copilot_chat_model
@@ -202,9 +190,7 @@ class AIServiceManager(Host):
         )
         self._default_chat_participant = default_chat_participant
 
-        self.chat_participants[DEFAULT_CHAT_PARTICIPANT_ID] = (
-            self._default_chat_participant
-        )
+        self.chat_participants[DEFAULT_CHAT_PARTICIPANT_ID] = self._default_chat_participant
 
     def update_mcp_servers(self):
         self._mcp_manager.update_mcp_servers(self.nbi_config.mcp)
@@ -266,21 +252,15 @@ class AIServiceManager(Host):
             return
         self.llm_providers[provider.id] = provider
 
-    def register_completion_context_provider(
-        self, provider: CompletionContextProvider
-    ) -> None:
+    def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         if provider.id in self.completion_context_providers:
-            log.error(
-                f"Completion Context Provider ID '{provider.id}' is already in use!"
-            )
+            log.error(f"Completion Context Provider ID '{provider.id}' is already in use!")
             return
         self.completion_context_providers[provider.id] = provider
 
     def register_telemetry_listener(self, listener: TelemetryListener) -> None:
         if listener.name in self.telemetry_listeners:
-            log.error(
-                f"Notebook Intelligence telemetry listener '{listener.name}' already exists!"
-            )
+            log.error(f"Notebook Intelligence telemetry listener '{listener.name}' already exists!")
             return
         log.warning(
             f"Notebook Intelligence telemetry listener '{listener.name}' registered. Make sure it is from a trusted source."
@@ -289,9 +269,7 @@ class AIServiceManager(Host):
 
     def register_toolset(self, toolset: Toolset) -> None:
         if toolset.provider is None:
-            log.error(
-                f"Toolset '{toolset.id}' has no provider! It cannot be registered."
-            )
+            log.error(f"Toolset '{toolset.id}' has no provider! It cannot be registered.")
             return
         provider_id = toolset.provider.id
         if provider_id not in self._extension_toolsets:
@@ -445,27 +423,19 @@ class AIServiceManager(Host):
         if self.chat_model is None:
             response.stream(MarkdownData("Chat model is not set!"))
             response.stream(
-                ButtonData(
-                    "Configure", "lab-notebook-intelligence:open-configuration-dialog"
-                )
+                ButtonData("Configure", "lab-notebook-intelligence:open-configuration-dialog")
             )
             response.finish()
             return
         request.host = self
-        (participant_id, command, prompt) = AIServiceManager.parse_prompt(
-            request.prompt
-        )
-        participant = self.chat_participants.get(
-            participant_id, DEFAULT_CHAT_PARTICIPANT_ID
-        )
+        (participant_id, command, prompt) = AIServiceManager.parse_prompt(request.prompt)
+        participant = self.chat_participants.get(participant_id, DEFAULT_CHAT_PARTICIPANT_ID)
         request.command = command
         request.prompt = prompt
         response.participant_id = participant_id
         return await participant.handle_chat_request(request, response, options)
 
-    async def get_completion_context(
-        self, request: ContextRequest
-    ) -> CompletionContext:
+    async def get_completion_context(self, request: ContextRequest) -> CompletionContext:
         cancel_token = request.cancel_token
         context = CompletionContext([])
 
@@ -525,9 +495,7 @@ class AIServiceManager(Host):
 
         return None
 
-    def get_extension_tool(
-        self, extension_id: str, toolset_id: str, tool_name: str
-    ) -> Tool:
+    def get_extension_tool(self, extension_id: str, toolset_id: str, tool_name: str) -> Tool:
         if extension_id not in self._extension_toolsets:
             return None
         extension_toolsets = self._extension_toolsets[extension_id]

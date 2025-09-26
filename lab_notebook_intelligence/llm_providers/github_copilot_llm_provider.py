@@ -62,9 +62,7 @@ class GitHubCopilotChatModel(ChatModel):
         cancel_token: CancelToken = None,
         options: dict = {},
     ) -> Any:
-        return completions(
-            self._model_id, messages, tools, response, cancel_token, options
-        )
+        return completions(self._model_id, messages, tools, response, cancel_token, options)
 
 
 class GitHubCopilotInlineCompletionModel(InlineCompletionModel):
@@ -107,18 +105,10 @@ class GitHubCopilotLLMProvider(LLMProvider):
             GitHubCopilotChatModel(self, "gpt-4o", "GPT-4o", 128000, True),
             GitHubCopilotChatModel(self, "o3-mini", "o3-mini", 200000, True),
             GitHubCopilotChatModel(self, "gpt-5", "GPT-5", 128000, True),
-            GitHubCopilotChatModel(
-                self, "claude-sonnet-4", "Claude Sonnet 4", 80000, True
-            ),
-            GitHubCopilotChatModel(
-                self, "claude-3.7-sonnet", "Claude 3.7 Sonnet", 200000, True
-            ),
-            GitHubCopilotChatModel(
-                self, "claude-3.5-sonnet", "Claude 3.5 Sonnet", 90000, True
-            ),
-            GitHubCopilotChatModel(
-                self, "gemini-2.5-pro", "Gemini 2.5 Pro", 128000, True
-            ),
+            GitHubCopilotChatModel(self, "claude-sonnet-4", "Claude Sonnet 4", 80000, True),
+            GitHubCopilotChatModel(self, "claude-3.7-sonnet", "Claude 3.7 Sonnet", 200000, True),
+            GitHubCopilotChatModel(self, "claude-3.5-sonnet", "Claude 3.5 Sonnet", 90000, True),
+            GitHubCopilotChatModel(self, "gemini-2.5-pro", "Gemini 2.5 Pro", 128000, True),
             GitHubCopilotChatModel(
                 self, "gemini-2.0-flash-001", "Gemini 2.0 Flash", 1000000, False
             ),

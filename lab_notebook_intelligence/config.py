@@ -110,9 +110,7 @@ class NBIConfig:
 
     @property
     def chat_model(self):
-        return self.get(
-            "chat_model", {"provider": "github-copilot", "model": "gpt-4.1"}
-        )
+        return self.get("chat_model", {"provider": "github-copilot", "model": "gpt-4.1"})
 
     @property
     def inline_completion_model(self):

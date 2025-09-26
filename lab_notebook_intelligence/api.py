@@ -284,9 +284,7 @@ class ChatResponse:
         self._run_ui_command_response_signal.emit(data)
 
     @staticmethod
-    async def wait_for_run_ui_command_response(
-        response: "ChatResponse", callback_id: str
-    ):
+    async def wait_for_run_ui_command_response(response: "ChatResponse", callback_id: str):
         resp = {"result": None}
 
         def _on_ui_command_response(data: dict):
@@ -297,9 +295,7 @@ class ChatResponse:
 
         while True:
             if resp["result"] is not None:
-                response.run_ui_command_response_signal.disconnect(
-                    _on_ui_command_response
-                )
+                response.run_ui_command_response_signal.disconnect(_on_ui_command_response)
                 return resp["result"]
             await asyncio.sleep(0.1)
 
@@ -598,9 +594,7 @@ class ChatParticipant:
                             tool_call_rounds.append(tool_call)
                     elif choice["message"].get("content", None) is not None:
                         response.stream(
-                            MarkdownData(
-                                tool_response["choices"][0]["message"]["content"]
-                            )
+                            MarkdownData(tool_response["choices"][0]["message"]["content"])
                         )
 
                     messages.append(choice["message"])
@@ -641,9 +635,7 @@ class ChatParticipant:
                     else:
                         args = fuzzy_json_loads(tool_call["function"]["arguments"])
 
-                    tool_properties = tool_to_call.schema["function"]["parameters"][
-                        "properties"
-                    ]
+                    tool_properties = tool_to_call.schema["function"]["parameters"]["properties"]
                     if type(args) is str:
                         if (
                             len(tool_properties) == 1
@@ -737,9 +729,7 @@ class CompletionContextProvider:
     def id(self) -> str:
         raise NotImplemented
 
-    def handle_completion_context_request(
-        self, request: ContextRequest
-    ) -> CompletionContext:
+    def handle_completion_context_request(self, request: ContextRequest) -> CompletionContext:
         raise NotImplemented
 
 
@@ -913,9 +903,7 @@ class Host:
     def register_chat_participant(self, participant: ChatParticipant) -> None:
         raise NotImplemented
 
-    def register_completion_context_provider(
-        self, provider: CompletionContextProvider
-    ) -> None:
+    def register_completion_context_provider(self, provider: CompletionContextProvider) -> None:
         raise NotImplemented
 
     def register_telemetry_listener(self, listener: TelemetryListener) -> None:
@@ -953,9 +941,7 @@ class Host:
     def get_extension_toolset(self, extension_id: str, toolset_id: str) -> Toolset:
         return NotImplemented
 
-    def get_extension_tool(
-        self, extension_id: str, toolset_id: str, tool_name: str
-    ) -> Tool:
+    def get_extension_tool(self, extension_id: str, toolset_id: str, tool_name: str) -> Tool:
         return NotImplemented
 
 

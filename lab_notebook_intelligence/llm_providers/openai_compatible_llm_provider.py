@@ -25,9 +25,7 @@ class OpenAICompatibleChatModel(ChatModel):
         self._provider = provider
         self._properties = [
             LLMProviderProperty("api_key", "API key", "API key", "", False),
-            LLMProviderProperty(
-                "model_id", "Model", "Model (must support streaming)", "", False
-            ),
+            LLMProviderProperty("model_id", "Model", "Model (must support streaming)", "", False),
             LLMProviderProperty("base_url", "Base URL", "Base URL", "", True),
             LLMProviderProperty(
                 "context_window", "Context window", "Context window length", "", True

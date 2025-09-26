@@ -24,9 +24,7 @@ class LiteLLMCompatibleChatModel(ChatModel):
         super().__init__(provider)
         self._provider = provider
         self._properties = [
-            LLMProviderProperty(
-                "model_id", "Model", "Model (must support streaming)", "", False
-            ),
+            LLMProviderProperty("model_id", "Model", "Model (must support streaming)", "", False),
             LLMProviderProperty("base_url", "Base URL", "Base URL", "", False),
             LLMProviderProperty("api_key", "API key", "API key", "", True),
             LLMProviderProperty(

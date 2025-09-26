@@ -59,8 +59,7 @@ class GetCapabilitiesHandler(APIHandler):
         allowed_builtin_toolsets = [
             {"id": toolset.id, "name": toolset.name}
             for toolset in built_in_toolsets.values()
-            if toolset.id != BuiltinToolset.NotebookExecute
-            or notebook_execute_tool_enabled
+            if toolset.id != BuiltinToolset.NotebookExecute or notebook_execute_tool_enabled
         ]
         mcp_servers = ai_service_manager.get_mcp_servers()
         mcp_server_tools = [
@@ -100,9 +99,7 @@ class GetCapabilitiesHandler(APIHandler):
             # sort by toolset name
             ts.sort(key=lambda toolset: toolset["name"])
             extension = ai_service_manager.get_extension(extension_id)
-            extensions.append(
-                {"id": extension_id, "name": extension.name, "toolsets": ts}
-            )
+            extensions.append({"id": extension_id, "name": extension.name, "toolsets": ts})
         # sort by extension id
         extensions.sort(key=lambda extension: extension["id"])
 
@@ -185,8 +182,7 @@ class ReloadMCPServersHandler(APIHandler):
             json.dumps(
                 {
                     "mcpServers": [
-                        {"id": server.name}
-                        for server in ai_service_manager.get_mcp_servers()
+                        {"id": server.name} for server in ai_service_manager.get_mcp_servers()
                     ]
                 }
             )
@@ -344,11 +340,7 @@ class PostGitHubLoginHandler(APIHandler):
         if device_verification_info is None:
             self.set_status(500)
             self.finish(
-                json.dumps(
-                    {
-                        "error": "Failed to get device verification info from GitHub Copilot"
-                    }
-                )
+                json.dumps({"error": "Failed to get device verification info from GitHub Copilot"})
             )
             return
         self.finish(json.dumps(device_verification_info))
@@ -428,9 +420,7 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
         return self.messageId
 
     def stream(self, data: Union[ResponseStreamData, dict]):
-        data_type = (
-            ResponseStreamDataType.LLMRaw if type(data) is dict else data.data_type
-        )
+        data_type = ResponseStreamDataType.LLMRaw if type(data) is dict else data.data_type
 
         if data_type == ResponseStreamDataType.Markdown:
             self.chat_history.add_message(
@@ -538,14 +528,10 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
                                     "title": data.title,
                                     "message": data.message,
                                     "confirmArgs": (
-                                        data.confirmArgs
-                                        if data.confirmArgs is not None
-                                        else {}
+                                        data.confirmArgs if data.confirmArgs is not None else {}
                                     ),
                                     "cancelArgs": (
-                                        data.cancelArgs
-                                        if data.cancelArgs is not None
-                                        else {}
+                                        data.cancelArgs if data.cancelArgs is not None else {}
                                     ),
                                     "confirmLabel": (
                                         data.confirmLabel
@@ -626,9 +612,7 @@ class WebsocketCopilotResponseEmitter(ChatResponse):
                 },
             }
         )
-        response = await ChatResponse.wait_for_run_ui_command_response(
-            self, callback_id
-        )
+        response = await ChatResponse.wait_for_run_ui_command_response(self, callback_id)
         return response
 
 
@@ -943,9 +927,7 @@ class NotebookIntelligence(ExtensionApp):
 
     def initialize_handlers(self):
         NotebookIntelligence.root_dir = self.serverapp.root_dir
-        server_root_dir = os.path.expanduser(
-            self.serverapp.web_app.settings["server_root_dir"]
-        )
+        server_root_dir = os.path.expanduser(self.serverapp.web_app.settings["server_root_dir"])
         self.initialize_ai_service(server_root_dir)
         self._setup_handlers(self.serverapp.web_app)
         self.serverapp.log.info(f"Registered {self.name} server extension")
@@ -968,9 +950,7 @@ class NotebookIntelligence(ExtensionApp):
         route_pattern_capabilities = url_path_join(
             base_url, "lab-notebook-intelligence", "capabilities"
         )
-        route_pattern_config = url_path_join(
-            base_url, "lab-notebook-intelligence", "config"
-        )
+        route_pattern_config = url_path_join(base_url, "lab-notebook-intelligence", "config")
         route_pattern_update_provider_models = url_path_join(
             base_url, "lab-notebook-intelligence", "update-provider-models"
         )
@@ -995,9 +975,7 @@ class NotebookIntelligence(ExtensionApp):
         route_pattern_github_logout = url_path_join(
             base_url, "lab-notebook-intelligence", "gh-logout"
         )
-        route_pattern_copilot = url_path_join(
-            base_url, "lab-notebook-intelligence", "copilot"
-        )
+        route_pattern_copilot = url_path_join(base_url, "lab-notebook-intelligence", "copilot")
         GetCapabilitiesHandler.notebook_execute_tool = self.notebook_execute_tool
         NotebookIntelligence.handlers = [
             (route_pattern_capabilities, GetCapabilitiesHandler),

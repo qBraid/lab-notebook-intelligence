@@ -39,9 +39,7 @@ GH_WEB_BASE_URL = (
     "https://github.com" if GHE_SUBDOMAIN == "" else f"https://{GHE_SUBDOMAIN}.ghe.com"
 )
 GH_REST_API_BASE_URL = (
-    "https://api.github.com"
-    if GHE_SUBDOMAIN == ""
-    else f"https://api.{GHE_SUBDOMAIN}.ghe.com"
+    "https://api.github.com" if GHE_SUBDOMAIN == "" else f"https://api.{GHE_SUBDOMAIN}.ghe.com"
 )
 
 EDITOR_VERSION = f"LabNotebookIntelligence/{NBI_VERSION}"
@@ -58,9 +56,7 @@ TOKEN_THREAD_SLEEP_INTERVAL = 3
 TOKEN_FETCH_INTERVAL = 15
 NL = "\n"
 
-LoginStatus = Enum(
-    "LoginStatus", ["NOT_LOGGED_IN", "ACTIVATING_DEVICE", "LOGGING_IN", "LOGGED_IN"]
-)
+LoginStatus = Enum("LoginStatus", ["NOT_LOGGED_IN", "ACTIVATING_DEVICE", "LOGGING_IN", "LOGGED_IN"])
 
 github_auth = {
     "verification_uri": None,
@@ -113,15 +109,9 @@ def get_login_status():
     return response
 
 
-deprecated_user_data_file = os.path.join(
-    os.path.expanduser("~"), ".jupyter", "nbi-data.json"
-)
-user_data_file = os.path.join(
-    os.path.expanduser("~"), ".jupyter", "nbi", "user-data.json"
-)
-access_token_password = os.getenv(
-    "NBI_GH_ACCESS_TOKEN_PASSWORD", "nbi-access-token-password"
-)
+deprecated_user_data_file = os.path.join(os.path.expanduser("~"), ".jupyter", "nbi-data.json")
+user_data_file = os.path.join(os.path.expanduser("~"), ".jupyter", "nbi", "user-data.json")
+access_token_password = os.getenv("NBI_GH_ACCESS_TOKEN_PASSWORD", "nbi-access-token-password")
 
 
 def read_stored_github_access_token() -> str:
@@ -139,9 +129,7 @@ def read_stored_github_access_token() -> str:
 
         if base64_access_token is not None:
             base64_bytes = base64.b64decode(base64_access_token.encode("utf-8"))
-            return decrypt_with_password(access_token_password, base64_bytes).decode(
-                "utf-8"
-            )
+            return decrypt_with_password(access_token_password, base64_bytes).decode("utf-8")
     except Exception as e:
         log.error(f"Failed to read GitHub access token: {e}")
 
@@ -150,9 +138,7 @@ def read_stored_github_access_token() -> str:
 
 def write_github_access_token(access_token: str) -> bool:
     try:
-        encrypted_access_token = encrypt_with_password(
-            access_token_password, access_token.encode()
-        )
+        encrypted_access_token = encrypt_with_password(access_token_password, access_token.encode())
         base64_bytes = base64.b64encode(encrypted_access_token)
         base64_access_token = base64_bytes.decode("utf-8")
 
@@ -409,12 +395,9 @@ def get_token_thread_func():
         # update token if 10 seconds or less left to expiration
         if github_auth["access_token"] is not None and (
             token is None
-            or (dt.datetime.now() - github_auth["token_expires_at"]).total_seconds()
-            > -10
+            or (dt.datetime.now() - github_auth["token_expires_at"]).total_seconds() > -10
         ):
-            if (
-                dt.datetime.now() - last_token_fetch_time
-            ).total_seconds() > TOKEN_FETCH_INTERVAL:
+            if (dt.datetime.now() - last_token_fetch_time).total_seconds() > TOKEN_FETCH_INTERVAL:
                 log.info("Refreshing GitHub token")
                 get_token()
                 last_token_fetch_time = dt.datetime.now()
@@ -425,9 +408,7 @@ def get_token_thread_func():
 def wait_for_tokens():
     global get_access_code_thread, get_token_thread
     if get_access_code_thread is None:
-        get_access_code_thread = threading.Thread(
-            target=wait_for_user_access_token_thread_func
-        )
+        get_access_code_thread = threading.Thread(target=wait_for_user_access_token_thread_func)
         get_access_code_thread.start()
 
     if get_token_thread is None:
@@ -532,19 +513,14 @@ def _aggregate_streaming_response(client: sseclient.SSEClient) -> dict:
 
     def _format_llm_response():
         for tool_call in final_tool_calls:
-            if (
-                "arguments" in tool_call["function"]
-                and tool_call["function"]["arguments"] == ""
-            ):
+            if "arguments" in tool_call["function"] and tool_call["function"]["arguments"] == "":
                 tool_call["function"]["arguments"] = "{}"
 
         return {
             "choices": [
                 {
                     "message": {
-                        "tool_calls": (
-                            final_tool_calls if len(final_tool_calls) > 0 else None
-                        ),
+                        "tool_calls": (final_tool_calls if len(final_tool_calls) > 0 else None),
                         "content": final_content,
                         "role": "assistant",
                     }
@@ -577,9 +553,9 @@ def _aggregate_streaming_response(client: sseclient.SSEClient) -> dict:
                 final_tool_calls.append(tc)
             else:
                 if "arguments" in tool_call["function"]:
-                    final_tool_calls[index]["function"]["arguments"] += tool_call[
-                        "function"
-                    ]["arguments"]
+                    final_tool_calls[index]["function"]["arguments"] += tool_call["function"][
+                        "arguments"
+                    ]
 
     return _format_llm_response()
 

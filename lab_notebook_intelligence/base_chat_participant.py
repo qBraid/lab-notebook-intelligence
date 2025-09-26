@@ -70,9 +70,7 @@ class SecuredExtensionTool(Tool):
         tool_context: dict,
         tool_args: dict,
     ) -> str:
-        return await self._ext_tool.handle_tool_call(
-            request, response, tool_context, tool_args
-        )
+        return await self._ext_tool.handle_tool_call(request, response, tool_context, tool_args)
 
 
 class CreateNewNotebookTool(Tool):
@@ -94,9 +92,7 @@ class CreateNewNotebookTool(Tool):
 
     @property
     def description(self) -> str:
-        return (
-            "This tool creates a new notebook with the provided code and markdown cells"
-        )
+        return "This tool creates a new notebook with the provided code and markdown cells"
 
     @property
     def schema(self) -> dict:
@@ -443,9 +439,7 @@ class BaseChatParticipant(ChatParticipant):
             for ext_id, ext_toolsets in tool_selection.extension_tools.items():
                 for toolset_id, toolset_tools in ext_toolsets.items():
                     for tool_name in toolset_tools:
-                        ext_tool = host.get_extension_tool(
-                            ext_id, toolset_id, tool_name
-                        )
+                        ext_tool = host.get_extension_tool(ext_id, toolset_id, tool_name)
                         if ext_tool is not None:
                             tool_list.append(SecuredExtensionTool(ext_tool))
         return tool_list
@@ -469,9 +463,7 @@ class BaseChatParticipant(ChatParticipant):
                 "content": f"You are an assistant that creates Python code which will be used in a Jupyter notebook. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```.",
             },
         )
-        messages.append(
-            {"role": "user", "content": f"Generate code for: {request.prompt}"}
-        )
+        messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
         generated = chat_model.completions(messages)
         code = generated["choices"][0]["message"]["content"]
 
@@ -520,9 +512,7 @@ class BaseChatParticipant(ChatParticipant):
                 toolsets,
             ) in request.tool_selection.extension_tools.items():
                 for toolset_id in toolsets.keys():
-                    ext_toolset = request.host.get_extension_toolset(
-                        extension_id, toolset_id
-                    )
+                    ext_toolset = request.host.get_extension_toolset(extension_id, toolset_id)
                     if ext_toolset is not None and ext_toolset.instructions is not None:
                         system_prompt += ext_toolset.instructions + "\n"
 
@@ -560,9 +550,7 @@ class BaseChatParticipant(ChatParticipant):
                 {"code": code, "path": file_path},
             )
 
-            response.stream(
-                MarkdownData(f"Notebook '{file_path}' created and opened successfully")
-            )
+            response.stream(MarkdownData(f"Notebook '{file_path}' created and opened successfully"))
             response.finish()
             return
         elif request.command == "newPythonFile":
@@ -576,9 +564,7 @@ class BaseChatParticipant(ChatParticipant):
                     "content": f"You are an assistant that creates Python code. You should return the code directly, without wrapping it inside ```.",
                 },
             )
-            messages.append(
-                {"role": "user", "content": f"Generate code for: {request.prompt}"}
-            )
+            messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
             generated = chat_model.completions(messages)
             code = generated["choices"][0]["message"]["content"]
             code = extract_llm_generated_code(code)
@@ -610,9 +596,7 @@ class BaseChatParticipant(ChatParticipant):
         try:
             if chat_model.provider.id != "github-copilot":
                 response.stream(ProgressData("Thinking..."))
-            chat_model.completions(
-                messages, response=response, cancel_token=request.cancel_token
-            )
+            chat_model.completions(messages, response=response, cancel_token=request.cancel_token)
         except Exception as e:
             log.error(f"Error while handling chat request!\n{e}")
             response.stream(
