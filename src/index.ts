@@ -453,6 +453,7 @@ class NBIInlineCompletionProvider
           { chatId: this._lastRequestInfo.chatId }
         );
 
+        // TODO: handle fast-typers
         if (
           this._lastRequestInfo.completion &&
           preCursor.length > 0 &&
