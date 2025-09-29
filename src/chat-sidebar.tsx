@@ -1323,7 +1323,7 @@ function SidebarComponent(props: any) {
     }
 
     setCopilotRequestInProgress(true);
-
+    console.log('Request triggered on input - ', prompt);
     const activeDocInfo: IActiveDocumentInfo = props.getActiveDocumentInfo();
     const extractedPrompt = prompt;
     const contents: IChatMessageContent[] = [];
@@ -1362,8 +1362,6 @@ function SidebarComponent(props: any) {
         });
       }
     }
-
-    console.log('Complete context : ', additionalContext);
 
     submitCompletionRequest(
       {

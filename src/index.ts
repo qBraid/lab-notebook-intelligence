@@ -345,7 +345,7 @@ class NBIInlineCompletionProvider
   get schema(): ISettingRegistry.IProperty {
     return {
       default: {
-        debouncerDelay: 200,
+        debouncerDelay: 100,
         timeout: 15000
       }
     };
@@ -438,7 +438,6 @@ class NBIInlineCompletionProvider
         editorType
       }
     });
-
     return new Promise((resolve, reject) => {
       const items: IInlineCompletionItem[] = [];
 
@@ -453,11 +452,36 @@ class NBIInlineCompletionProvider
           RequestDataType.CancelInlineCompletionRequest,
           { chatId: this._lastRequestInfo.chatId }
         );
+
+        // TODO: handle fast-typers
+        if (
+          this._lastRequestInfo.completion &&
+          preCursor.length > 0 &&
+          preCursor[preCursor.length - 1] ===
+            this._lastRequestInfo.completion[0]
+        ) {
+          // if the last element of the preCursor is the first element of the completion
+          // we do not need to make a completion request on the assumption that the
+          // user is about to type the rest of the completion
+          resolve({
+            items: [
+              { insertText: this._lastRequestInfo.completion.substring(1) }
+            ]
+          });
+          this._lastRequestInfo.completion =
+            this._lastRequestInfo.completion.substring(1);
+          return;
+        }
       }
 
       const messageId = UUID.uuid4();
       const chatId = UUID.uuid4();
-      this._lastRequestInfo = { chatId, messageId, requestTime: new Date() };
+      this._lastRequestInfo = {
+        chatId,
+        messageId,
+        completion: '',
+        requestTime: new Date()
+      };
 
       NBIAPI.inlineCompletionsRequest(
         chatId,
@@ -475,6 +499,7 @@ class NBIInlineCompletionProvider
               items.push({
                 insertText: response.data.completions
               });
+              this._lastRequestInfo.completion = response.data.completions;
 
               const timeElapsed =
                 (new Date().getTime() -
@@ -518,6 +543,7 @@ class NBIInlineCompletionProvider
   private _lastRequestInfo: {
     chatId: string;
     messageId: string;
+    completion: string;
     requestTime: Date;
   } = null;
   private _telemetryEmitter: TelemetryEmitter;
@@ -721,7 +747,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         })
         .catch(reason => {
           console.error(
-            'Failed to load settings for @notebook-intelligence/lab-notebook-intelligence.',
+            'Failed to load settings for @lab-notebook-intelligence/lab-notebook-intelligence.',
             reason
           );
         });
