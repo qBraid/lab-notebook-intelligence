@@ -31,18 +31,14 @@ from lab_notebook_intelligence.api import (
 )
 from lab_notebook_intelligence.base_chat_participant import BaseChatParticipant
 from lab_notebook_intelligence.config import NBIConfig
-from lab_notebook_intelligence.github_copilot_chat_participant import (
-    GithubCopilotChatParticipant,
-)
+from lab_notebook_intelligence.github_copilot_chat_participant import GithubCopilotChatParticipant
 from lab_notebook_intelligence.llm_providers.github_copilot_llm_provider import (
     GitHubCopilotLLMProvider,
 )
 from lab_notebook_intelligence.llm_providers.litellm_compatible_llm_provider import (
     LiteLLMCompatibleLLMProvider,
 )
-from lab_notebook_intelligence.llm_providers.ollama_llm_provider import (
-    OllamaLLMProvider,
-)
+from lab_notebook_intelligence.llm_providers.ollama_llm_provider import OllamaLLMProvider
 from lab_notebook_intelligence.llm_providers.openai_compatible_llm_provider import (
     OpenAICompatibleLLMProvider,
 )

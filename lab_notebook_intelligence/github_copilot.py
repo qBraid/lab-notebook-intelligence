@@ -78,6 +78,21 @@ github_access_token_provided = None
 websocket_connector: ThreadSafeWebSocketConnector = None
 github_login_status_change_updater_enabled = False
 
+deprecated_user_data_file = os.path.join(os.path.expanduser("~"), ".jupyter", "nbi-data.json")
+user_data_file = os.path.join(os.path.expanduser("~"), ".jupyter", "nbi", "user-data.json")
+access_token_password = os.getenv("NBI_GH_ACCESS_TOKEN_PASSWORD", "nbi-access-token-password")
+
+
+def get_gh_access_token_from_env() -> str:
+    access_token = os.environ.get("NBI_GH_ACCESS_TOKEN_ENCRYPTED")
+    if access_token is not None:
+        try:
+            base64_bytes = base64.b64decode(access_token.encode("utf-8"))
+            return decrypt_with_password(access_token_password, base64_bytes).decode("utf-8")
+        except Exception as e:
+            log.error(f"Failed to decrypt GitHub access token from environment variable: {e}")
+    return None
+
 
 def enable_github_login_status_change_updater(enabled: bool):
     global github_login_status_change_updater_enabled
@@ -107,11 +122,6 @@ def get_login_status():
         )
 
     return response
-
-
-deprecated_user_data_file = os.path.join(os.path.expanduser("~"), ".jupyter", "nbi-data.json")
-user_data_file = os.path.join(os.path.expanduser("~"), ".jupyter", "nbi", "user-data.json")
-access_token_password = os.getenv("NBI_GH_ACCESS_TOKEN_PASSWORD", "nbi-access-token-password")
 
 
 def read_stored_github_access_token() -> str:
@@ -186,7 +196,12 @@ def login_with_existing_credentials(store_access_token: bool):
     if github_auth["status"] is not LoginStatus.NOT_LOGGED_IN:
         return
 
-    if store_access_token:
+    # Check for GitHub access token in environment variable
+    github_access_token_provided = get_gh_access_token_from_env()
+    if github_access_token_provided:
+        log.info("Using GitHub access token from environment variable")
+        remember_github_access_token = False  # Do not store the token if it's from the environment
+    elif store_access_token:
         github_access_token_provided = read_stored_github_access_token()
         remember_github_access_token = True
     else:
@@ -331,8 +346,7 @@ def wait_for_user_access_token_thread_func():
 
 def get_token():
     global github_auth, github_access_token_provided, API_ENDPOINT, PROXY_ENDPOINT, TOKEN_REFRESH_INTERVAL
-    access_token = github_auth["access_token"]
-
+    access_token = get_gh_access_token_from_env() or github_auth["access_token"]
     if access_token is None:
         return
 
@@ -351,7 +365,6 @@ def get_token():
         )
 
         resp_json = resp.json()
-
         if resp.status_code == 401:
             github_access_token_provided = None
             logout()
@@ -393,7 +406,9 @@ def get_token_thread_func():
             return
         token = github_auth["token"]
         # update token if 10 seconds or less left to expiration
-        if github_auth["access_token"] is not None and (
+        access_token = get_gh_access_token_from_env() or github_auth["access_token"]
+
+        if access_token and (
             token is None
             or (dt.datetime.now() - github_auth["token_expires_at"]).total_seconds() > -10
         ):
