@@ -983,7 +983,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
 
           try {
             await app.serviceManager.contents.rename(oldPath, newPath);
-            return 'Successfully renamed notebook';
+            return { newPath: newPath };
           } catch (error) {
             return `Failed to rename notebook: ${error}`;
           }
