@@ -493,19 +493,16 @@ class BaseChatParticipant(ChatParticipant):
 
     async def generate_title_for_notebook(self, request: ChatRequest, code: str, markdown: str) -> str:
         chat_model = request.host.chat_model
-        messages = []
-        messages.append(
+        messages = [
             {
                 "role": "system",
                 "content": f"You are an assistant that generates descriptive titles for Jupyter notebooks based on the provided code and markdown. The title should be in snake-case, concise, relevant, and accurately reflect the content of the notebook. Avoid using special characters, use '_' instead of spaces and keep it under 50 characters.",
             },
-        )
-        messages.append(
             {
                 "role": "user",
                 "content": f"Generate a descriptive title for a Jupyter notebook that contains the following markdown and code:\n\nMarkdown:\n{markdown}\n\nCode:\n{code}\n\n",
             }
-        )
+        ]
         generated = chat_model.completions(messages)
 
         # if title is too long, truncate it
