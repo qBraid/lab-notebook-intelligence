@@ -17,7 +17,6 @@ from lab_notebook_intelligence.api import (
     ChatCommand,
     ChatRequest,
     ChatResponse,
-    HTMLFrameData,
     ImageData,
     MarkdownData,
     MCPServer,

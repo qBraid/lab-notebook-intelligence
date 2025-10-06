@@ -460,10 +460,10 @@ class BaseChatParticipant(ChatParticipant):
             0,
             {
                 "role": "system",
-                "content": f"You are an assistant that creates Python code which will be used in a Jupyter notebook. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```.",
+                "content": f"You are an assistant that creates correct and executable Python code which will be used in a Jupyter notebook. Whenever you are using multiple libraries, ensure that the generated code is compatible and does not use deprecated or non-existent methods. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```.",
             },
         )
-        messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
+        messages.append({"role": "user", "content": f"Generate clean Python code for: {request.prompt}"})
         generated = chat_model.completions(messages)
         code = generated["choices"][0]["message"]["content"]
 
@@ -491,6 +491,34 @@ class BaseChatParticipant(ChatParticipant):
 
         return extract_llm_generated_code(markdown)
 
+    async def generate_title_for_notebook(self, request: ChatRequest, code: str, markdown: str) -> str:
+        chat_model = request.host.chat_model
+        messages = [
+            {
+                "role": "system",
+                "content": f"You are an assistant that generates descriptive titles for Jupyter notebooks based on the provided code and markdown. The title should be in snake-case, concise, relevant, and accurately reflect the content of the notebook. Avoid using special characters, use '_' instead of spaces and keep it under 50 characters.",
+            },
+            {
+                "role": "user",
+                "content": f"Generate a descriptive title for a Jupyter notebook that contains the following markdown and code:\n\nMarkdown:\n{markdown}\n\nCode:\n{code}\n\n",
+            }
+        ]
+        generated = chat_model.completions(messages)
+
+        # if title is too long, truncate it
+        title = generated["choices"][0]["message"]["content"].strip().strip('"').strip("'")[:50]
+
+        # if this notebook already exists, append a number to the title
+        server_root_dir = request.host.nbi_config.server_root_dir
+        file_path = os.path.join(server_root_dir, f"{title}.ipynb")
+        counter = 1
+        while os.path.exists(file_path):
+            title = f"{title}_{counter}"
+            file_path = os.path.join(server_root_dir, f"{title}.ipynb")
+            counter += 1
+        
+        return title
+    
     async def handle_chat_request(
         self, request: ChatRequest, response: ChatResponse, options: dict = {}
     ) -> None:
@@ -550,7 +578,14 @@ class BaseChatParticipant(ChatParticipant):
                 {"code": code, "path": file_path},
             )
 
-            response.stream(MarkdownData(f"Notebook '{file_path}' created and opened successfully"))
+            # get a descriptive name for the notebook 
+            title = await self.generate_title_for_notebook(request, code, markdown)
+            ui_cmd_response = await response.run_ui_command(
+                "lab-notebook-intelligence:rename-notebook", {"newName": title}
+            )
+            new_file_path = ui_cmd_response.get("newPath", file_path)
+
+            response.stream(MarkdownData(f"Notebook '{new_file_path}' created and opened successfully"))
             response.finish()
             return
         elif request.command == "newPythonFile":
@@ -561,7 +596,7 @@ class BaseChatParticipant(ChatParticipant):
                 0,
                 {
                     "role": "system",
-                    "content": f"You are an assistant that creates Python code. You should return the code directly, without wrapping it inside ```.",
+                    "content": f"You are an assistant that creates correct and executable Python code. You should return the code directly, without wrapping it inside ```.",
                 },
             )
             messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})

@@ -761,7 +761,6 @@ function SidebarComponent(props: any) {
     const uniqueFiles = Array.from(new Set(finalFiles));
     setSelectedFiles(uniqueFiles);
     setShowFileBrowser(false);
-    console.log(`Selected files: ${filePaths}`);
   };
 
   const handleContextCancel = () => {
