@@ -460,10 +460,10 @@ class BaseChatParticipant(ChatParticipant):
             0,
             {
                 "role": "system",
-                "content": f"You are an assistant that creates Python code which will be used in a Jupyter notebook. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```.",
+                "content": f"You are an assistant that creates correct and executable Python code which will be used in a Jupyter notebook. Whenever you are using multiple libraries, ensure that the generated code is compatible and does not use deprecated or non-existent methods. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```.",
             },
         )
-        messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
+        messages.append({"role": "user", "content": f"Generate clean Python code for: {request.prompt}"})
         generated = chat_model.completions(messages)
         code = generated["choices"][0]["message"]["content"]
 
@@ -599,7 +599,7 @@ class BaseChatParticipant(ChatParticipant):
                 0,
                 {
                     "role": "system",
-                    "content": f"You are an assistant that creates Python code. You should return the code directly, without wrapping it inside ```.",
+                    "content": f"You are an assistant that creates correct and executable Python code. You should return the code directly, without wrapping it inside ```.",
                 },
             )
             messages.append({"role": "user", "content": f"Generate code for: {request.prompt}"})
