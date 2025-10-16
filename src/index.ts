@@ -135,6 +135,8 @@ namespace CommandIDs {
 
 const DOCUMENT_WATCH_INTERVAL = 1000;
 const MAX_TOKENS = 4096;
+const STREAM_TOKEN_DELAY = 75; // milliseconds
+const STREAM_TOKEN_LEN = 20; // characters
 const githubCopilotIcon = new LabIcon({
   name: 'lab-notebook-intelligence:github-copilot-icon',
   svgstr: copilotSvgstr
@@ -723,15 +725,6 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
 
     await NBIAPI.initialize();
 
-    // Create dynamic MCP config after API is initialized
-    console.log('Creating dynamic MCP config...');
-    try {
-      await NBIAPI.createDynamicMCPConfig();
-      console.log('Dynamic MCP config created successfully!');
-    } catch (error) {
-      console.error('Failed to create dynamic MCP config:', error);
-    }
-
     let openPopover: InlinePromptWidget | null = null;
     let mcpConfigEditor: MCPConfigEditor | null = null;
 
@@ -983,7 +976,7 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
 
           try {
             await app.serviceManager.contents.rename(oldPath, newPath);
-            return 'Successfully renamed notebook';
+            return { newPath: newPath };
           } catch (error) {
             return `Failed to rename notebook: ${error}`;
           }
@@ -1051,11 +1044,24 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
       const newCellIndex = isNewEmptyNotebook(model)
         ? 0
         : model.cells.length - 1;
+
       model.insertCell(newCellIndex, {
         cell_type: cellType,
         metadata: { trusted: true },
-        source
+        source: ''
       });
+
+      const cell = currentWidget.content.widgets[newCellIndex];
+      let currentText = '';
+      (async () => {
+        for (let i = 0; i < source.length; i += STREAM_TOKEN_LEN) {
+          currentText += source.slice(i, i + STREAM_TOKEN_LEN);
+          cell.model.sharedModel.source = currentText;
+          // Wait for a short delay to simulate streaming
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise(resolve => setTimeout(resolve, STREAM_TOKEN_DELAY));
+        }
+      })();
 
       return true;
     };
@@ -1123,12 +1129,27 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         const newCellIndex = isNewEmptyNotebook(model)
           ? 0
           : model.cells.length - 1;
+
         model.insertCell(newCellIndex, {
           cell_type: 'markdown',
           metadata: { trusted: true },
-          source: args.source as string
+          source: ''
         });
 
+        const sourceStr = args.source as string;
+        const cell = np.content.widgets[newCellIndex];
+        let currentText = '';
+        (async () => {
+          for (let i = 0; i < sourceStr.length; i += STREAM_TOKEN_LEN) {
+            currentText += sourceStr.slice(i, i + STREAM_TOKEN_LEN);
+            cell.model.sharedModel.source = currentText;
+            // Wait for a short delay to simulate streaming
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise(resolve =>
+              setTimeout(resolve, STREAM_TOKEN_DELAY)
+            );
+          }
+        })();
         return true;
       }
     });
@@ -1145,11 +1166,27 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
         const newCellIndex = isNewEmptyNotebook(model)
           ? 0
           : model.cells.length - 1;
+
         model.insertCell(newCellIndex, {
           cell_type: 'code',
           metadata: { trusted: true },
-          source: args.source as string
+          source: ''
         });
+
+        const sourceStr = args.source as string;
+        const cell = np.content.widgets[newCellIndex];
+        let currentText = '';
+        (async () => {
+          for (let i = 0; i < sourceStr.length; i += STREAM_TOKEN_LEN) {
+            currentText += sourceStr.slice(i, i + STREAM_TOKEN_LEN);
+            cell.model.sharedModel.source = currentText;
+            // Wait for a short delay to simulate streaming
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise(resolve =>
+              setTimeout(resolve, STREAM_TOKEN_DELAY)
+            );
+          }
+        })();
 
         return true;
       }

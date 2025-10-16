@@ -288,22 +288,6 @@ export class NBIAPI {
     });
   }
 
-  static async createDynamicMCPConfig(): Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-      requestAPI<any>('create-dynamic-mcp-config', {
-        method: 'POST',
-        body: JSON.stringify({})
-      })
-        .then(async data => {
-          resolve(data);
-        })
-        .catch(reason => {
-          console.error(`Failed to create dynamic MCP config.\n${reason}`);
-          reject(reason);
-        });
-    });
-  }
-
   static async chatRequest(
     messageId: string,
     chatId: string,
