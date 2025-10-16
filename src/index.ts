@@ -725,15 +725,6 @@ const plugin: JupyterFrontEndPlugin<INotebookIntelligence> = {
 
     await NBIAPI.initialize();
 
-    // Create dynamic MCP config after API is initialized
-    console.log('Creating dynamic MCP config...');
-    try {
-      await NBIAPI.createDynamicMCPConfig();
-      console.log('Dynamic MCP config created successfully!');
-    } catch (error) {
-      console.error('Failed to create dynamic MCP config:', error);
-    }
-
     let openPopover: InlinePromptWidget | null = null;
     let mcpConfigEditor: MCPConfigEditor | null = null;
 

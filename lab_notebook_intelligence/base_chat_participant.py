@@ -4,6 +4,7 @@ import base64
 import json
 import logging
 import os
+import re
 from typing import Union
 
 from lab_notebook_intelligence.api import (
@@ -383,6 +384,177 @@ class PythonTool(AddCodeCellTool):
         return {"result": "Code cell added to notebook"}
 
 
+class AutoLibraryDocsTool(Tool):
+    @property
+    def name(self) -> str:
+        return "auto_library_docs"
+
+    @property
+    def title(self) -> str:
+        return "Auto Library Documentation"
+
+    @property
+    def tags(self) -> list[str]:
+        return ["internal-tool", "documentation"]
+
+    @property
+    def description(self) -> str:
+        return "Automatically fetch library documentation when library-related queries are detected"
+
+    @property
+    def schema(self) -> dict:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "strict": False,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The user query that needs library documentation",
+                        },
+                        "libraries": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of specific libraries detected in the query",
+                        },
+                        "search_terms": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Broader search terms for finding relevant library documentation",
+                        },
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    def pre_invoke(
+        self, request: ChatRequest, tool_args: dict
+    ) -> Union[ToolPreInvokeResponse, None]:
+        # This tool runs automatically, no user confirmation needed
+        return None
+
+    async def handle_tool_call(
+        self,
+        request: ChatRequest,
+        response: ChatResponse,
+        tool_context: dict,
+        tool_args: dict,
+    ) -> str:
+        query = tool_args.get("query", "")
+        libraries = tool_args.get("libraries", [])
+        search_terms = tool_args.get("search_terms", [])
+
+        # Combine libraries and search terms for comprehensive search
+        all_search_items = libraries + search_terms
+
+        if not all_search_items:
+            return "No libraries or search terms provided"
+
+        documentation_results = []
+
+        # Get MCP servers from host
+        host = request.host
+        try:
+            mcp_servers = host.get_mcp_servers()
+        except Exception as e:
+            return f"Could not get MCP servers: {e}"
+
+        # Find servers that have the required tools
+        resolve_server = None
+        docs_server = None
+        for server in mcp_servers:
+            server_tools = [tool.name for tool in server.get_tools()]
+            if "resolve-library-id" in server_tools:
+                resolve_server = server
+            if "get-library-docs" in server_tools:
+                docs_server = server
+
+        if not resolve_server or not docs_server:
+            return "Required MCP tools (resolve-library-id, get-library-docs) not found"
+
+        for search_item in all_search_items:
+            try:
+                log.info(f"Attempting to resolve library: {search_item}")
+
+                # Step 1: Resolve library ID using the search item
+                resolve_result = await resolve_server.call_tool(
+                    "resolve-library-id", {"libraryName": search_item}
+                )
+
+                if not resolve_result or not hasattr(resolve_result, "content"):
+                    log.info(f"No resolve result for '{search_item}'")
+                    continue
+
+                # Extract library ID from result
+                library_id = None
+                if isinstance(resolve_result.content, list) and len(resolve_result.content) > 0:
+                    content = resolve_result.content[0]
+                    if hasattr(content, "text"):
+                        # Parse the library ID from the response
+                        import json
+
+                        try:
+                            parsed = json.loads(content.text)
+                            library_id = (
+                                parsed.get("library_id")
+                                or parsed.get("id")
+                                or parsed.get("libraryId")
+                            )
+                            log.info(f"Resolved '{search_item}' to library_id: {library_id}")
+                        except:
+                            # If not JSON, assume the text is the library ID
+                            library_id = content.text.strip()
+                            log.info(f"Using text as library_id for '{search_item}': {library_id}")
+
+                if not library_id:
+                    log.info(f"Could not extract library ID for '{search_item}'")
+                    continue
+
+                # Step 2: Get library documentation
+                log.info(f"Fetching docs for library_id: {library_id}")
+                docs_result = await docs_server.call_tool(
+                    "get-library-docs", {"context7CompatibleLibraryID": library_id}
+                )
+
+                if (
+                    docs_result
+                    and hasattr(docs_result, "content")
+                    and isinstance(docs_result.content, list)
+                ):
+                    docs_content = []
+                    for content in docs_result.content:
+                        if hasattr(content, "text"):
+                            docs_content.append(content.text)
+
+                    if docs_content:
+                        log.info(f"Successfully fetched docs for '{search_item}'")
+                        documentation_results.append(
+                            f"## Documentation for '{search_item}'\n\n" + "\n\n".join(docs_content)
+                        )
+                    else:
+                        log.info(f"No documentation content found for '{search_item}'")
+                else:
+                    log.info(f"Could not retrieve documentation for '{search_item}'")
+
+            except Exception as e:
+                log.error(f"Error fetching documentation for '{search_item}': {str(e)}")
+
+        if documentation_results:
+            # Add the documentation to the response context
+            docs_text = "\n\n".join(documentation_results)
+            response.stream(MarkdownData(docs_text))
+            return f"Successfully retrieved documentation for some search terms"
+        else:
+            log.info("No documentation could be retrieved for any search terms")
+            return "No documentation could be retrieved"
+
+
 class BaseChatParticipant(ChatParticipant):
     def __init__(self):
         super().__init__()
@@ -463,7 +635,9 @@ class BaseChatParticipant(ChatParticipant):
                 "content": f"You are an assistant that creates correct and executable Python code which will be used in a Jupyter notebook. Whenever you are using multiple libraries, ensure that the generated code is compatible and does not use deprecated or non-existent methods. Generate only Python code and some comments for the code. You should return the code directly, without wrapping it inside ```.",
             },
         )
-        messages.append({"role": "user", "content": f"Generate clean Python code for: {request.prompt}"})
+        messages.append(
+            {"role": "user", "content": f"Generate clean Python code for: {request.prompt}"}
+        )
         generated = chat_model.completions(messages)
         code = generated["choices"][0]["message"]["content"]
 
@@ -491,7 +665,9 @@ class BaseChatParticipant(ChatParticipant):
 
         return extract_llm_generated_code(markdown)
 
-    async def generate_title_for_notebook(self, request: ChatRequest, code: str, markdown: str) -> str:
+    async def generate_title_for_notebook(
+        self, request: ChatRequest, code: str, markdown: str
+    ) -> str:
         chat_model = request.host.chat_model
         messages = [
             {
@@ -501,7 +677,7 @@ class BaseChatParticipant(ChatParticipant):
             {
                 "role": "user",
                 "content": f"Generate a descriptive title for a Jupyter notebook that contains the following markdown and code:\n\nMarkdown:\n{markdown}\n\nCode:\n{code}\n\n",
-            }
+            },
         ]
         generated = chat_model.completions(messages)
 
@@ -516,13 +692,17 @@ class BaseChatParticipant(ChatParticipant):
             title = f"{title}_{counter}"
             file_path = os.path.join(server_root_dir, f"{title}.ipynb")
             counter += 1
-        
+
         return title
-    
+
     async def handle_chat_request(
         self, request: ChatRequest, response: ChatResponse, options: dict = {}
     ) -> None:
         self._current_chat_request = request
+
+        # Auto-detect libraries in the query and fetch documentation
+        await self._auto_fetch_library_docs(request, response)
+
         if request.chat_mode.id == "ask":
             return await self.handle_ask_mode_chat_request(request, response, options)
         elif request.chat_mode.id == "agent":
@@ -555,6 +735,90 @@ class BaseChatParticipant(ChatParticipant):
 
             await self.handle_chat_request_with_tools(request, response, options)
 
+    async def _auto_fetch_library_docs(self, request: ChatRequest, response: ChatResponse) -> None:
+        """Use LLM to intelligently detect if library documentation is needed"""
+        if not request.prompt:
+            log.info("No prompt provided, skipping library docs fetch")
+            return
+
+        log.info(f"Checking if library docs needed for prompt: {request.prompt[:100]}")
+
+        # Check if we have the required MCP tools available
+        host = request.host
+        # Use the get_mcp_servers() method from the host (AIServiceManager)
+        try:
+            mcp_servers = host.get_mcp_servers()
+        except Exception as e:
+            log.info(f"Could not get MCP servers: {e}")
+            return
+
+        has_resolve_tool = False
+        has_docs_tool = False
+        for server in mcp_servers:
+            server_tools = [tool.name for tool in server.get_tools()]
+            if "resolve-library-id" in server_tools:
+                has_resolve_tool = True
+            if "get-library-docs" in server_tools:
+                has_docs_tool = True
+
+        log.info(f"Has resolve tool: {has_resolve_tool}, Has docs tool: {has_docs_tool}")
+
+        if not (has_resolve_tool and has_docs_tool):
+            log.info("Required MCP tools not available, skipping library docs fetch")
+            return
+
+        # Use LLM to determine if library documentation is needed
+        try:
+            chat_model = request.host.chat_model
+            detection_result = await self._llm_detect_library_need(chat_model, request.prompt)
+
+            log.info(f"Detection result: {detection_result}")
+            if detection_result and detection_result.get("needs_docs", False):
+                log.info("Library docs needed, fetching...")
+                # Create and execute the auto library docs tool
+                auto_docs_tool = AutoLibraryDocsTool()
+                await auto_docs_tool.handle_tool_call(
+                    request,
+                    response,
+                    {},
+                    {
+                        "query": request.prompt,
+                        "libraries": detection_result.get("libraries", []),
+                        "search_terms": detection_result.get("search_terms", []),
+                    },
+                )
+            else:
+                log.info("Library docs not needed for this query")
+        except Exception as e:
+            log.warning(f"Failed to auto-fetch library documentation: {e}")
+
+    async def _llm_detect_library_need(self, chat_model, query: str) -> dict:
+        """Use LLM to detect if a query needs library documentation"""
+        detection_prompt = Prompts.library_detection_prompt(query)
+
+        try:
+            messages = [{"role": "user", "content": detection_prompt}]
+            response = chat_model.completions(messages)
+
+            if response and "choices" in response and len(response["choices"]) > 0:
+                content = response["choices"][0]["message"]["content"].strip()
+
+                # Try to parse JSON response
+                import json
+
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, try to extract JSON from the response
+                    json_match = re.search(r"\{.*\}", content, re.DOTALL)
+                    if json_match:
+                        return json.loads(json_match.group())
+
+        except Exception as e:
+            log.warning(f"LLM library detection failed: {e}")
+
+        return {"needs_docs": False, "libraries": [], "search_terms": []}
+
     async def handle_ask_mode_chat_request(
         self, request: ChatRequest, response: ChatResponse, options: dict = {}
     ) -> None:
@@ -578,14 +842,16 @@ class BaseChatParticipant(ChatParticipant):
                 {"code": code, "path": file_path},
             )
 
-            # get a descriptive name for the notebook 
+            # get a descriptive name for the notebook
             title = await self.generate_title_for_notebook(request, code, markdown)
             ui_cmd_response = await response.run_ui_command(
                 "lab-notebook-intelligence:rename-notebook", {"newName": title}
             )
             new_file_path = ui_cmd_response.get("newPath", file_path)
 
-            response.stream(MarkdownData(f"Notebook '{new_file_path}' created and opened successfully"))
+            response.stream(
+                MarkdownData(f"Notebook '{new_file_path}' created and opened successfully")
+            )
             response.finish()
             return
         elif request.command == "newPythonFile":
@@ -649,5 +915,7 @@ class BaseChatParticipant(ChatParticipant):
             return AddMarkdownCellToNotebookTool()
         elif name == "add_code_cell_to_notebook":
             return AddCodeCellTool()
+        elif name == "auto_library_docs":
+            return AutoLibraryDocsTool()
 
         return None

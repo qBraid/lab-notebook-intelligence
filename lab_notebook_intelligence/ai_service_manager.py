@@ -137,6 +137,66 @@ class AIServiceManager(Host):
         self.update_models_from_config()
         self.initialize_extensions()
 
+        # Create dynamic MCP config for user's working directory
+        self._create_dynamic_mcp_config()
+
+    def _create_dynamic_mcp_config(self):
+        # Get the directory where JupyterLab was started (user's working directory)
+        user_root_dir = self._options.get("server_root_dir", os.getcwd())
+
+        log.info(f"Creating dynamic MCP config for directory: {user_root_dir}")
+
+        # Create dynamic MCP config with filesystem servers
+        dynamic_mcp_config = {
+            "mcpServers": {
+                "filesystem-pwd": {
+                    "command": "npx",
+                    "args": [
+                        "-y",
+                        "@modelcontextprotocol/server-filesystem",
+                        user_root_dir,
+                    ],
+                },
+                "qbraid-web-search": {
+                    "command": "uv",
+                    "args": ["tool", "run", "web-browser-mcp-server"],
+                    "env": {
+                        "REQUEST_TIMEOUT": "60",
+                    },
+                },
+                # add the MCP server for accessing docs.qbraid.com
+                # "qbraid-docs-search": {"url": "https://docs.qbraid.com/mcp"},
+                "context7-search": {
+                    "url": "https://mcp.context7.com/mcp",
+                    "headers": {"CONTEXT7_API_KEY": os.getenv("CONTEXT7_API_KEY", "")},
+                },
+            }
+        }
+
+        # Add qBraid environments MCP server
+        qbraid_envs_dir = os.path.expanduser("~/.qbraid/environments/")
+        log.info(f"qBraid environments directory: {qbraid_envs_dir}")
+        if os.path.exists(qbraid_envs_dir):
+            # Add filesystem access to environments directory
+            dynamic_mcp_config["mcpServers"]["qbraid-envs"] = {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@modelcontextprotocol/server-filesystem",
+                    qbraid_envs_dir,
+                ],
+            }
+            log.info(f"Added qBraid environments MCP server")
+
+        else:
+            log.info(f"qBraid environments directory not found: {qbraid_envs_dir}")
+
+        # Save to user's MCP config (this will merge with existing config)
+        self.nbi_config.user_mcp = dynamic_mcp_config
+        self.nbi_config.save()
+        self.nbi_config.load()
+        self.update_mcp_servers()
+
     def update_models_from_config(self):
         using_github_copilot_service = self.nbi_config.using_github_copilot_service
         if using_github_copilot_service:
@@ -253,6 +313,7 @@ class AIServiceManager(Host):
             log.error(f"Completion Context Provider ID '{provider.id}' is already in use!")
             return
         self.completion_context_providers[provider.id] = provider
+        log.info(f"Registered completion context provider: {provider.id}")
 
     def register_telemetry_listener(self, listener: TelemetryListener) -> None:
         if listener.name in self.telemetry_listeners:
@@ -439,7 +500,8 @@ class AIServiceManager(Host):
 
         if cancel_token.is_cancel_requested:
             return context
-
+        log.debug(f"Allowed context providers: {allowed_context_providers}")
+        log.debug(f"Available providers: {list(self.completion_context_providers.keys())}")
         for provider in self.completion_context_providers:
             if cancel_token.is_cancel_requested:
                 return context
@@ -450,7 +512,13 @@ class AIServiceManager(Host):
             ):
                 continue
             try:
-                provider_context = provider.handle_completion_context_request(request)
+                # Try async version first, fallback to sync
+                if hasattr(provider, "async_handle_completion_context_request"):
+                    provider_context = await provider.async_handle_completion_context_request(
+                        request
+                    )
+                else:
+                    provider_context = provider.handle_completion_context_request(request)
                 if provider_context.items:
                     context.items += provider_context.items
             except Exception as e:

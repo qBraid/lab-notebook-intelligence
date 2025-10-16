@@ -27,7 +27,7 @@ You can answer general programming questions and perform the following tasks:
 * Ask how to do something in the terminal
 * Explain what just happened in the terminal
 You use the {MODEL_NAME} AI model provided by {MODEL_PROVIDER}.
-If there is any mention of "qbraid", in any capitalization, or related terms you should use the external MCP tool called "qbraid-docs-search".
+If there is any mention of "qbraid", in any capitalization, or related terms you should use the external MCP tool called "context7-search".
 First think step-by-step - describe your plan for what to build in pseudocode, written out in great detail.
 Then output the code in a single code block. This code block should not contain line numbers (line numbers are not necessary for the code to be understood, they are in format number: at beginning of lines).
 Minimize any other prose.
@@ -38,6 +38,39 @@ The user works in an IDE called {IDE_NAME} which has a concept for editors with 
 The user is working on a {OS_TYPE} machine. Please respond with system specific commands if applicable.
 The active document is the source code the user is looking at right now.
 You can only give one reply for each conversation turn.
+"""
+
+CONTEXT_DOCS_IDENTIFICATION_PROMPT = """
+Analyze the following user query and determine if it would benefit from Python library documentation or platform-specific documentation.
+
+User Query: "{USER_QUERY}"
+
+Respond with a JSON object containing:
+1. "needs_docs": boolean - true if the query is asking about Python libraries, packages, platforms, or programming concepts that would benefit from documentation
+2. "libraries": array of strings - **ONLY** specific Python library/package names mentioned (e.g., ["pandas", "numpy", "qiskit", "braket", "qbraid"])
+3. "search_terms": array of strings - You can include strings which are required for this search e.g. "runtime", "quantum computing", "machine learning", etc.
+
+**Examples:**
+
+Query: "How can I submit a braket circuit to a qiskit backend using qbraid runtime?"
+Response: {{"needs_docs": true, "libraries": ["braket", "qiskit", "qbraid"], "search_terms": ["braket", "qiskit", "qbraid"]}}
+
+Query: "What do you know about qbraid runtime?"
+Response: {{"needs_docs": true, "libraries": ["qbraid"], "search_terms": ["qbraid"]}}
+
+Query: "How to use numpy arrays?"
+Response: {{"needs_docs": true, "libraries": ["numpy"], "search_terms": ["numpy"]}}
+
+Query: "I'm getting an error with pandas DataFrame"
+Response: {{"needs_docs": true, "libraries": ["pandas"], "search_terms": ["pandas"]}}
+
+Query: "How do I plot data?"
+Response: {{"needs_docs": true, "libraries": [], "search_terms": ["matplotlib", "plotly", "seaborn"]}}
+
+Query: "What's the weather today?"
+Response: {{"needs_docs": false, "libraries": [], "search_terms": []}}
+
+Only respond with the JSON object, no other text:
 """
 
 
@@ -61,3 +94,7 @@ class Prompts:
             MODEL_NAME=model_name,
             MODEL_PROVIDER=model_provider,
         )
+
+    @staticmethod
+    def library_detection_prompt(user_query: str) -> str:
+        return CONTEXT_DOCS_IDENTIFICATION_PROMPT.format(USER_QUERY=user_query)
